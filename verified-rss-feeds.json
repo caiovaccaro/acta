@@ -1,0 +1,30 @@
+{
+  "validFeeds": [
+    {
+      "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+      "source": "The New York Times"
+    },
+    {
+      "url": "https://www.nationalreview.com/feed/",
+      "source": "National Review"
+    },
+    {
+      "url": "https://moxie.foxnews.com/google-publisher/latest.xml",
+      "source": "Fox News"
+    },
+    {
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "source": "Al Jazeera"
+    },
+    {
+      "url": "https://www.theguardian.com/world/rss",
+      "source": "The Guardian"
+    },
+    {
+      "url": "https://feeds.bbci.co.uk/news/rss.xml",
+      "source": "BBC"
+    }
+  ],
+  "verifiedAt": "2025-01-27",
+  "note": "These feeds have been verified to return valid RSS/XML content with items and are not behind paywalls"
+}
