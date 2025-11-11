@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
-import { extractRSSItem, extractAtomEntry, isArticleProcessed, addPendingArticle } from './index.js';
+import { extractRSSItem, extractAtomEntry } from './extractors.js';
+import { isArticleProcessed, addPendingArticle } from '../utils/index.js';
 
 /**
  * Sets up the parser for RSS/XML content

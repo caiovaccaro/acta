@@ -1,17 +1,22 @@
 // For more information, see https://crawlee.dev/
 import { CheerioCrawler, Configuration } from 'crawlee';
-import { router } from './routes.js';
-import { enqueuePendingArticles } from './utils/enqueue.js';
+import { router } from '../crawlers/articleCrawler.js';
+import { enqueuePendingArticles } from '../utils/enqueue.js';
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-// Configure storage directory to persist data
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configure storage directory to persist data (relative to crawler app)
 Configuration.getGlobalConfig().set('storageClientOptions', {
-    localDataDirectory: resolve(process.cwd(), 'storage'),
+    localDataDirectory: resolve(__dirname, '../../storage'),
 });
 
 // Load verified RSS feeds
-const verifiedFeeds = JSON.parse(readFileSync('./verified-rss-feeds.json', 'utf-8'));
+const outletsPath = resolve(__dirname, '../config/outlets.json');
+const verifiedFeeds = JSON.parse(readFileSync(outletsPath, 'utf-8'));
 
 // Create requests for verified RSS feeds
 const rssUrls = verifiedFeeds.validFeeds.map(feed => ({
