@@ -1,13 +1,20 @@
 import { readdir, readFile } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
 import { writeFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Exports RSS feed metadata to CSV and JSON
  * This includes only the metadata extracted from RSS feeds (before full article extraction)
  */
 async function exportRSS() {
-    const datasetDir = resolve('storage/datasets/default');
+    // Storage is relative to crawler app
+    const datasetDir = resolve(__dirname, '../../storage/datasets/default');
+    // Output files go to project root for easy access
+    const projectRoot = resolve(__dirname, '../../..');
     
     try {
         // Read all JSON files from the dataset directory
@@ -67,12 +74,12 @@ async function exportRSS() {
         }
         
         const csvContent = csvRows.join('\n');
-        const csvPath = resolve('rss-export.csv');
+        const csvPath = resolve(projectRoot, 'rss-export.csv');
         writeFileSync(csvPath, csvContent, 'utf-8');
         console.log(`✅ Exported to CSV: ${csvPath}`);
         
         // Export to JSON
-        const jsonPath = resolve('rss-export.json');
+        const jsonPath = resolve(projectRoot, 'rss-export.json');
         writeFileSync(jsonPath, JSON.stringify(rssItems, null, 2), 'utf-8');
         console.log(`✅ Exported to JSON: ${jsonPath}`);
         

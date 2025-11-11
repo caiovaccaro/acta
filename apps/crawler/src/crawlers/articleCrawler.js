@@ -1,6 +1,6 @@
 import { createCheerioRouter } from 'crawlee';
-import { setupParser, processRSSFeed } from './utils/index.js';
-import { processArticle } from './utils/article-handler.js';
+import { setupParser, processRSSFeed } from '../utils/index.js';
+import { processArticle } from '../mappers/articleMapper.js';
 
 export const router = createCheerioRouter();
 
