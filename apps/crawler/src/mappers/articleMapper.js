@@ -1,5 +1,5 @@
-import { parseArticle } from '../parsers.js';
-import { markArticleAsProcessed } from './index.js';
+import { parseArticle } from '../crawlers/parsers.js';
+import { markArticleAsProcessed } from '../utils/index.js';
 
 /**
  * Combines RSS metadata with extracted article content

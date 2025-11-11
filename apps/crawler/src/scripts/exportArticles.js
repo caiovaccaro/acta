@@ -1,13 +1,20 @@
 import { readdir, readFile } from 'fs/promises';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
 import { writeFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Exports full article data to CSV and JSON
  * This includes articles with extracted content (after full article processing)
  */
 async function exportArticles() {
-    const datasetDir = resolve('storage/datasets/default');
+    // Storage is relative to crawler app
+    const datasetDir = resolve(__dirname, '../../storage/datasets/default');
+    // Output files go to project root for easy access
+    const projectRoot = resolve(__dirname, '../../..');
     
     try {
         // Read all JSON files from the dataset directory
@@ -85,12 +92,12 @@ async function exportArticles() {
         }
         
         const csvContent = csvRows.join('\n');
-        const csvPath = resolve('articles-export.csv');
+        const csvPath = resolve(projectRoot, 'articles-export.csv');
         writeFileSync(csvPath, csvContent, 'utf-8');
         console.log(`✅ Exported to CSV: ${csvPath}`);
         
         // Export to JSON
-        const jsonPath = resolve('articles-export.json');
+        const jsonPath = resolve(projectRoot, 'articles-export.json');
         writeFileSync(jsonPath, JSON.stringify(articles, null, 2), 'utf-8');
         console.log(`✅ Exported to JSON: ${jsonPath}`);
         

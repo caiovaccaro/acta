@@ -1,7 +1,7 @@
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 import * as cheerio from 'cheerio';
-import { normalizeArticleData } from './schemas/article.js';
+import { normalizeArticleData } from '../schemas/article.js';
 
 /**
  * Extracts structured article data using Mozilla Readability as primary parser

@@ -1,19 +1,21 @@
 {
-    "name": "my-crawler",
+    "name": "acta",
     "version": "0.0.1",
     "type": "module",
-    "description": "This is an example of a Crawlee project.",
-    "dependencies": {
-        "@mozilla/readability": "^0.6.0",
-        "crawlee": "^3.0.0",
-        "jsdom": "^27.1.0"
-    },
+    "description": "Acta Platform - Data-driven consensus verdicts on complex topics",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "modules/*"
+    ],
     "scripts": {
-        "start": "node src/main.js",
-        "export:rss": "node export-rss.js",
-        "export:articles": "node export-articles.js",
-        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+        "crawler:start": "cd apps/crawler && npm start",
+        "crawler:export:rss": "cd apps/crawler && npm run export:rss",
+        "crawler:export:articles": "cd apps/crawler && npm run export:articles",
+        "start": "npm run crawler:start",
+        "export:rss": "npm run crawler:export:rss",
+        "export:articles": "npm run crawler:export:articles"
     },
-    "author": "It's not you it's me",
+    "author": "Caio Vaccaro",
     "license": "ISC"
 }
