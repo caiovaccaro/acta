@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
  * This includes articles with extracted content (after full article processing)
  */
 async function exportArticles() {
-    // Storage is relative to crawler app
+    // Storage is relative to crawler app (apps/crawler/storage/datasets/default)
     const datasetDir = resolve(__dirname, '../../storage/datasets/default');
     // Output files go to project root for easy access
     const projectRoot = resolve(__dirname, '../../..');
