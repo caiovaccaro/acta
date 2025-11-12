@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
  * This includes only the metadata extracted from RSS feeds (before full article extraction)
  */
 async function exportRSS() {
-    // Storage is relative to crawler app
+    // Storage is relative to crawler app (apps/crawler/storage/datasets/default)
     const datasetDir = resolve(__dirname, '../../storage/datasets/default');
     // Output files go to project root for easy access
     const projectRoot = resolve(__dirname, '../../..');
