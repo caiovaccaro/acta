@@ -25,7 +25,7 @@ import { combineArticleData, calculateWordCount } from '../mappers/articleMapper
  * @param {string} rssDescription - Description from RSS feed (optional)
  * @param {string} rssPubDate - Publication date from RSS feed (optional)
  * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function (for backward compatibility)
+ * @param {Function} pushData - Data push function (optional, no-op if not provided)
  * @returns {Promise<Object>} Created/updated article
  */
 export async function processAndSaveArticle(

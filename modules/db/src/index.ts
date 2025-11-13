@@ -55,6 +55,9 @@ export * from './repositories/outletRepository.js';
 export * from './repositories/crawlRequestRepository.js';
 export * from './repositories/articleRepository.js';
 
+// Re-export countArticles for convenience
+export { countArticles } from './repositories/articleRepository.js';
+
 // Re-export findCrawlRequestById and resetStuckInProgressRequests for convenience
 export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository.js';
 

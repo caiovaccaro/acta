@@ -4,9 +4,10 @@
  */
 
 import { setupDatabase, teardownDatabase } from './database.js';
-import { configureCrawleeStorage, createCrawler, createRssRequests } from './crawler.js';
+import { createCrawler, createRssRequests } from './crawler.js';
 import { processRssFeeds, processArticles } from './phases.js';
 import { getCrawlerConfig, loadRssFeeds, validateConfig } from '../config/crawlerConfig.js';
+import { logStartMetrics, logEndMetrics } from './monitoring.js';
 
 // Load configuration
 const config = getCrawlerConfig();
@@ -22,8 +23,8 @@ if (validation.warnings.length > 0) {
 // Setup database and reset stuck requests
 await setupDatabase(config.stuckRequestThresholdMinutes);
 
-// Configure Crawlee storage
-configureCrawleeStorage(config.storageDirectory);
+// Log starting metrics
+await logStartMetrics();
 
 // Load RSS feeds and create requests
 const feeds = loadRssFeeds();
@@ -40,6 +41,9 @@ await processArticles(crawler, {
     batchSize: config.batchSize,
     maxArticlesPerRun: config.maxArticlesPerRun,
 });
+
+// Log final metrics
+await logEndMetrics();
 
 console.log('\n✨ Crawling complete!');
 
