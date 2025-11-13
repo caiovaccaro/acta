@@ -53,6 +53,10 @@ export type { HealthCheckResult } from './healthCheck.js';
 // Re-export repositories
 export * from './repositories/outletRepository.js';
 export * from './repositories/crawlRequestRepository.js';
+export * from './repositories/articleRepository.js';
+
+// Re-export findCrawlRequestById and resetStuckInProgressRequests for convenience
+export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository.js';
 
 // Re-export retry limit constants for convenience
 export { MAX_RETRY_ATTEMPTS, hasExceededRetryLimit } from './repositories/crawlRequestRepository.js';

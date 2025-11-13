@@ -50,6 +50,20 @@ export async function findCrawlRequestByUrl(url: string): Promise<CrawlRequest |
 }
 
 /**
+ * Finds a crawl request by ID
+ * @param id - The CrawlRequest ID
+ * @returns CrawlRequest or null if not found
+ */
+export async function findCrawlRequestById(id: string): Promise<CrawlRequest | null> {
+  return prisma.crawlRequest.findUnique({
+    where: { id },
+    include: {
+      outlet: true,
+    },
+  });
+}
+
+/**
  * Creates a new crawl request with URL normalization
  * If a crawl request with the same normalized URL already exists, returns the existing one
  * @param input - CrawlRequest input data
@@ -147,6 +161,9 @@ export async function findPendingCrawlRequests(
         lt: maxAttempts, // Only include requests that haven't exceeded retry limit
       },
       ...(outletId && { outletId }),
+    },
+    include: {
+      outlet: true, // Include outlet information
     },
     orderBy: {
       createdAt: 'asc',
@@ -272,5 +289,32 @@ export async function countCrawlRequestsByStatus(
     [CrawlStatus.failed]: failed,
     failedExceededRetries,
   };
+}
+
+/**
+ * Resets stuck in_progress crawl requests back to pending
+ * Useful for recovering from crashed jobs that left requests in_progress
+ * @param olderThanMinutes - Reset requests that have been in_progress longer than this (default: 60 minutes)
+ * @returns Number of requests reset
+ */
+export async function resetStuckInProgressRequests(
+  olderThanMinutes: number = 60
+): Promise<number> {
+  const cutoffTime = new Date();
+  cutoffTime.setMinutes(cutoffTime.getMinutes() - olderThanMinutes);
+  
+  const result = await prisma.crawlRequest.updateMany({
+    where: {
+      status: CrawlStatus.in_progress,
+      updatedAt: {
+        lt: cutoffTime,
+      },
+    },
+    data: {
+      status: CrawlStatus.pending,
+    },
+  });
+  
+  return result.count;
 }
 
