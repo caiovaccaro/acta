@@ -1,66 +1,51 @@
-// For more information, see https://crawlee.dev/
-import { CheerioCrawler, Configuration } from 'crawlee';
-import { router } from '../crawlers/articleCrawler.js';
-import { enqueuePendingArticles } from '../utils/enqueue.js';
-import { connectDatabase, disconnectDatabase } from '@acta/db';
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+/**
+ * Main Crawler Job
+ * Orchestrates RSS feed processing and article extraction
+ */
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { setupDatabase, teardownDatabase } from './database.js';
+import { createCrawler, createRssRequests } from './crawler.js';
+import { processRssFeeds, processArticles } from './phases.js';
+import { getCrawlerConfig, loadRssFeeds, validateConfig } from '../config/crawlerConfig.js';
+import { logStartMetrics, logEndMetrics } from './monitoring.js';
 
-// Connect to database
-await connectDatabase();
+// Load configuration
+const config = getCrawlerConfig();
+const validation = validateConfig(config);
 
-// Configure storage directory to persist data (relative to crawler app)
-// Note: We still use Crawlee storage for RSS metadata export compatibility
-Configuration.getGlobalConfig().set('storageClientOptions', {
-    localDataDirectory: resolve(__dirname, '../../storage'),
-});
+// Show warnings if any
+if (validation.warnings.length > 0) {
+    validation.warnings.forEach(warning => {
+        console.warn(`⚠️  ${warning}`);
+    });
+}
 
-// Load verified RSS feeds
-const outletsPath = resolve(__dirname, '../config/outlets.json');
-const verifiedFeeds = JSON.parse(readFileSync(outletsPath, 'utf-8'));
+// Setup database and reset stuck requests
+await setupDatabase(config.stuckRequestThresholdMinutes);
 
-// Create requests for verified RSS feeds
-const rssUrls = verifiedFeeds.validFeeds.map(feed => ({
-    url: feed.url,
-    label: 'rss',
-    userData: { 
-        source: feed.source,
-        feedUrl: feed.url
-    }
-}));
+// Log starting metrics
+await logStartMetrics();
 
-const crawler = new CheerioCrawler({
-    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
-    requestHandler: router,
-    // Comment this option to scrape the full website.
-    maxRequestsPerCrawl: 100,
-    // Allow RSS and Atom feed content types
-    additionalMimeTypes: ['application/rss+xml', 'application/atom+xml'],
-});
+// Load RSS feeds and create requests
+const feeds = loadRssFeeds();
+const rssRequests = createRssRequests(feeds);
+
+// Create crawler instance
+const crawler = createCrawler();
 
 // Phase 1: Process RSS feeds
-console.log('📡 Phase 1: Processing RSS feeds...');
-await crawler.run(rssUrls);
-console.log('✅ Phase 1 complete: RSS feeds processed\n');
+await processRssFeeds(crawler, rssRequests);
 
-// Phase 2: Process articles (event-driven, decoupled)
-console.log('📄 Phase 2: Preparing articles for content extraction...');
-const articleRequests = await enqueuePendingArticles();
+// Phase 2: Process articles from PostgreSQL queue
+await processArticles(crawler, {
+    batchSize: config.batchSize,
+    maxArticlesPerRun: config.maxArticlesPerRun,
+});
 
-if (articleRequests.length > 0) {
-    console.log(`\n📖 Phase 2: Processing ${articleRequests.length} articles...`);
-    // Run crawler with the article requests directly
-    await crawler.run(articleRequests);
-    console.log('✅ Phase 2 complete: Articles processed');
-} else {
-    console.log('ℹ️  No articles to process');
-}
+// Log final metrics
+await logEndMetrics();
 
 console.log('\n✨ Crawling complete!');
 
-// Disconnect from database
-await disconnectDatabase();
+// Cleanup
+await teardownDatabase();

@@ -1,5 +1,4 @@
-import { parseArticle } from '../crawlers/parsers.js';
-import { markArticleAsProcessed } from '../utils/index.js';
+// Mapper functions - only handle data transformation, no database operations
 
 /**
  * Combines RSS metadata with extracted article content
@@ -41,41 +40,6 @@ export function calculateWordCount(articleData) {
     return articleData;
 }
 
-/**
- * Processes and saves an article
- * @param {string} html - HTML content
- * @param {string} articleUrl - Article URL
- * @param {Function} $ - Cheerio instance
- * @param {string} source - News source name
- * @param {string} rssTitle - Title from RSS feed
- * @param {string} rssDescription - Description from RSS feed
- * @param {string} rssPubDate - Publication date from RSS feed
- * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function
- */
-export async function processArticle(html, articleUrl, $, source, rssTitle, rssDescription, rssPubDate, log, pushData) {
-    // Parse article using agnostic parser
-    const articleData = parseArticle(html, articleUrl, $);
-    
-    // Combine RSS metadata with extracted content
-    let fullArticleData = combineArticleData(
-        articleData,
-        source,
-        rssTitle,
-        rssDescription,
-        rssPubDate,
-        articleUrl
-    );
-    
-    // Calculate word count if not provided
-    fullArticleData = calculateWordCount(fullArticleData);
-    
-    // Save article data
-    await pushData(fullArticleData);
-    
-    // Mark article as processed
-    await markArticleAsProcessed(articleUrl);
-    
-    log.info(`✅ Extracted article: ${articleData.title.substring(0, 60)}...`);
-}
+// Note: processArticle has been moved to services/articleService.js
+// This file now only contains pure mapping/transformation functions
 

@@ -68,7 +68,7 @@ export function extractAtomArticles($parser) {
  * @param {string} feedUrl - RSS feed URL
  * @param {string} outletId - Outlet ID from database
  * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function (for backward compatibility)
+ * @param {Function} pushData - Data push function (optional, no-op if not provided)
  * @returns {Object} Processing result
  */
 async function processRSSArticle(article, source, feedUrl, outletId, log, pushData) {
@@ -99,15 +99,17 @@ async function processRSSArticle(article, source, feedUrl, outletId, log, pushDa
             status: CrawlStatus.pending,
         });
         
-        // Save RSS metadata (for backward compatibility with existing export scripts)
-        await pushData({
-            source,
-            feedUrl,
-            title,
-            link,
-            description,
-            pubDate,
-        });
+        // Save RSS metadata to Crawlee storage (optional, for backward compatibility)
+        if (pushData) {
+            await pushData({
+                source,
+                feedUrl,
+                title,
+                link,
+                description,
+                pubDate,
+            });
+        }
         
         return { processed: true };
     } catch (error) {
@@ -150,7 +152,7 @@ async function processRSSArticles(articles, source, feedUrl, outletId, log, push
  * @param {string} source - News source name
  * @param {string} feedUrl - RSS feed URL
  * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function (for backward compatibility)
+ * @param {Function} pushData - Data push function (optional, no-op if not provided)
  */
 export async function processRSSFeed($parser, source, feedUrl, log, pushData) {
     // Try RSS 2.0 format first
