@@ -2,6 +2,7 @@
 import { CheerioCrawler, Configuration } from 'crawlee';
 import { router } from '../crawlers/articleCrawler.js';
 import { enqueuePendingArticles } from '../utils/enqueue.js';
+import { connectDatabase, disconnectDatabase } from '@acta/db';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -9,7 +10,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Connect to database
+await connectDatabase();
+
 // Configure storage directory to persist data (relative to crawler app)
+// Note: We still use Crawlee storage for RSS metadata export compatibility
 Configuration.getGlobalConfig().set('storageClientOptions', {
     localDataDirectory: resolve(__dirname, '../../storage'),
 });
@@ -56,3 +61,6 @@ if (articleRequests.length > 0) {
 }
 
 console.log('\n✨ Crawling complete!');
+
+// Disconnect from database
+await disconnectDatabase();
