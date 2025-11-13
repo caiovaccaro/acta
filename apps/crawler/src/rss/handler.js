@@ -1,6 +1,13 @@
 import * as cheerio from 'cheerio';
 import { extractRSSItem, extractAtomEntry } from './extractors.js';
-import { isArticleProcessed, addPendingArticle } from '../utils/index.js';
+import { 
+    findOrCreateOutlet, 
+    findCrawlRequestByUrl, 
+    createOrUpdateCrawlRequest,
+    Ideology,
+    CrawlStatus,
+    connectDatabase
+} from '@acta/db';
 
 /**
  * Sets up the parser for RSS/XML content
@@ -55,15 +62,16 @@ export function extractAtomArticles($parser) {
 }
 
 /**
- * Processes a single RSS article (saves RSS metadata)
+ * Processes a single RSS article and creates CrawlRequest in PostgreSQL
  * @param {Object} article - Article object with title, link, description, pubDate
  * @param {string} source - News source name
  * @param {string} feedUrl - RSS feed URL
+ * @param {string} outletId - Outlet ID from database
  * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function
+ * @param {Function} pushData - Data push function (for backward compatibility)
  * @returns {Object} Processing result
  */
-async function processRSSArticle(article, source, feedUrl, log, pushData) {
+async function processRSSArticle(article, source, feedUrl, outletId, log, pushData) {
     const { title, link, description, pubDate } = article;
     
     // Skip if article link is empty
@@ -72,25 +80,40 @@ async function processRSSArticle(article, source, feedUrl, log, pushData) {
         return { processed: false, reason: 'no_link' };
     }
     
-    // Skip if already processed
-    if (await isArticleProcessed(link)) {
-        log.info(`Skipping duplicate article: ${link.substring(0, 80)}...`);
-        return { processed: false, reason: 'duplicate' };
+    // Check if crawl request already exists in database
+    const existingRequest = await findCrawlRequestByUrl(link);
+    if (existingRequest) {
+        // Skip if already done or in progress
+        if (existingRequest.status === CrawlStatus.done || existingRequest.status === CrawlStatus.in_progress) {
+            log.info(`Skipping already processed article: ${link.substring(0, 80)}...`);
+            return { processed: false, reason: 'duplicate' };
+        }
+        // If failed, it will be retried by createOrUpdateCrawlRequest
     }
     
-    // Save RSS metadata
-    await pushData({
-        source,
-        feedUrl,
-        title,
-        link,
-        description,
-        pubDate,
-    });
-    
-    // Don't mark as processed yet - wait until full content is extracted
-    // This allows the article to be enqueued for content extraction
-    return { processed: true };
+    // Create or update crawl request in PostgreSQL
+    try {
+        await createOrUpdateCrawlRequest({
+            url: link,
+            outletId: outletId,
+            status: CrawlStatus.pending,
+        });
+        
+        // Save RSS metadata (for backward compatibility with existing export scripts)
+        await pushData({
+            source,
+            feedUrl,
+            title,
+            link,
+            description,
+            pubDate,
+        });
+        
+        return { processed: true };
+    } catch (error) {
+        log.error(`Failed to create crawl request for ${link}:`, error);
+        return { processed: false, reason: 'error', error };
+    }
 }
 
 /**
@@ -98,17 +121,18 @@ async function processRSSArticle(article, source, feedUrl, log, pushData) {
  * @param {Array} articles - Array of article objects
  * @param {string} source - News source name
  * @param {string} feedUrl - RSS feed URL
+ * @param {string} outletId - Outlet ID from database
  * @param {Object} log - Logger instance
  * @param {Function} pushData - Data push function
  * @param {string} format - Feed format ('RSS' or 'Atom')
  * @returns {Object} Processing statistics
  */
-async function processRSSArticles(articles, source, feedUrl, log, pushData, format) {
+async function processRSSArticles(articles, source, feedUrl, outletId, log, pushData, format) {
     let processedCount = 0;
     let skippedCount = 0;
     
     for (const article of articles) {
-        const result = await processRSSArticle(article, source, feedUrl, log, pushData);
+        const result = await processRSSArticle(article, source, feedUrl, outletId, log, pushData);
         if (result.processed) {
             processedCount++;
         } else {
@@ -121,12 +145,12 @@ async function processRSSArticles(articles, source, feedUrl, log, pushData, form
 }
 
 /**
- * Processes RSS feed and extracts articles
+ * Processes RSS feed and extracts articles, writing to PostgreSQL
  * @param {Function} $parser - Cheerio parser instance
  * @param {string} source - News source name
  * @param {string} feedUrl - RSS feed URL
  * @param {Object} log - Logger instance
- * @param {Function} pushData - Data push function
+ * @param {Function} pushData - Data push function (for backward compatibility)
  */
 export async function processRSSFeed($parser, source, feedUrl, log, pushData) {
     // Try RSS 2.0 format first
@@ -144,16 +168,13 @@ export async function processRSSFeed($parser, source, feedUrl, log, pushData) {
         return;
     }
     
-    // Process articles (save RSS metadata)
-    await processRSSArticles(articles, source, feedUrl, log, pushData, format);
+    // Get or create outlet in database
+    // For now, default to Center ideology - this can be configured later
+    const outlet = await findOrCreateOutlet(source, Ideology.Center, 0.5, [feedUrl]);
     
-    // Add articles to pending queue for later processing (decoupled)
-    for (const article of articles) {
-        if (article.link && !await isArticleProcessed(article.link)) {
-            await addPendingArticle(article, source);
-        }
-    }
+    // Process articles and create CrawlRequests in PostgreSQL
+    const stats = await processRSSArticles(articles, source, feedUrl, outlet.id, log, pushData, format);
     
-    log.info(`Added ${articles.length} articles to pending queue for content extraction`);
+    log.info(`Added ${stats.processedCount} new crawl requests to PostgreSQL queue, skipped ${stats.skippedCount} duplicates`);
 }
 
