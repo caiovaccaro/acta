@@ -1,60 +1,76 @@
-import { readdir, readFile } from 'fs/promises';
-import { join, resolve, dirname } from 'path';
+/**
+ * Exports full article data from PostgreSQL to CSV and JSON
+ * This includes articles with extracted content
+ */
+
+import { connectDatabase, disconnectDatabase, prisma } from '@acta/db';
 import { writeFileSync } from 'fs';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Exports full article data to CSV and JSON
- * This includes articles with extracted content (after full article processing)
+ * Exports articles from PostgreSQL to CSV and JSON
  */
 async function exportArticles() {
-    // Storage is relative to crawler app (apps/crawler/storage/datasets/default)
-    const datasetDir = resolve(__dirname, '../../storage/datasets/default');
-    // Output files go to project root for easy access
     const projectRoot = resolve(__dirname, '../../..');
     
     try {
-        // Read all JSON files from the dataset directory
-        const files = await readdir(datasetDir);
-        const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
+        await connectDatabase();
         
-        if (jsonFiles.length === 0) {
-            console.log('⚠️  No data found in dataset directory.');
-            return;
-        }
+        console.log('📊 Fetching articles from PostgreSQL...\n');
         
-        console.log(`📊 Found ${jsonFiles.length} data files\n`);
-        console.log('Reading articles...');
+        // Fetch all articles from database
+        const articles = await prisma.article.findMany({
+            include: {
+                outlet: {
+                    select: {
+                        name: true,
+                        ideology: true,
+                    },
+                },
+                crawlRequest: {
+                    select: {
+                        status: true,
+                        attempts: true,
+                    },
+                },
+            },
+            orderBy: {
+                extractedAt: 'desc',
+            },
+        });
         
-        const articles = [];
-        for (const file of jsonFiles) {
-            try {
-                const content = await readFile(join(datasetDir, file), 'utf-8');
-                const item = JSON.parse(content);
-                
-                // Only include items that have full article content
-                // Full articles have: textContent and articleUrl
-                if (item.articleUrl && item.textContent) {
-                    articles.push(item);
-                }
-            } catch (err) {
-                console.warn(`⚠️  Error reading ${file}:`, err.message);
-            }
-        }
-        
-        console.log(`✅ Loaded ${articles.length} articles\n`);
+        console.log(`✅ Loaded ${articles.length} articles from database\n`);
         
         if (articles.length === 0) {
-            console.log('ℹ️  No full articles found. Articles may not have been processed yet.');
+            console.log('ℹ️  No articles found in database.');
+            await disconnectDatabase();
             return;
         }
         
-        // Get all unique keys from articles for CSV headers
+        // Transform articles to export format
+        const exportData = articles.map(article => ({
+            id: article.id,
+            url: article.url,
+            outlet: article.outlet.name,
+            outletId: article.outletId,
+            ideology: article.outlet.ideology,
+            title: article.title,
+            textContent: article.textContent,
+            excerpt: article.excerpt,
+            publishedDate: article.publishedDate?.toISOString() || '',
+            extractedAt: article.extractedAt.toISOString(),
+            createdAt: article.createdAt.toISOString(),
+            crawlRequestStatus: article.crawlRequest?.status || '',
+            crawlRequestAttempts: article.crawlRequest?.attempts || 0,
+        }));
+        
+        // Get all unique keys for CSV headers
         const allKeys = new Set();
-        articles.forEach(article => {
+        exportData.forEach(article => {
             Object.keys(article).forEach(key => allKeys.add(key));
         });
         const headers = Array.from(allKeys).sort();
@@ -63,7 +79,7 @@ async function exportArticles() {
         const csvRows = [];
         csvRows.push(headers.join(','));
         
-        for (const article of articles) {
+        for (const article of exportData) {
             const row = headers.map(header => {
                 const value = article[header];
                 
@@ -98,15 +114,17 @@ async function exportArticles() {
         
         // Export to JSON
         const jsonPath = resolve(projectRoot, 'articles-export.json');
-        writeFileSync(jsonPath, JSON.stringify(articles, null, 2), 'utf-8');
+        writeFileSync(jsonPath, JSON.stringify(exportData, null, 2), 'utf-8');
         console.log(`✅ Exported to JSON: ${jsonPath}`);
         
         console.log(`\n✨ Articles export complete! Open articles-export.csv in Excel.`);
+        
+        await disconnectDatabase();
     } catch (err) {
         console.error('❌ Error exporting articles:', err.message);
-        console.error('Make sure the crawler has run and created articles in storage/datasets/default/');
+        await disconnectDatabase();
+        process.exit(1);
     }
 }
 
 exportArticles();
-

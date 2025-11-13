@@ -7,10 +7,14 @@ import { CheerioCrawler, Configuration } from 'crawlee';
 import { router } from '../crawlers/articleCrawler.js';
 
 /**
- * Configures Crawlee storage directory
+ * Configures Crawlee storage directory (optional, for backward compatibility)
+ * Note: We no longer rely on Crawlee storage - all data is in PostgreSQL
+ * This is kept for optional export compatibility
  * @param {string} storageDirectory - Path to storage directory
  */
 export function configureCrawleeStorage(storageDirectory) {
+    // Optional: Configure storage if needed for backward compatibility
+    // Can be removed once export scripts are fully migrated to PostgreSQL
     Configuration.getGlobalConfig().set('storageClientOptions', {
         localDataDirectory: storageDirectory,
     });

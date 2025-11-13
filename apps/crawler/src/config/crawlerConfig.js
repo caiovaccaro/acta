@@ -29,9 +29,6 @@ export function getCrawlerConfig() {
         stuckRequestThresholdMinutes: process.env.STUCK_REQUEST_THRESHOLD_MINUTES
             ? parseInt(process.env.STUCK_REQUEST_THRESHOLD_MINUTES, 10)
             : 60, // Reset requests stuck in_progress longer than this
-        
-        // Storage configuration
-        storageDirectory: resolve(__dirname, '../../storage'),
     };
 }
 
