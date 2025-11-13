@@ -1,6 +1,6 @@
 import { createCheerioRouter } from 'crawlee';
 import { setupParser, processRSSFeed } from '../utils/index.js';
-import { processArticle } from '../mappers/articleMapper.js';
+import { processAndSaveArticle, getOutletIdFromCrawlRequest } from '../services/articleService.js';
 
 export const router = createCheerioRouter();
 
@@ -14,7 +14,8 @@ router.addHandler('rss', async ({ request, $, log, pushData, body }) => {
 });
 
 router.addHandler('article', async ({ request, $, log, pushData, body }) => {
-    const source = request.userData?.source || 'unknown';
+    const crawlRequestId = request.userData?.crawlRequestId || null;
+    const outletId = request.userData?.outletId || null;
     const rssTitle = request.userData?.rssTitle || '';
     const rssDescription = request.userData?.rssDescription || '';
     const rssPubDate = request.userData?.rssPubDate || '';
@@ -22,12 +23,28 @@ router.addHandler('article', async ({ request, $, log, pushData, body }) => {
     
     log.info(`Extracting content from article: ${articleUrl.substring(0, 80)}...`);
     
+    // Get outletId if not provided (from crawl request)
+    let actualOutletId = outletId;
+    if (!actualOutletId && crawlRequestId) {
+        try {
+            actualOutletId = await getOutletIdFromCrawlRequest(crawlRequestId);
+        } catch (error) {
+            log.error(`Failed to fetch outlet from crawl request:`, error);
+        }
+    }
+    
+    if (!actualOutletId) {
+        log.error(`❌ Missing outletId for article ${articleUrl}`);
+        return;
+    }
+    
     try {
-        await processArticle(
+        await processAndSaveArticle(
             body || $.html(),
             articleUrl,
             $,
-            source,
+            actualOutletId,
+            crawlRequestId,
             rssTitle,
             rssDescription,
             rssPubDate,
@@ -36,6 +53,7 @@ router.addHandler('article', async ({ request, $, log, pushData, body }) => {
         );
     } catch (error) {
         log.error(`❌ Error extracting article ${articleUrl}:`, error.message);
+        // Error handling is done in processAndSaveArticle
     }
 });
 
