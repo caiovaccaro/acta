@@ -50,3 +50,13 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 export { performHealthCheck, quickHealthCheck } from './healthCheck.js';
 export type { HealthCheckResult } from './healthCheck.js';
 
+// Re-export repositories
+export * from './repositories/outletRepository.js';
+export * from './repositories/crawlRequestRepository.js';
+
+// Re-export retry limit constants for convenience
+export { MAX_RETRY_ATTEMPTS, hasExceededRetryLimit } from './repositories/crawlRequestRepository.js';
+
+// Re-export utilities
+export * from './utils/urlNormalizer.js';
+
