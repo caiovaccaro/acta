@@ -1,0 +1,568 @@
+openapi: 3.0.0
+info:
+  title: Article Analysis Pipeline API
+  version: 1.0.0
+  description: API contracts for article analysis, question extraction, stance classification, and verdict generation
+  note: Ideology data is backend-only and NEVER exposed in API responses
+
+paths:
+  /api/topics:
+    get:
+      summary: List all topics
+      tags:
+        - Topics
+      responses:
+        '200':
+          description: List of topics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Topic'
+    post:
+      summary: Create a new topic
+      tags:
+        - Topics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopicRequest'
+      responses:
+        '201':
+          description: Topic created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topic'
+
+  /api/topics/{topicId}/questions:
+    get:
+      summary: Get questions for a topic
+      tags:
+        - Questions
+      parameters:
+        - name: topicId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of questions for the topic
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Question'
+
+  /api/questions:
+    post:
+      summary: Create a new question (submits for validation)
+      tags:
+        - Questions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestionRequest'
+      responses:
+        '201':
+          description: Question created and submitted for validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+
+  /api/questions/{questionId}:
+    get:
+      summary: Get question details with verdict
+      tags:
+        - Questions
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Question with verdict and evidence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionWithVerdict'
+        '404':
+          description: Question not found
+
+  /api/questions/{questionId}/validate:
+    post:
+      summary: Validate question against formulation framework
+      tags:
+        - Questions
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Validation results and reformulation suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionValidationResponse'
+
+  /api/questions/{questionId}/reformulate:
+    post:
+      summary: Generate reformulated versions of question
+      tags:
+        - Questions
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReformulateQuestionRequest'
+      responses:
+        '200':
+          description: Reformulated question versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReformulatedQuestionsResponse'
+
+  /api/questions/{questionId}/activate:
+    post:
+      summary: Activate a validated question for article matching
+      tags:
+        - Questions
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Question activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Question'
+        '400':
+          description: Question not validated or validation failed
+
+  /api/questions/{questionId}/verdict:
+    get:
+      summary: Get verdict for a question
+      tags:
+        - Verdicts
+      parameters:
+        - name: questionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verdict for the question
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Verdict'
+        '404':
+          description: Verdict not found
+
+  /api/jobs/analysis/match-topics:
+    post:
+      summary: Trigger topic matching job
+      tags:
+        - Jobs
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchTopicsRequest'
+      responses:
+        '202':
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+  /api/jobs/analysis/classify-stances:
+    post:
+      summary: Trigger stance classification job
+      tags:
+        - Jobs
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassifyStancesRequest'
+      responses:
+        '202':
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+  /api/jobs/analysis/calculate-verdicts:
+    post:
+      summary: Trigger verdict calculation job
+      tags:
+        - Jobs
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateVerdictsRequest'
+      responses:
+        '202':
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+components:
+  schemas:
+    Topic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        safetyNoteRequired:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateTopicRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        safetyNoteRequired:
+          type: boolean
+          default: false
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        topicId:
+          type: string
+          format: uuid
+        questionText:
+          type: string
+        originalQuestionText:
+          type: string
+          nullable: true
+        extractedAt:
+          type: string
+          format: date-time
+        confidence:
+          type: number
+          nullable: true
+        sourceArticlesCount:
+          type: integer
+        validationStatus:
+          type: string
+          enum: [pending, validated, rejected, needs_reformulation]
+        validationResults:
+          type: object
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateQuestionRequest:
+      type: object
+      required:
+        - topicId
+        - questionText
+      properties:
+        topicId:
+          type: string
+          format: uuid
+        questionText:
+          type: string
+
+    QuestionValidationResponse:
+      type: object
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        validationStatus:
+          type: string
+          enum: [pending, validated, rejected, needs_reformulation]
+        validationResults:
+          type: object
+          properties:
+            publicClarity:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            alignmentWithRealDebate:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            simplicityWithoutBias:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            anchoringInCurrentNews:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            explicitObjective:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            clearBinaryNature:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+            answerableWithEvidence:
+              type: object
+              properties:
+                passed:
+                  type: boolean
+                notes:
+                  type: string
+        allChecksPassed:
+          type: boolean
+        reformulationSuggested:
+          type: boolean
+
+    ReformulateQuestionRequest:
+      type: object
+      properties:
+        focusAreas:
+          type: array
+          items:
+            type: string
+          description: Specific framework checks to focus on (optional)
+
+    ReformulatedQuestionsResponse:
+      type: object
+      properties:
+        originalQuestion:
+          type: string
+        reformulatedVersions:
+          type: array
+          items:
+            type: object
+            properties:
+              questionText:
+                type: string
+              improvements:
+                type: array
+                items:
+                  type: string
+              confidence:
+                type: number
+                format: float
+
+    QuestionWithVerdict:
+      allOf:
+        - $ref: '#/components/schemas/Question'
+        - type: object
+          properties:
+            verdict:
+              $ref: '#/components/schemas/Verdict'
+            evidenceBullets:
+              type: array
+              items:
+                $ref: '#/components/schemas/EvidenceBullet'
+
+    Verdict:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        verdictLabel:
+          type: string
+          enum: [Yes, LeaningYes, Split, LeaningNo, No]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        supportShare:
+          type: number
+          minimum: 0
+          maximum: 1
+        variance:
+          type: number
+          minimum: 0
+          maximum: 1
+        calculatedAt:
+          type: string
+          format: date-time
+
+    EvidenceBullet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        verdictId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        articleId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [Why, Dissent, Unknown]
+        order:
+          type: integer
+
+    ArticleAnalysis:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        articleId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        stance:
+          type: string
+          enum: [Yes, LeaningYes, Neutral, LeaningNo, No]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+          nullable: true
+        analyzedAt:
+          type: string
+          format: date-time
+
+    MatchTopicsRequest:
+      type: object
+      properties:
+        topicIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific topics to process (optional, processes all if not provided)
+        articleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific articles to process (optional, processes all if not provided)
+
+    ClassifyStancesRequest:
+      type: object
+      properties:
+        questionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific questions to process (optional, processes all if not provided)
+        batchSize:
+          type: integer
+          default: 10
+          description: Number of articles to process per batch
+
+    CalculateVerdictsRequest:
+      type: object
+      properties:
+        questionIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Specific questions to process (optional, processes all if not provided)
+
+    JobResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued, processing, completed, failed]
+        message:
+          type: string
+
