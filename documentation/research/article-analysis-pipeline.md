@@ -9,12 +9,11 @@ This document outlines the research and implementation approach for analyzing ar
 Based on PRD and Verdict Card spec:
 
 1. **Theme/Topic Extraction**: Automatically identify themes from articles and group related articles
-2. **Question Extraction**: Analyze articles about a topic and extract the main ideological question (e.g., "Is what's happening in Gaza a genocide?")
-3. **Ideology Classification**: Detect actual article ideology (not just outlet ideology)
-4. **Stance Classification per Question**: For each question, determine each article's stance (Yes/No/Neutral)
-5. **Consensus Stance Calculation**: Aggregate all article stances for a question to determine overall verdict
-6. **Answer Synthesis**: Generate evidence-based answers from multiple articles
-7. **Consensus Calculation**: Weighted aggregation with ideological balance
+2. **Question Extraction & Validation**: Analyze articles about a topic and extract the main ideological question, then validate against formulation framework (7 checks: Public Clarity, Alignment with Real Debate, Simplicity Without Bias, Anchoring in Current News, Explicit Objective, Clear Binary Nature, Answerable with Evidence)
+3. **Stance Classification per Question**: For each question, determine each article's stance (Yes/No/Neutral)
+4. **Consensus Stance Calculation**: Aggregate all article stances for a question to determine overall verdict (using outlet ideology for weighting - backend-only, never exposed in UI)
+5. **Answer Synthesis**: Generate evidence-based answers from multiple articles
+6. **Consensus Calculation**: Weighted aggregation with ideological balance (outlet ideology used for normalization, not stored per article)
 
 ## Implementation Approach
 
@@ -52,51 +51,29 @@ Based on PRD and Verdict Card spec:
 - Clustering: `scikit-learn` KMeans or DBSCAN
 - LLM: OpenAI GPT-4 or Claude for topic labeling
 
-#### 1.2 Ideology Classification
+#### 1.2 Ideology Handling (Backend-Only)
 
-**Challenge**: Outlet ideology ≠ Article ideology. Need to detect actual article stance.
+**Decision**: Ideology is NOT tracked at the article level. Article ideology is inferred from outlet ideology for internal weighting calculations only. Ideology is **NEVER exposed in UI or API responses**.
 
 **Approach:**
-
-1. **Fine-tuned Classifier** (Long-term)
-   - Train on labeled dataset of articles with ideology labels
-   - Use BERT/RoBERTa-based model
-   - **Pros**: Most accurate, handles nuance
-   - **Cons**: Requires training data, time to develop
-
-2. **LLM Classification** (MVP)
-   - Prompt-based classification using GPT-4/Claude
-   - Analyze article content for ideological markers
-   - **Pros**: Fast to implement, good accuracy
-   - **Cons**: API costs, potential inconsistency
-
-3. **Hybrid: LLM + Heuristics** (Recommended)
-   - LLM analyzes content for ideology markers
-   - Fallback to outlet ideology if confidence low
-   - Use keyword/phrase patterns as validation
-   - **Pros**: Balanced accuracy and cost
-   - **Cons**: More complex logic
-
-**Classification Dimensions:**
-- **Political**: Left / Center / Right
-- **Economic**: Progressive / Moderate / Conservative
-- **Social**: Liberal / Moderate / Traditional
-- **Foreign Policy**: Interventionist / Isolationist / Balanced
-
-**For MVP**: Start with **Political Left/Center/Right** as per PRD.
+- Outlet ideology (from existing `Outlet` model) is used for:
+  - Credibility weighting in consensus calculation
+  - Normalizing weights across ideology buckets (Left/Center/Right)
+  - Internal calculations only
+- Article ideology is inferred from `article.outlet.ideology` when needed for consensus calculations
+- No ideology field stored in `ArticleAnalysis` table
+- Ideology data is backend-only and never displayed to users
 
 **Implementation:**
 ```python
 # Pseudo-code
-def classify_ideology(article_content, outlet_ideology):
-    # LLM prompt: "Analyze this article and classify its political ideology..."
-    llm_result = llm.classify_ideology(article_content)
-    
-    # Validate against outlet ideology (should be similar but not identical)
-    if llm_result.confidence < 0.7:
-        return outlet_ideology  # Fallback
-    
-    return llm_result.ideology
+def calculate_consensus_with_ideology_weighting(article_analyses):
+    # Infer article ideology from outlet (not stored)
+    for analysis in article_analyses:
+        article = analysis.article
+        outlet_ideology = article.outlet.ideology  # Left/Center/Right
+        # Use outlet ideology for weighting (backend-only)
+        # Never expose ideology in API/UI
 ```
 
 #### 1.4 Stance Classification per Question
@@ -165,71 +142,129 @@ def classify_article_stance_for_question(article, question):
 
 ### Phase 2: Question Extraction & Answer Synthesis
 
-#### 1.3 Question Extraction (Critical Step)
+#### 1.3 Question Extraction & Validation (Critical Step)
 
-**Challenge**: Analyze articles about a topic and extract the main ideological question that emerges from the content.
+**Challenge**: Analyze articles about a topic and extract the main ideological question, then validate it against the formulation framework.
 
 **Key Insight**: Questions are NOT per-article. Instead:
 1. Group articles by topic/theme (e.g., all articles about "Gaza")
 2. Analyze the cluster together to identify what question they're addressing
 3. Extract/identify the question (e.g., "Is what's happening in Gaza a genocide?")
-4. Store question in its own table, linked to the topic
-5. Then, for that question, analyze all articles to determine stance
+4. **Validate question against formulation framework** (7 checks - see `documentation/formulating_questions.md`)
+5. If validation fails, LLM reformulates the question to meet framework requirements
+6. Store question in its own table, linked to the topic, with validation status
+7. Only activated questions (validationStatus = 'validated') are used for article matching
+8. Then, for that question, analyze all articles to determine stance
+
+**Question Formulation Framework** (from `documentation/formulating_questions.md`):
+1. **Public Clarity**: Understandable by any user without additional explanation
+2. **Alignment with Real Debate**: Mirrors the most recognized axis of public debate
+3. **Simplicity Without Bias**: Avoids moral judgment, focuses on effectiveness (format: "Is X the most effective way to achieve Y?")
+4. **Anchoring in Current News**: Relates to real events happening around the current moment
+5. **Explicit Objective**: Has a clearly defined, measurable metric (e.g., reducing violence, preventing deaths)
+6. **Clear Binary Nature**: Both sides are plausible, natural Yes/No answer
+7. **Answerable with Evidence**: Empirically verifiable using data, studies, policies
 
 **Approach:**
 
-1. **LLM Question Extraction from Article Cluster** (Recommended)
-   - Input: Cluster of articles about a topic (e.g., 10-50 articles about Gaza)
-   - Analyze common themes, arguments, and debates
-   - Output: Main ideological question that articles are addressing
-   - **Pros**: Discovers questions automatically, captures what's actually being debated
-   - **Cons**: May generate multiple questions, needs validation
-
-2. **Template-Based with LLM Refinement** (MVP)
+1. **Pre-defined Questions with Framework Validation** (MVP)
    - Pre-defined question templates per topic (from PRD)
-   - LLM validates/refines questions against actual article content
-   - **Pros**: Guaranteed relevance, faster, aligns with PRD
+   - LLM validates questions against formulation framework (7 checks)
+   - If validation fails, LLM generates reformulated versions
+   - Editor reviews and approves reformulated question
+   - **Pros**: Guaranteed relevance, ensures quality, aligns with PRD
    - **Cons**: Less flexible, may miss emerging questions
 
+2. **LLM Question Extraction with Framework Validation** (Future)
+   - Input: Cluster of articles about a topic (e.g., 10-50 articles about Gaza)
+   - Analyze common themes, arguments, and debates
+   - Extract question using LLM
+   - **Automatically validate against formulation framework**
+   - If validation fails, LLM reformulates
+   - Store for moderation/approval
+   - **Pros**: Discovers questions automatically, ensures quality through framework
+   - **Cons**: May generate multiple questions, requires moderation
+
 3. **Hybrid** (Best for Production)
-   - Start with template questions for known topics
+   - Start with pre-defined questions for known topics (validated against framework)
    - Use LLM to discover new questions from article clusters
-   - Validate questions against article content
+   - **All questions go through framework validation**
+   - LLM reformulates if needed
    - Allow multiple questions per topic (e.g., Gaza could have multiple questions)
 
 **Implementation Pattern:**
 ```python
-def extract_question_from_topic_articles(topic, articles):
-    # Analyze all articles about the topic together
-    article_summaries = [extract_key_points(a) for a in articles]
-    
-    # LLM analyzes the cluster to identify the main question
-    prompt = f"""
-    Topic: {topic}
-    
-    These articles discuss this topic:
-    {article_summaries}
-    
-    Analyze the common themes, arguments, and debates across these articles.
-    Extract the main ideological question that these articles are addressing.
-    
-    The question should be:
-    - Specific and answerable (Yes/No/Maybe)
-    - Reflect the actual debate in the articles
-    - Be an ideological or factual question
-    
-    Return: The question as a clear, specific question ending with '?'
+def extract_and_validate_question(topic, articles, question_text=None):
     """
-    question = llm.extract_question(prompt)
+    Extract question from articles OR validate pre-defined question.
+    Then validate against formulation framework.
+    """
+    # Step 1: Extract or use provided question
+    if question_text:
+        question = question_text  # Pre-defined from PRD
+    else:
+        # Extract from article cluster
+        article_summaries = [extract_key_points(a) for a in articles]
+        question = llm.extract_question_from_cluster(topic, article_summaries)
     
-    # Store question in database, linked to topic
-    return create_question(topic_id=topic.id, question_text=question)
+    # Step 2: Validate against formulation framework
+    validation_results = validate_question_framework(question)
+    
+    # Step 3: If validation fails, reformulate
+    if not validation_results.all_checks_passed:
+        reformulated_versions = llm.reformulate_question(
+            question, 
+            failed_checks=validation_results.failed_checks
+        )
+        # Return original + reformulated versions for editor review
+        return {
+            'original': question,
+            'validation_results': validation_results,
+            'reformulated_versions': reformulated_versions,
+            'status': 'needs_reformulation'
+        }
+    
+    # Step 4: Store validated question
+    return create_question(
+        topic_id=topic.id,
+        question_text=question,
+        validation_status='validated',
+        validation_results=validation_results,
+        is_active=True
+    )
+
+def validate_question_framework(question):
+    """
+    Validate question against 7 framework checks.
+    Returns validation results for each check.
+    """
+    prompt = f"""
+    Question: {question}
+    
+    Validate this question against the formulation framework:
+    1. Public Clarity: Is it understandable by any user?
+    2. Alignment with Real Debate: Does it mirror the actual public debate?
+    3. Simplicity Without Bias: Is it neutral, avoiding moral judgment?
+    4. Anchoring in Current News: Is it relevant to current events?
+    5. Explicit Objective: Does it have a clear, measurable goal?
+    6. Clear Binary Nature: Can it be answered Yes/No naturally?
+    7. Answerable with Evidence: Can it be verified with data/studies?
+    
+    Return: pass/fail for each check with notes.
+    """
+    return llm.validate_framework(prompt)
 ```
 
 **Question Storage:**
 - Questions live in their own `Question` table
 - Linked to `Topic` (many questions per topic possible)
-- Has metadata: extracted_at, confidence, source_articles_count
+- Has metadata: 
+  - `questionText` - The validated question
+  - `originalQuestionText` - Original before reformulation (nullable)
+  - `validationStatus` - pending/validated/rejected/needs_reformulation
+  - `validationResults` - JSON with results of 7 framework checks
+  - `isActive` - Only true if validationStatus = 'validated'
+  - `extracted_at`, `confidence`, `source_articles_count`
 
 #### 2.2 Consensus Stance Calculation per Question
 
@@ -350,12 +385,13 @@ def synthesize_answer_for_question(question, verdict):
 
 **Complete Flow:**
 
-1. **Articles arrive** → Stored in `Article` table
-2. **Topic Assignment** → Articles assigned to `Topic` (e.g., "Gaza")
-3. **Question Extraction** → Analyze articles about a topic, extract question → Store in `Question` table
-4. **Stance Classification** → For each article-question pair, classify stance → Store in `ArticleAnalysis` table
-5. **Consensus Calculation** → Aggregate all stances for a question → Store in `Verdict` table
-6. **Answer Synthesis** → Generate evidence bullets → Store in `EvidenceBullet` table
+1. **Question Creation & Validation** → Editor submits question OR system extracts from articles → Validate against formulation framework → Reformulate if needed → Activate validated question
+2. **Articles arrive** → Stored in `Article` table
+3. **Topic Assignment** → Articles assigned to `Topic` (e.g., "Gaza")
+4. **Question Matching** → Articles matched to validated questions → Only matching articles analyzed
+5. **Stance Classification** → For each article-question pair, classify stance → Store in `ArticleAnalysis` table
+6. **Consensus Calculation** → Aggregate all stances for a question (using outlet ideology for weighting - backend-only) → Store in `Verdict` table
+7. **Answer Synthesis** → Generate evidence bullets → Store in `EvidenceBullet` table
 
 ## Task Sequence
 
@@ -380,11 +416,14 @@ def synthesize_answer_for_question(question, verdict):
    - Keyword-based article-to-topic assignment
    - Manual topic creation interface (admin)
 
-4. **Question Extraction**
-   - Analyze articles about each topic
-   - Extract main ideological question using LLM
-   - Store questions in `Question` table, linked to `Topic`
-   - For MVP: Use pre-defined questions from PRD, validate with LLM
+4. **Question Extraction & Validation**
+   - For MVP: Use pre-defined questions from PRD
+   - Validate all questions against formulation framework (7 checks)
+   - If validation fails, LLM generates reformulated versions
+   - Editor reviews and approves reformulated questions
+   - Store questions in `Question` table with validation status
+   - Only activated questions (validationStatus = 'validated') are used
+   - Future: Extract questions from article clusters, then validate
 
 ### Phase 2: Content Analysis (Weeks 3-4)
 
