@@ -10,16 +10,18 @@
 - **MVP**: Pre-defined topics (3 from PRD) with keyword matching
 - **Future**: LLM-based clustering for auto-discovery
 
-### 2. Question Extraction (Critical)
-- **Process**: Analyze articles about a topic together → Extract main question
-- **Storage**: Questions live in their own table, linked to Topic
-- **MVP**: Pre-defined questions from PRD, validated with LLM
-- **Future**: Auto-extract questions from article clusters
+### 2. Question Extraction & Validation (Critical)
+- **Process**: Analyze articles about a topic together → Extract main question → Validate against formulation framework (7 checks)
+- **Validation**: All questions must pass framework checks (Public Clarity, Alignment with Real Debate, Simplicity Without Bias, Anchoring in Current News, Explicit Objective, Clear Binary Nature, Answerable with Evidence)
+- **Reformulation**: If validation fails, LLM generates reformulated versions
+- **Storage**: Questions live in their own table, linked to Topic, with validation status
+- **MVP**: Pre-defined questions from PRD, validated against framework, reformulated if needed
+- **Future**: Auto-extract questions from article clusters, then validate against framework
 
-### 3. Ideology Classification
-- **Approach**: LLM analysis of article content (not just outlet)
-- **Fallback**: Outlet ideology if confidence low
-- **Dimensions**: Political Left/Center/Right (MVP)
+### 3. Ideology Handling
+- **Approach**: Backend-only - inferred from outlet ideology (not stored per article)
+- **Usage**: Used for internal weighting calculations in consensus (normalize by ideology buckets)
+- **Exposure**: **NEVER exposed in UI or API** - backend-only for calculations
 
 ### 4. Stance Classification per Question
 - **Critical**: Stance is per-question, not per-article
@@ -55,14 +57,14 @@
 ## Task Sequence (8 Weeks)
 
 ### Phase 1: Foundation (Weeks 1-2)
-1. Database schema extension (Topic, Question, ArticleAnalysis, Verdict, EvidenceBullet, TopicArticle)
+1. Database schema extension (Topic, Question with validation fields, ArticleAnalysis, Verdict, EvidenceBullet, TopicArticle)
 2. LLM integration setup
 3. Basic topic assignment (3 pre-defined topics)
-4. Question extraction (pre-defined from PRD, validate with LLM)
+4. Question extraction & validation (pre-defined from PRD, validate against formulation framework, reformulate if needed)
 
 ### Phase 2: Content Analysis (Weeks 3-4)
 5. Stance classification per question (article-question pairs)
-6. Ideology classification implementation
+6. Consensus calculation with outlet ideology weighting (backend-only)
 7. Topic clustering (optional for MVP)
 
 ### Phase 3: Verdict Generation (Weeks 5-6)
