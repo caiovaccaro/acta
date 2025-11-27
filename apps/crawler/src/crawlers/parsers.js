@@ -13,14 +13,33 @@ import { normalizeArticleData } from '../schemas/article.js';
  * @returns {ArticleData} Normalized article data
  */
 export function parseArticle(html, url, $) {
+    if (!html || html.length === 0) {
+        console.warn(`[Article Parser] Empty HTML for ${url}`);
+        return normalizeArticleData({ title: '', textContent: '' });
+    }
+    
     // Try Readability first
     const readabilityResult = tryReadability(html, url);
-    if (readabilityResult) {
+    if (readabilityResult && readabilityResult.title && readabilityResult.textContent) {
+        console.log(`[Article Parser] Readability succeeded for ${url.substring(0, 80)}`);
         return normalizeArticleData(readabilityResult);
     }
     
+    if (readabilityResult) {
+        console.warn(`[Article Parser] Readability returned incomplete data for ${url.substring(0, 80)}`);
+    } else {
+        console.warn(`[Article Parser] Readability failed, using fallback parser for ${url.substring(0, 80)}`);
+    }
+    
     // Fallback to generic HTML parsing
-    return normalizeArticleData(fallbackParser(html, $));
+    const fallbackResult = fallbackParser(html, $);
+    console.log(`[Article Parser] Fallback parser result:`, {
+        hasTitle: !!fallbackResult.title,
+        titleLength: fallbackResult.title?.length || 0,
+        hasTextContent: !!fallbackResult.textContent,
+        textContentLength: fallbackResult.textContent?.length || 0,
+    });
+    return normalizeArticleData(fallbackResult);
 }
 
 /**
@@ -107,17 +126,35 @@ function extractTextContent(doc) {
         '.entry-content',
         'main article',
         '.content article',
+        '.article-body',
+        '.story-body',
+        '.article-text',
+        '[data-module="ArticleBody"]',
+        '.article__body',
+        'main',
+        '.main-content',
     ];
     
     for (const selector of selectors) {
         const content = doc.find(selector).first();
         if (content.length > 0) {
-            return content.text().trim();
+            const text = content.text().trim();
+            if (text.length > 100) { // Only return if we got substantial content
+                console.log(`[Article Parser] Found content using selector: ${selector} (${text.length} chars)`);
+                return text;
+            }
         }
     }
     
-    // Fallback to body text
-    return doc.find('body').text().trim() || '';
+    // Fallback to body text (but try to exclude navigation, headers, footers)
+    const bodyText = doc.find('body').text().trim();
+    if (bodyText.length > 100) {
+        console.warn(`[Article Parser] Using body text as fallback (${bodyText.length} chars)`);
+        return bodyText;
+    }
+    
+    console.warn(`[Article Parser] No substantial content found (body text: ${bodyText.length} chars)`);
+    return '';
 }
 
 function extractExcerpt(doc) {

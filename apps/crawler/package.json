@@ -5,16 +5,21 @@
     "description": "Acta RSS news crawler - automated ingestion and processing of news articles",
     "main": "src/jobs/refreshFeeds.js",
     "scripts": {
-        "start": "node src/jobs/refreshFeeds.js",
-        "export:rss": "node src/scripts/exportRss.js",
-        "export:articles": "node src/scripts/exportArticles.js",
+        "start": "tsx src/jobs/refreshFeeds.js",
+        "export:rss": "tsx src/scripts/exportRss.js",
+        "export:articles": "tsx src/scripts/exportArticles.js",
         "test": "echo \"Error: no tests specified\" && exit 1"
     },
     "dependencies": {
         "@mozilla/readability": "^0.6.0",
         "crawlee": "^3.0.0",
-        "jsdom": "^27.1.0"
+        "dotenv": "^17.2.3",
+        "jsdom": "^27.1.0",
+        "playwright": "^1.40.0"
     },
     "author": "Caio Vaccaro",
-    "license": "ISC"
+    "license": "ISC",
+    "devDependencies": {
+        "tsx": "^4.20.6"
+    }
 }

@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Ideology {
+  Left
+  Center
+  Right
+}
+
+enum CrawlStatus {
+  pending
+  in_progress
+  done
+  failed
+}
+
+model Outlet {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  ideology        Ideology
+  credibilityScore Float   @default(0.5) // 0-1 scale
+  rssFeeds        Json     // Array of RSS feed URLs
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  crawlRequests   CrawlRequest[]
+  articles        Article[]
+
+  @@index([ideology])
+  @@index([credibilityScore])
+  @@map("outlets")
+}
+
+model CrawlRequest {
+  id           String       @id @default(uuid())
+  url          String       @unique
+  outletId     String
+  status       CrawlStatus  @default(pending)
+  attempts    Int          @default(0)
+  errorMessage String?      @db.Text
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  outlet       Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  article      Article?
+
+  @@index([status])
+  @@index([outletId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@map("crawl_requests")
+}
+
+model Article {
+  id              String    @id @default(uuid())
+  url             String    @unique
+  crawlRequestId  String?   @unique
+  outletId        String
+  title           String    @db.Text
+  textContent     String    @db.Text
+  excerpt         String?   @db.Text
+  publishedDate   DateTime?
+  extractedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  crawlRequest    CrawlRequest? @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
+
+  @@index([outletId])
+  @@index([publishedDate])
+  @@index([extractedAt])
+  @@index([url])
+  @@map("articles")
+}
+

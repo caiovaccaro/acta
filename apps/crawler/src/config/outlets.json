@@ -1,30 +1,219 @@
 {
-  "validFeeds": [
+  "outlets": [
     {
-      "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-      "source": "The New York Times"
+      "name": "The Guardian",
+      "ideology": "Left",
+      "rssFeeds": [
+        {
+          "name": "World",
+          "url": "https://www.theguardian.com/world/rss"
+        },
+        {
+          "name": "US Politics",
+          "url": "https://www.theguardian.com/us-news/us-politics/rss"
+        },
+        {
+          "name": "Europe",
+          "url": "https://www.theguardian.com/world/europe-news/rss"
+        },
+        {
+          "name": "Middle East",
+          "url": "https://www.theguardian.com/world/middleeast/rss"
+        },
+        {
+          "name": "Global Development",
+          "url": "https://www.theguardian.com/global-development/rss"
+        },
+        {
+          "name": "Technology",
+          "url": "https://www.theguardian.com/uk/technology/rss"
+        },
+        {
+          "name": "Inequality",
+          "url": "https://www.theguardian.com/inequality/rss"
+        },
+        {
+          "name": "Environment - Pollution",
+          "url": "https://www.theguardian.com/environment/pollution/rss"
+        }
+      ],
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     },
     {
-      "url": "https://www.nationalreview.com/feed/",
-      "source": "National Review"
+      "name": "Al Jazeera English",
+      "ideology": "Left",
+      "rssUrl": "https://www.aljazeera.com/xml/rss/all.xml",
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     },
     {
-      "url": "https://moxie.foxnews.com/google-publisher/latest.xml",
-      "source": "Fox News"
+      "name": "BBC",
+      "ideology": "Center",
+      "rssUrl": "https://feeds.bbci.co.uk/news/rss.xml?edition=int",
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     },
     {
-      "url": "https://www.aljazeera.com/xml/rss/all.xml",
-      "source": "Al Jazeera"
+      "name": "Politico",
+      "ideology": "Center",
+      "rssFeeds": [
+        {
+          "name": "Defense",
+          "url": "https://rss.politico.com/defense.xml"
+        },
+        {
+          "name": "Economy",
+          "url": "https://rss.politico.com/economy.xml"
+        },
+        {
+          "name": "Politics News",
+          "url": "https://rss.politico.com/politics-news.xml"
+        },
+        {
+          "name": "Energy",
+          "url": "https://rss.politico.com/energy.xml"
+        },
+        {
+          "name": "Healthcare",
+          "url": "https://rss.politico.com/healthcare.xml"
+        },
+        {
+          "name": "Congress",
+          "url": "https://rss.politico.com/congress.xml"
+        }
+      ],
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     },
     {
-      "url": "https://www.theguardian.com/world/rss",
-      "source": "The Guardian"
+      "name": "Fox News",
+      "ideology": "Right",
+      "rssFeeds": [
+        {
+          "name": "World",
+          "url": "https://moxie.foxnews.com/google-publisher/world.xml"
+        },
+        {
+          "name": "Politics",
+          "url": "https://moxie.foxnews.com/google-publisher/politics.xml"
+        },
+        {
+          "name": "Tech",
+          "url": "https://moxie.foxnews.com/google-publisher/tech.xml"
+        },
+        {
+          "name": "Opinion",
+          "url": "https://moxie.foxnews.com/google-publisher/opinion.xml"
+        }
+      ],
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     },
     {
-      "url": "https://feeds.bbci.co.uk/news/rss.xml",
-      "source": "BBC"
+      "name": "National Review",
+      "ideology": "Right",
+      "rssUrl": "https://www.nationalreview.com/feed/",
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
+    },
+    {
+      "name": "Deutsche Welle",
+      "ideology": "Center",
+      "rssFeeds": [
+        {
+          "name": "Environment",
+          "url": "https://rss.dw.com/xml/rss_en_environment"
+        },
+        {
+          "name": "Africa",
+          "url": "https://rss.dw.com/rdf/rss-en-africa"
+        },
+        {
+          "name": "EU",
+          "url": "https://rss.dw.com/rdf/rss-en-eu"
+        },
+        {
+          "name": "World",
+          "url": "https://rss.dw.com/rdf/rss-en-world"
+        },
+        {
+          "name": "Top",
+          "url": "https://rss.dw.com/rdf/rss-en-top"
+        },
+        {
+          "name": "All",
+          "url": "https://rss.dw.com/rdf/rss-en-all"
+        }
+      ],
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
+    },
+    {
+      "name": "The Dispatch",
+      "ideology": "Right",
+      "rssFeeds": [
+        {
+          "name": "Politics",
+          "url": "https://thedispatch.com/category/politics/feed/"
+        },
+        {
+          "name": "World",
+          "url": "https://thedispatch.com/category/world/feed/"
+        }
+      ],
+      "paywallType": "None",
+      "isPilot": true,
+      "requiresAuth": false,
+      "contentPolicy": "full-text-licensed",
+      "rateLimit": {
+        "maxRPS": 10,
+        "jitterMs": 100
+      }
     }
   ],
-  "verifiedAt": "2025-01-27",
-  "note": "These feeds have been verified to return valid RSS/XML content with items and are not behind paywalls"
+  "updatedAt": "2025-01-27",
+  "note": "Free outlets only. All paywalled outlets have been removed."
 }
