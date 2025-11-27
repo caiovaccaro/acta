@@ -1,7 +1,27 @@
 import * as cheerio from 'cheerio';
 import { extractRSSItem, extractAtomEntry } from './extractors.js';
-import { isArticleProcessed } from '../utils/index.js';
-import { createOrUpdateCrawlRequest, CrawlStatus } from '@acta/db';
+import { createOrUpdateCrawlRequest, CrawlStatus, findArticleByUrl, findCrawlRequestByUrl } from '@acta/db';
+
+/**
+ * Check if an article has already been processed
+ * @param {string} url - Article URL
+ * @returns {Promise<boolean>} True if article exists
+ */
+async function isArticleProcessed(url) {
+    // Check if article already exists
+    const article = await findArticleByUrl(url);
+    if (article) {
+        return true;
+    }
+    
+    // Check if crawl request exists and is done
+    const crawlRequest = await findCrawlRequestByUrl(url);
+    if (crawlRequest && crawlRequest.status === CrawlStatus.done) {
+        return true;
+    }
+    
+    return false;
+}
 
 /**
  * Sets up the parser for RSS/XML content
