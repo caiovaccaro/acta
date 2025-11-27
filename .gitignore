@@ -9,6 +9,10 @@ lerna-debug.log*
 # Crawlee storage
 storage/
 
+# Session storage (encrypted cookies)
+.sessions/
+apps/crawler/.sessions/
+
 # Export files (generated outputs)
 articles-export.csv
 articles-export.json

@@ -16,7 +16,9 @@
         "@acta/db": "workspace:*",
         "@mozilla/readability": "^0.6.0",
         "crawlee": "^3.0.0",
-        "jsdom": "^27.1.0"
+        "dotenv": "^17.2.3",
+        "jsdom": "^27.1.0",
+        "playwright": "^1.40.0"
     },
     "devDependencies": {
         "@babel/preset-env": "^7.23.0",

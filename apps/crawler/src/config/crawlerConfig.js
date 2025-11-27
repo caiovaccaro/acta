@@ -33,13 +33,27 @@ export function getCrawlerConfig() {
 }
 
 /**
+ * Loads outlet configuration from outlets.json
+ * @returns {Array} Array of outlet objects with url, source, paywall info, etc.
+ */
+export function loadOutlets() {
+    const outletsPath = resolve(__dirname, './outlets.json');
+    const outletsConfig = JSON.parse(readFileSync(outletsPath, 'utf-8'));
+    return outletsConfig.outlets;
+}
+
+/**
  * Loads RSS feeds configuration from outlets.json
+ * @deprecated Use loadOutlets() instead for paywall support
  * @returns {Array} Array of feed objects with url and source
  */
 export function loadRssFeeds() {
-    const outletsPath = resolve(__dirname, '../config/outlets.json');
-    const verifiedFeeds = JSON.parse(readFileSync(outletsPath, 'utf-8'));
-    return verifiedFeeds.validFeeds;
+    const outlets = loadOutlets();
+    // Convert outlets to old feed format for backward compatibility
+    return outlets.map(outlet => ({
+        url: outlet.rssUrl,
+        source: outlet.name,
+    }));
 }
 
 /**

@@ -45,9 +45,33 @@ export async function processAndSaveArticle(
         // This extracts textContent from HTML - HTML is discarded, only text is kept
         const articleData = parseArticle(html, articleUrl, $);
         
+        // Log what was extracted for debugging
+        log.debug(`[Article Parser] Extracted data:`, {
+            hasTitle: !!articleData.title,
+            titleLength: articleData.title?.length || 0,
+            hasTextContent: !!articleData.textContent,
+            textContentLength: articleData.textContent?.length || 0,
+            titlePreview: articleData.title?.substring(0, 100) || 'N/A',
+        });
+        
+        // Use RSS title as fallback if parser didn't extract title
+        if (!articleData.title && rssTitle) {
+            log.warn(`Parser didn't extract title, using RSS title: ${rssTitle.substring(0, 100)}`);
+            articleData.title = rssTitle;
+        }
+        
         // Validate required fields
         if (!articleData.title || !articleData.textContent) {
-            throw new Error('Missing required article fields: title or textContent');
+            const errorDetails = {
+                title: articleData.title || 'MISSING',
+                textContent: articleData.textContent ? `${articleData.textContent.substring(0, 200)}...` : 'MISSING',
+                titleLength: articleData.title?.length || 0,
+                textContentLength: articleData.textContent?.length || 0,
+                rssTitle: rssTitle || 'N/A',
+                htmlLength: html?.length || 0,
+            };
+            log.error(`[Article Parser] Missing required fields:`, errorDetails);
+            throw new Error(`Missing required article fields: title or textContent. Title: ${articleData.title ? 'present' : 'missing'}, TextContent: ${articleData.textContent ? 'present' : 'missing'}`);
         }
         
         // Parse published date if available
