@@ -1,6 +1,6 @@
 import { createCheerioRouter } from 'crawlee';
 import { setupParser, processRSSFeed } from '../utils/index.js';
-import { processArticle } from '../mappers/articleMapper.js';
+import { processAndSaveArticle } from '../services/articleService.js';
 import { recordError, recordSuccess, tagError, ERROR_TYPES } from '../utils/errorHandler.js';
 
 // Create router for Cheerio only
@@ -138,86 +138,84 @@ const articleHandler = async (context) => {
     try {
         const source = request.userData?.source || 'unknown';
         const outletConfig = request.userData?.outletConfig;
-        const outletId = request.userData?.outletId;
-    const rssTitle = request.userData?.rssTitle || '';
-    const rssDescription = request.userData?.rssDescription || '';
-    const rssPubDate = request.userData?.rssPubDate || '';
-    const articleUrl = context.loadedUrl || request.url;
-    
-    log.info(`Extracting content from article: ${articleUrl.substring(0, 80)}...`);
-    
-    // Get outlet ID - either from outletConfig or userData
-    let finalOutletId = outletId;
-    if (!finalOutletId && outletConfig) {
-        // Look up outlet from database if we have outletConfig but no outletId
-        const { findOrCreateOutlet, Ideology } = await import('@acta/db');
-        const ideologyMap = {
-            'Left': Ideology.Left,
-            'Center': Ideology.Center,
-            'Right': Ideology.Right,
-        };
-        const ideology = ideologyMap[outletConfig.ideology] || Ideology.Center;
-        const outlet = await findOrCreateOutlet(
-            outletConfig.name,
-            ideology,
-            0.5,
-            outletConfig.rssUrl ? [outletConfig.rssUrl] : []
-        );
-        finalOutletId = outlet.id;
-    }
-    
-    if (!finalOutletId) {
-        log.error(`No outlet ID available for article: ${articleUrl}`);
-        // Mark as failed if we have a crawlRequestId
-        if (crawlRequestId) {
-            try {
-                const { updateCrawlRequestStatus, CrawlStatus } = await import('@acta/db');
-                await updateCrawlRequestStatus(
-                    crawlRequestId,
-                    CrawlStatus.failed,
-                    'No outlet ID available for article'
-                );
-                log.error(`Marked crawl request ${crawlRequestId} as failed - no outlet ID`);
-            } catch (updateError) {
-                log.error(`Failed to update crawl request status: ${updateError.message}`);
-            }
+        let outletId = request.userData?.outletId;
+        const rssTitle = request.userData?.rssTitle || '';
+        const rssDescription = request.userData?.rssDescription || '';
+        const rssPubDate = request.userData?.rssPubDate || '';
+        const articleUrl = context.loadedUrl || request.url;
+        
+        log.info(`Extracting content from article: ${articleUrl.substring(0, 80)}...`);
+        
+        // Get outlet ID - either from outletConfig or userData
+        let finalOutletId = outletId;
+        if (!finalOutletId && outletConfig) {
+            // Look up outlet from database if we have outletConfig but no outletId
+            const { findOrCreateOutlet, Ideology } = await import('@acta/db');
+            const ideologyMap = {
+                'Left': Ideology.Left,
+                'Center': Ideology.Center,
+                'Right': Ideology.Right,
+            };
+            const ideology = ideologyMap[outletConfig.ideology] || Ideology.Center;
+            const outlet = await findOrCreateOutlet(
+                outletConfig.name,
+                ideology,
+                0.5,
+                outletConfig.rssUrl ? [outletConfig.rssUrl] : []
+            );
+            finalOutletId = outlet.id;
         }
-        return;
-    }
-    
-    // Get body content and parser from Cheerio context
-    if (!context.$) {
-        log.error('No Cheerio parser available for article');
-        // Mark as failed if we have a crawlRequestId
-        if (crawlRequestId) {
-            try {
-                const { updateCrawlRequestStatus, CrawlStatus } = await import('@acta/db');
-                await updateCrawlRequestStatus(
-                    crawlRequestId,
-                    CrawlStatus.failed,
-                    'No Cheerio parser available for article'
-                );
-                log.error(`Marked crawl request ${crawlRequestId} as failed - no parser available`);
-            } catch (updateError) {
-                log.error(`Failed to update crawl request status: ${updateError.message}`);
+        
+        if (!finalOutletId) {
+            log.error(`No outlet ID available for article: ${articleUrl}`);
+            // Mark as failed if we have a crawlRequestId
+            if (crawlRequestId) {
+                try {
+                    const { updateCrawlRequestStatus, CrawlStatus } = await import('@acta/db');
+                    await updateCrawlRequestStatus(
+                        crawlRequestId,
+                        CrawlStatus.failed,
+                        'No outlet ID available for article'
+                    );
+                    log.error(`Marked crawl request ${crawlRequestId} as failed - no outlet ID`);
+                } catch (updateError) {
+                    log.error(`Failed to update crawl request status: ${updateError.message}`);
+                }
             }
+            return;
         }
-        return;
-    }
-    
-    const $ = context.$;
-    const body = context.body || $.html();
-    
-    // Process the article
-    const startTime = Date.now();
-    try {
-        // Use PostgreSQL service instead of old file-based mapper
-        const { processAndSaveArticle } = await import('../services/articleService.js');
-        await processAndSaveArticle(
-            body,
-            articleUrl,
-            $,
-            finalOutletId,
+        
+        // Get body content and parser from Cheerio context
+        if (!context.$) {
+            log.error('No Cheerio parser available for article');
+            // Mark as failed if we have a crawlRequestId
+            if (crawlRequestId) {
+                try {
+                    const { updateCrawlRequestStatus, CrawlStatus } = await import('@acta/db');
+                    await updateCrawlRequestStatus(
+                        crawlRequestId,
+                        CrawlStatus.failed,
+                        'No Cheerio parser available for article'
+                    );
+                    log.error(`Marked crawl request ${crawlRequestId} as failed - no parser available`);
+                } catch (updateError) {
+                    log.error(`Failed to update crawl request status: ${updateError.message}`);
+                }
+            }
+            return;
+        }
+        
+        const $ = context.$;
+        const body = context.body || $.html();
+        
+        // Process the article
+        const startTime = Date.now();
+        try {
+            await processAndSaveArticle(
+                body,
+                articleUrl,
+                $,
+                finalOutletId,
             crawlRequestId,
             rssTitle,
             rssDescription,
@@ -249,7 +247,6 @@ const articleHandler = async (context) => {
                 log.error(`Failed to update crawl request status: ${updateError.message}`);
             }
         }
-        
     }
     } catch (outerError) {
         // Catch any unhandled errors that occur outside the inner try-catch

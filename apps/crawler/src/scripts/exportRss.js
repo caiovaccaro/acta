@@ -1,66 +1,72 @@
-import { readdir, readFile } from 'fs/promises';
-import { join, resolve, dirname } from 'path';
+/**
+ * Exports RSS feed metadata from PostgreSQL to CSV and JSON
+ * This includes crawl requests that represent RSS feed items
+ */
+
+import { connectDatabase, disconnectDatabase, prisma, CrawlStatus } from '@acta/db';
 import { writeFileSync } from 'fs';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Exports RSS feed metadata to CSV and JSON
- * This includes only the metadata extracted from RSS feeds (before full article extraction)
+ * Exports RSS metadata (crawl requests) from PostgreSQL to CSV and JSON
  */
 async function exportRSS() {
-    // Storage is relative to crawler app
-    const datasetDir = resolve(__dirname, '../../storage/datasets/default');
-    // Output files go to project root for easy access
     const projectRoot = resolve(__dirname, '../../..');
     
     try {
-        // Read all JSON files from the dataset directory
-        const files = await readdir(datasetDir);
-        const jsonFiles = files.filter(f => f.endsWith('.json')).sort();
+        await connectDatabase();
         
-        if (jsonFiles.length === 0) {
-            console.log('⚠️  No data found in dataset directory.');
+        console.log('📊 Fetching RSS metadata (crawl requests) from PostgreSQL...\n');
+        
+        // Fetch all crawl requests with outlet info
+        // These represent RSS feed items
+        const crawlRequests = await prisma.crawlRequest.findMany({
+            include: {
+                outlet: {
+                    select: {
+                        name: true,
+                        ideology: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+        
+        console.log(`✅ Loaded ${crawlRequests.length} crawl requests from database\n`);
+        
+        if (crawlRequests.length === 0) {
+            console.log('ℹ️  No crawl requests found in database.');
+            await disconnectDatabase();
             return;
         }
         
-        console.log(`📊 Found ${jsonFiles.length} data files\n`);
-        console.log('Reading RSS metadata...');
-        
-        const rssItems = [];
-        for (const file of jsonFiles) {
-            try {
-                const content = await readFile(join(datasetDir, file), 'utf-8');
-                const item = JSON.parse(content);
-                
-                // Only include items that have RSS metadata but not full article content
-                // RSS-only items have: source, feedUrl, title, link, description, pubDate
-                // Full articles have additional fields like: textContent, articleUrl, extractedAt
-                if (item.source && item.link && !item.textContent && !item.articleUrl) {
-                    rssItems.push(item);
-                }
-            } catch (err) {
-                console.warn(`⚠️  Error reading ${file}:`, err.message);
-            }
-        }
-        
-        console.log(`✅ Loaded ${rssItems.length} RSS feed items\n`);
-        
-        if (rssItems.length === 0) {
-            console.log('ℹ️  No RSS metadata found. All items may have been processed to full articles.');
-            return;
-        }
+        // Transform to export format
+        const exportData = crawlRequests.map(request => ({
+            id: request.id,
+            url: request.url,
+            outlet: request.outlet.name,
+            outletId: request.outletId,
+            ideology: request.outlet.ideology,
+            status: request.status,
+            attempts: request.attempts,
+            errorMessage: request.errorMessage || '',
+            createdAt: request.createdAt.toISOString(),
+            updatedAt: request.updatedAt.toISOString(),
+        }));
         
         // Export to CSV
-        const headers = ['source', 'feedUrl', 'title', 'link', 'description', 'pubDate'];
+        const headers = ['id', 'url', 'outlet', 'outletId', 'ideology', 'status', 'attempts', 'errorMessage', 'createdAt', 'updatedAt'];
         
-        // Create CSV content
         const csvRows = [];
         csvRows.push(headers.join(','));
         
-        for (const item of rssItems) {
+        for (const item of exportData) {
             const row = headers.map(header => {
                 const value = item[header] || '';
                 // Escape quotes and wrap in quotes if contains comma, quote, or newline
@@ -80,15 +86,17 @@ async function exportRSS() {
         
         // Export to JSON
         const jsonPath = resolve(projectRoot, 'rss-export.json');
-        writeFileSync(jsonPath, JSON.stringify(rssItems, null, 2), 'utf-8');
+        writeFileSync(jsonPath, JSON.stringify(exportData, null, 2), 'utf-8');
         console.log(`✅ Exported to JSON: ${jsonPath}`);
         
         console.log(`\n✨ RSS export complete! Open rss-export.csv in Excel.`);
+        
+        await disconnectDatabase();
     } catch (err) {
         console.error('❌ Error exporting RSS data:', err.message);
-        console.error('Make sure the crawler has run and created data in storage/datasets/default/');
+        await disconnectDatabase();
+        process.exit(1);
     }
 }
 
 exportRSS();
-
