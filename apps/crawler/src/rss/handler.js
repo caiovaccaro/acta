@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { extractRSSItem, extractAtomEntry } from './extractors.js';
-import { isArticleProcessed, addPendingArticle } from '../utils/index.js';
+import { isArticleProcessed } from '../utils/index.js';
+import { createOrUpdateCrawlRequest, CrawlStatus } from '@acta/db';
 
 /**
  * Sets up the parser for RSS/XML content
@@ -24,16 +25,37 @@ export function setupParser($, body) {
  * @returns {Array} Array of article objects
  */
 export function extractRSSArticles($parser) {
-    const items = $parser('item');
+    // Try multiple selectors as RSS feeds can vary
+    let items = $parser('item');
+    
+    // If no items found, try with namespace
+    if (items.length === 0) {
+        items = $parser('rss item, feed item, channel item');
+    }
+    
+    // If still no items, try case-insensitive (some feeds have uppercase)
+    if (items.length === 0) {
+        const allElements = $parser('*');
+        items = allElements.filter((i, el) => {
+            const tagName = el.tagName || el.name || '';
+            return tagName.toLowerCase() === 'item';
+        });
+    }
+    
     if (items.length === 0) {
         return null;
     }
     
     const articles = [];
     for (let i = 0; i < items.length; i++) {
-        articles.push(extractRSSItem($parser(items[i])));
+        const article = extractRSSItem($parser(items[i]), $parser);
+        // Only add articles with valid links
+        if (article && article.link) {
+            articles.push(article);
+        }
     }
-    return articles;
+    
+    return articles.length > 0 ? articles : null;
 }
 
 /**
@@ -49,22 +71,23 @@ export function extractAtomArticles($parser) {
     
     const articles = [];
     for (let i = 0; i < entries.length; i++) {
-        articles.push(extractAtomEntry($parser(entries[i])));
+        articles.push(extractAtomEntry($parser(entries[i]), $parser));
     }
     return articles;
 }
 
 /**
  * Processes a single RSS article (saves RSS metadata)
- * @param {Object} article - Article object with title, link, description, pubDate
+ * @param {Object} article - Article object with title, link, description, pubDate, categories
  * @param {string} source - News source name
  * @param {string} feedUrl - RSS feed URL
  * @param {Object} log - Logger instance
  * @param {Function} pushData - Data push function
+ * @param {string} outletId - Outlet ID from database (required for PostgreSQL)
  * @returns {Object} Processing result
  */
-async function processRSSArticle(article, source, feedUrl, log, pushData) {
-    const { title, link, description, pubDate } = article;
+async function processRSSArticle(article, source, feedUrl, log, pushData, outletId = null) {
+    const { title, link, description, pubDate, categories = [] } = article;
     
     // Skip if article link is empty
     if (!link) {
@@ -72,25 +95,37 @@ async function processRSSArticle(article, source, feedUrl, log, pushData) {
         return { processed: false, reason: 'no_link' };
     }
     
-    // Skip if already processed
+    // Skip if already processed (check PostgreSQL)
     if (await isArticleProcessed(link)) {
         log.info(`Skipping duplicate article: ${link.substring(0, 80)}...`);
         return { processed: false, reason: 'duplicate' };
     }
     
-    // Save RSS metadata
-    await pushData({
-        source,
-        feedUrl,
-        title,
-        link,
-        description,
-        pubDate,
-    });
+    // Save RSS metadata to Crawlee storage (optional, for backward compatibility)
+    if (pushData) {
+        await pushData({
+            source,
+            feedUrl,
+            title,
+            link,
+            description,
+            pubDate,
+            categories: categories.join(', '), // Store categories as comma-separated string
+        });
+    }
     
-    // Don't mark as processed yet - wait until full content is extracted
-    // This allows the article to be enqueued for content extraction
-    return { processed: true };
+    // Save to PostgreSQL as pending crawl request
+    try {
+        await createOrUpdateCrawlRequest({
+            url: link,
+            outletId: outletId,
+            status: CrawlStatus.pending,
+        });
+        return { processed: true };
+    } catch (error) {
+        log.error(`Failed to save article to PostgreSQL: ${error.message}`);
+        return { processed: false, reason: 'database_error' };
+    }
 }
 
 /**
@@ -101,14 +136,15 @@ async function processRSSArticle(article, source, feedUrl, log, pushData) {
  * @param {Object} log - Logger instance
  * @param {Function} pushData - Data push function
  * @param {string} format - Feed format ('RSS' or 'Atom')
+ * @param {string} outletId - Outlet ID from database (required for PostgreSQL)
  * @returns {Object} Processing statistics
  */
-async function processRSSArticles(articles, source, feedUrl, log, pushData, format) {
+async function processRSSArticles(articles, source, feedUrl, log, pushData, format, outletId = null) {
     let processedCount = 0;
     let skippedCount = 0;
     
     for (const article of articles) {
-        const result = await processRSSArticle(article, source, feedUrl, log, pushData);
+        const result = await processRSSArticle(article, source, feedUrl, log, pushData, outletId);
         if (result.processed) {
             processedCount++;
         } else {
@@ -116,7 +152,8 @@ async function processRSSArticles(articles, source, feedUrl, log, pushData, form
         }
     }
     
-    log.info(`Extracted ${processedCount} new items, skipped ${skippedCount} duplicates from ${format} feed`);
+    const logMessage = `Extracted ${processedCount} new items, skipped ${skippedCount} from ${format} feed`;
+    log.info(logMessage);
     return { processedCount, skippedCount };
 }
 
@@ -127,8 +164,9 @@ async function processRSSArticles(articles, source, feedUrl, log, pushData, form
  * @param {string} feedUrl - RSS feed URL
  * @param {Object} log - Logger instance
  * @param {Function} pushData - Data push function
+ * @param {string} outletId - Outlet ID from database (required for PostgreSQL)
  */
-export async function processRSSFeed($parser, source, feedUrl, log, pushData) {
+export async function processRSSFeed($parser, source, feedUrl, log, pushData, outletId = null) {
     // Try RSS 2.0 format first
     let articles = extractRSSArticles($parser);
     let format = 'RSS';
@@ -141,19 +179,36 @@ export async function processRSSFeed($parser, source, feedUrl, log, pushData) {
     
     if (!articles) {
         log.warning(`No RSS/Atom items found in feed: ${feedUrl}`);
+        // Debug: Check what's actually in the feed
+        const items = $parser('item');
+        const entries = $parser('entry');
+        log.warning(`Debug: Found ${items.length} <item> elements and ${entries.length} <entry> elements`);
+        if (items.length > 0) {
+            const firstItem = $parser(items[0]);
+            log.warning(`Debug: First item HTML: ${firstItem.html()?.substring(0, 500)}`);
+        }
         return;
     }
     
-    // Process articles (save RSS metadata)
-    await processRSSArticles(articles, source, feedUrl, log, pushData, format);
+    log.info(`Found ${articles.length} articles in ${format} feed`);
     
-    // Add articles to pending queue for later processing (decoupled)
-    for (const article of articles) {
-        if (article.link && !await isArticleProcessed(article.link)) {
-            await addPendingArticle(article, source);
+    // Debug: Log first article to see if link is extracted correctly
+    if (articles.length > 0) {
+        const firstArticle = articles[0];
+        log.info(`Sample article: title="${firstArticle.title?.substring(0, 60)}", link="${firstArticle.link?.substring(0, 80)}"`);
+        if (!firstArticle.link) {
+            log.warning(`WARNING: First article has no link! Title: ${firstArticle.title}`);
         }
     }
     
-    log.info(`Added ${articles.length} articles to pending queue for content extraction`);
+    // Process articles (save RSS metadata to PostgreSQL)
+    if (!outletId) {
+        log.error('Outlet ID is required to save articles to PostgreSQL');
+        return;
+    }
+    
+    const stats = await processRSSArticles(articles, source, feedUrl, log, pushData, format, outletId);
+    
+    log.info(`Added ${stats.processedCount} articles to PostgreSQL for content extraction (skipped ${stats.skippedCount})`);
 }
 
