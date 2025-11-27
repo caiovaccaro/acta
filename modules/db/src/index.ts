@@ -47,8 +47,9 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 }
 
 // Re-export health check utilities (detailed checks)
-export { performHealthCheck, quickHealthCheck } from './healthCheck.js';
-export type { HealthCheckResult } from './healthCheck.js';
+// Note: healthCheck.js may not exist in all branches - commented out for now
+// export { performHealthCheck, quickHealthCheck } from './healthCheck.js';
+// export type { HealthCheckResult } from './healthCheck.js';
 
 // Re-export repositories
 export * from './repositories/outletRepository.js';

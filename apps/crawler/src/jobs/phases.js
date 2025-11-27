@@ -21,17 +21,21 @@ export async function processRssFeeds(crawler, rssRequests) {
 /**
  * Phase 2: Process articles from PostgreSQL queue
  * Fetches pending articles in batches and processes them
- * @param {CheerioCrawler} crawler - Crawler instance
- * @param {Object} config - Configuration object with batchSize and maxArticlesPerRun
+ * @param {CheerioCrawler|PlaywrightCrawler} crawler - Crawler instance
+ * @param {Object} config - Configuration object with batchSize, maxArticlesPerRun, and optional outletId
+ * @param {string} outletId - Optional outlet ID to filter articles by outlet (for paywall support)
  * @returns {Promise<Object>} Processing statistics
  */
-export async function processArticles(crawler, config) {
+export async function processArticles(crawler, config, outletId = null) {
     const { batchSize, maxArticlesPerRun } = config;
     
     console.log('📄 Phase 2: Processing articles from PostgreSQL queue...');
     console.log(`   Batch size: ${batchSize} articles per batch`);
     if (maxArticlesPerRun) {
         console.log(`   Max per run: ${maxArticlesPerRun} articles`);
+    }
+    if (outletId) {
+        console.log(`   Filtering by outlet: ${outletId}`);
     }
     
     let totalProcessed = 0;
@@ -51,7 +55,7 @@ export async function processArticles(crawler, config) {
             ? Math.min(batchSize, maxArticlesPerRun - totalProcessed)
             : batchSize;
         
-        const articleRequests = await getPendingCrawlRequestsFromDB(remainingLimit);
+        const articleRequests = await getPendingCrawlRequestsFromDB(remainingLimit, outletId);
         
         if (articleRequests.length === 0) {
             hasMore = false;

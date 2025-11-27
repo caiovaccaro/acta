@@ -8,6 +8,7 @@ import {
     markCrawlRequestsInProgress,
     findCrawlRequestByUrl,
 } from '@acta/db';
+import { loadOutlets } from '../config/crawlerConfig.js';
 
 /**
  * Gets pending crawl requests from PostgreSQL and converts them to Crawlee request format
@@ -16,9 +17,32 @@ import {
  * @param {string} outletId - Optional filter by outlet ID
  * @returns {Promise<Array>} Array of Crawlee request objects
  */
-export async function getPendingCrawlRequestsFromDB(batchSize = 100, outletId = undefined) {
+export async function getPendingCrawlRequestsFromDB(batchSize = 100, outletId = undefined, skipAttemptsFilter = false) {
     // Get pending requests from database
-    const pendingRequests = await findPendingCrawlRequests(batchSize, outletId);
+    // If skipAttemptsFilter is true, we'll fetch all pending regardless of attempts
+    // Also include in_progress articles that might be stuck
+    let pendingRequests;
+    if (skipAttemptsFilter && outletId) {
+        // Fetch all pending AND in_progress for this outlet, ignoring attempts limit
+        const { prisma, CrawlStatus } = await import('@acta/db');
+        pendingRequests = await prisma.crawlRequest.findMany({
+            where: {
+                outletId: outletId,
+                status: {
+                    in: [CrawlStatus.pending, CrawlStatus.in_progress],
+                },
+            },
+            include: {
+                outlet: true,
+            },
+            orderBy: {
+                createdAt: 'asc',
+            },
+            take: batchSize,
+        });
+    } else {
+        pendingRequests = await findPendingCrawlRequests(batchSize, outletId);
+    }
     
     if (pendingRequests.length === 0) {
         console.log('ℹ️  No pending crawl requests in database');
@@ -31,16 +55,28 @@ export async function getPendingCrawlRequestsFromDB(batchSize = 100, outletId = 
     
     console.log(`✅ Fetched ${pendingRequests.length} pending crawl requests from PostgreSQL`);
     
+    // Load outlet configurations to match with requests
+    const outlets = loadOutlets();
+    const outletMap = new Map(outlets.map(o => [o.name, o]));
+    
     // Convert to Crawlee request format
-    const crawleeRequests = pendingRequests.map(request => ({
-        url: request.url,
-        label: 'article',
-        userData: {
-            crawlRequestId: request.id,
-            outletId: request.outletId,
-            // Note: RSS metadata is not available here, but we can get outlet info if needed
-        },
-    }));
+    const crawleeRequests = pendingRequests.map(request => {
+        const outletName = request.outlet?.name || 'unknown';
+        const outletConfig = outletMap.get(outletName) || null;
+        
+        return {
+            url: request.url,
+            label: 'article',
+            userData: {
+                crawlRequestId: request.id,
+                outletId: request.outletId,
+                source: outletName,
+                outletConfig: outletConfig, // Include outlet config for paywall handling
+                // Note: RSS metadata (title, description, pubDate) is not stored in CrawlRequest
+                // It will be retrieved from the article URL when processing
+            },
+        };
+    });
     
     return crawleeRequests;
 }

@@ -22,9 +22,11 @@ export function configureCrawleeStorage(storageDirectory) {
 
 /**
  * Creates a configured CheerioCrawler instance
+ * @deprecated Use createCrawler() from crawlerFactory.js instead (supports paywall)
  * @returns {CheerioCrawler} Configured crawler instance
  */
-export function createCrawler() {
+export function createSimpleCrawler() {
+    // Deprecated: Use crawlerFactory.createCrawler() for paywall support
     return new CheerioCrawler({
         // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
         requestHandler: router,

@@ -49,10 +49,11 @@ export async function createOutlet(
 /**
  * Finds or creates an outlet by name
  * If outlet doesn't exist, creates it with default values
+ * If outlet exists and rssFeeds are provided, updates the RSS feeds if they differ
  * @param name - Outlet name
  * @param ideology - Outlet ideology (used if creating new outlet)
  * @param credibilityScore - Credibility score (used if creating new outlet)
- * @param rssFeeds - RSS feeds (used if creating new outlet)
+ * @param rssFeeds - RSS feeds (used if creating new outlet or updating existing)
  * @returns Existing or newly created outlet
  */
 export async function findOrCreateOutlet(
@@ -64,6 +65,20 @@ export async function findOrCreateOutlet(
   const existing = await findOutletByName(name);
   
   if (existing) {
+    // If RSS feeds are provided and different from existing, update them
+    if (rssFeeds.length > 0) {
+      const existingFeeds = Array.isArray(existing.rssFeeds) 
+        ? (existing.rssFeeds as string[]) 
+        : [];
+      
+      // Check if feeds are different (compare sorted arrays to handle order differences)
+      const existingFeedsSorted = [...existingFeeds].sort().join(',');
+      const newFeedsSorted = [...rssFeeds].sort().join(',');
+      
+      if (existingFeedsSorted !== newFeedsSorted) {
+        return updateOutletRssFeeds(existing.id, rssFeeds);
+      }
+    }
     return existing;
   }
   
