@@ -19,6 +19,11 @@ articles-export.json
 rss-export.csv
 rss-export.json
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Environment variables
 .env
 .env.local
