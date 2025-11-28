@@ -146,7 +146,9 @@ model TopicArticle {
 
 ### ArticleAnalysis
 
-Per-article stance on a specific question.
+Per-article stance on a specific question for a specific month period.
+
+**Key Concept**: Stances are always recorded per month, using data from the last month as the current month. This creates a triad relationship: Question > Article > Month, allowing tracking of how stances evolve over time.
 
 ```prisma
 enum Stance {
@@ -161,6 +163,7 @@ model ArticleAnalysis {
   id          String   @id @default(uuid())
   articleId   String
   questionId  String
+  month       DateTime // Month period (YYYY-MM-01 format, always first day of month)
   stance      Stance
   confidence  Float    // 0-1, LLM confidence in classification
   reasoning   String?  @db.Text // LLM reasoning for stance
@@ -172,9 +175,11 @@ model ArticleAnalysis {
   article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  @@unique([articleId, questionId]) // One analysis per article-question pair
+  @@unique([articleId, questionId, month]) // One analysis per article-question-month triad
   @@index([questionId])
   @@index([articleId])
+  @@index([month])
+  @@index([questionId, month]) // Composite index for monthly verdict calculation
   @@index([stance])
   @@map("article_analyses")
 }
@@ -183,18 +188,24 @@ model ArticleAnalysis {
 **Validation Rules**:
 - `stance` must be one of: Yes, LeaningYes, Neutral, LeaningNo, No
 - `confidence` must be between 0 and 1
-- Unique constraint on `(articleId, questionId)` - one analysis per article-question pair
+- `month` must be the first day of a month (YYYY-MM-01 format)
+- Unique constraint on `(articleId, questionId, month)` - one analysis per article-question-month triad
 - `articleId` must reference existing Article
 - `questionId` must reference existing Question
 
 **Indexes**:
 - Primary key on `id`
-- Unique constraint on `(articleId, questionId)`
-- Index on `questionId` (for finding all analyses for a question - verdict calculation)
+- Unique constraint on `(articleId, questionId, month)`
+- Index on `questionId` (for finding all analyses for a question)
 - Index on `articleId` (for finding all analyses for an article)
+- Index on `month` (for filtering by time period)
+- Composite index on `(questionId, month)` (for monthly verdict calculation)
 - Index on `stance` (for filtering by stance)
 
-**Note**: Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
+**Note**: 
+- Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
+- The `month` field always uses the first day of the month (e.g., 2025-01-01 for January 2025) to ensure consistent grouping and querying.
+- Stances are calculated using data from the last month as the current month, enabling historical tracking and trend analysis.
 
 ### Verdict
 
@@ -305,11 +316,13 @@ model Article {
 
 **Performance Critical Indexes**:
 - `questions.topicId` - Find questions for a topic
-- `article_analyses.questionId` - Find all analyses for a question (consensus calculation)
+- `article_analyses.questionId` - Find all analyses for a question
 - `article_analyses.articleId` - Find all analyses for an article
+- `article_analyses.month` - Filter by time period
+- `article_analyses(questionId, month)` - Composite index for monthly verdict calculation
 - `article_analyses.stance` - Filter by stance
 - `verdicts.questionId` - Get verdict for a question (unique)
-- `evidence_bullets.verdictId` - Get evidence for a verdict
+- `evidence_bullets.verdictId` - Get evidence for a verdict (future phase)
 - `topic_articles.topicId` - Find articles by topic
 - `topic_articles.articleId` - Find topics by article
 
@@ -323,10 +336,27 @@ const questions = await prisma.question.findMany({
 });
 ```
 
-### Get all article analyses for a question
+### Get all article analyses for a question (current month)
+```typescript
+const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const analyses = await prisma.articleAnalysis.findMany({
+  where: { 
+    questionId: questionId,
+    month: currentMonth
+  },
+  include: { 
+    article: { 
+      include: { outlet: true } 
+    } 
+  }
+});
+```
+
+### Get article analyses for a question over time (all months)
 ```typescript
 const analyses = await prisma.articleAnalysis.findMany({
   where: { questionId: questionId },
+  orderBy: { month: 'asc' },
   include: { 
     article: { 
       include: { outlet: true } 

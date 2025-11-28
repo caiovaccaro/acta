@@ -12,9 +12,10 @@ This specification defines the implementation of the article analysis pipeline t
 ## Key Decisions Made
 
 ### Technology Stack
-- **LLM Provider**: OpenAI
+- **LLM Provider**: OpenAI (initial implementation, but architecture supports multiple providers)
 - **Model**: GPT-4 Turbo (or latest available GPT-4 model - note: GPT-5 not yet released as of 2025-01-27)
 - **Model Selection**: Use latest GPT-4 variant available at implementation time
+- **LLM Architecture**: Flexible, composable provider abstraction - supports switching between OpenAI, Anthropic, or other providers via configuration
 - **Processing**: Batch processing with queue system
 - **Budget**: ~$200-300/month acceptable for accuracy
 - **Database**: Normalized schema with materialized views and indexes
@@ -120,23 +121,13 @@ The system aggregates all article stances for a question to calculate a weighted
 
 ---
 
-### User Story 5 - Evidence Extraction (Priority: P2)
+### User Story 5 - Evidence Extraction (Priority: P3 - Deferred to Later Phase)
 
 The system extracts evidence bullets (Why, Dissent, Unknowns) from articles to support the verdict.
 
-**Why this priority**: Evidence bullets provide transparency and help users understand the basis for verdicts. Important for trust but not required for basic functionality.
+**Why this priority**: Evidence extraction is deferred to a later phase to focus on core stance classification and verdict calculation first. This feature will be implemented after the MVP is complete.
 
-**Independent Test**: Can be tested independently by providing a verdict and articles, verifying that evidence bullets are extracted and stored.
-
-**Acceptance Scenarios**:
-
-1. **Given** a verdict exists with supporting articles, **When** evidence extraction runs, **Then** 3 "Why" bullets are extracted from articles with Yes/Leaning Yes stances.
-
-2. **Given** a verdict exists with opposing articles, **When** evidence extraction runs, **Then** 1 "Dissent" bullet is extracted from articles with No/Leaning No stances.
-
-3. **Given** evidence extraction runs, **When** bullets are generated, **Then** each bullet includes a citation to the source article.
-
-4. **Given** evidence extraction runs, **When** bullets are generated, **Then** "Unknowns" bullet identifies what's still unclear or missing.
+**Status**: Deferred - not part of initial implementation
 
 ---
 
@@ -178,7 +169,9 @@ The system processes articles in batches using a queue system to optimize costs 
 - **FR-002.3**: System MUST store questions in `Question` table linked to `Topic`
 - **FR-002.4**: System MUST support multiple questions per topic
 - **FR-002.5**: System MUST store question metadata: extracted_at, confidence, source_articles_count, validation_status
-- **FR-002.6**: System MUST validate questions against the formulation framework (7 checks: Public Clarity, Alignment with Real Debate, Simplicity Without Bias, Anchoring in Current News, Explicit Objective, Clear Binary Nature, Answerable with Evidence)
+- **FR-002.6**: System MUST validate questions against a configurable formulation framework (default: 7 checks: Public Clarity, Alignment with Real Debate, Simplicity Without Bias, Anchoring in Current News, Explicit Objective, Clear Binary Nature, Answerable with Evidence)
+- **FR-002.6.1**: Framework checks MUST be composable and configurable - checks can be added, removed, or modified via configuration
+- **FR-002.6.2**: Framework validation MUST support custom check implementations and validation logic
 - **FR-002.7**: System MUST provide LLM-based question reformulation/polishing to improve questions that don't meet the framework
 - **FR-002.8**: System MUST allow manual question submission that goes through validation and polishing workflow
 - **FR-002.9**: System MUST only activate questions that pass all framework validation checks
@@ -186,13 +179,15 @@ The system processes articles in batches using a queue system to optimize costs 
 - **FR-002.11**: System MUST only process articles that match pre-defined questions (filtering approach for MVP)
 
 #### FR-003: Stance Classification
-- **FR-003.1**: System MUST classify article stance on questions using LLM (GPT-4 Turbo)
-- **FR-003.2**: System MUST classify stance per article-question pair (not per-article)
+- **FR-003.1**: System MUST classify article stance on questions using LLM (GPT-4 Turbo initially, but architecture supports multiple providers)
+- **FR-003.2**: System MUST classify stance per article-question-month triad (not per-article)
 - **FR-003.3**: System MUST support stance values: Yes, Leaning Yes, Neutral, Leaning No, No
-- **FR-003.4**: System MUST store stance in `ArticleAnalysis` table with confidence score (0-1)
-- **FR-003.5**: System MUST store reasoning for stance classification
-- **FR-003.6**: System MUST flag low-confidence classifications (< threshold) for review
-- **FR-003.7**: System MUST support evaluation of embeddings-based classification (future comparison)
+- **FR-003.4**: System MUST store stance in `ArticleAnalysis` table with confidence score (0-1) and month period
+- **FR-003.5**: System MUST always record stances per month, using data from the last month as the current month
+- **FR-003.6**: System MUST track stances over time - each ArticleAnalysis is uniquely identified by (articleId, questionId, month)
+- **FR-003.7**: System MUST store reasoning for stance classification
+- **FR-003.8**: System MUST flag low-confidence classifications (< threshold) for review
+- **FR-003.9**: System MUST support evaluation of embeddings-based classification (future comparison)
 
 #### FR-004: Consensus Verdict Calculation
 - **FR-004.1**: System MUST calculate verdicts per question (not per topic)
@@ -209,13 +204,15 @@ The system processes articles in batches using a queue system to optimize costs 
 - **FR-004.7**: System MUST calculate confidence: distance from 0.5 × (1 - variance)
 - **FR-004.8**: System MUST store verdict in `Verdict` table linked to `Question`
 
-#### FR-005: Evidence Extraction
-- **FR-005.1**: System MUST extract 3 "Why" bullets from articles with Yes/Leaning Yes stances
-- **FR-005.2**: System MUST extract 1 "Dissent" bullet from articles with No/Leaning No stances
-- **FR-005.3**: System MUST extract 1 "Unknowns" bullet identifying missing facts
-- **FR-005.4**: System MUST store evidence in `EvidenceBullet` table with citations
-- **FR-005.5**: System MUST use argument extraction + aggregation method (MVP)
-- **FR-005.6**: System MUST support path to RAG-based synthesis (future phase)
+#### FR-005: Evidence Extraction (Deferred to Later Phase)
+- **FR-005.1**: Evidence extraction is deferred to a later phase - not required for MVP
+- **FR-005.2**: System MUST support path to evidence extraction in future phases
+- **FR-005.3**: When implemented, system MUST extract 3 "Why" bullets from articles with Yes/Leaning Yes stances
+- **FR-005.4**: When implemented, system MUST extract 1 "Dissent" bullet from articles with No/Leaning No stances
+- **FR-005.5**: When implemented, system MUST extract 1 "Unknowns" bullet identifying missing facts
+- **FR-005.6**: When implemented, system MUST store evidence in `EvidenceBullet` table with citations
+- **FR-005.7**: When implemented, system MUST use argument extraction + aggregation method
+- **FR-005.8**: When implemented, system MUST support path to RAG-based synthesis
 
 #### FR-006: Batch Processing
 - **FR-006.1**: System MUST process articles in batches (configurable size: 10-50 articles)
@@ -314,26 +311,30 @@ Represents the specific ideological question extracted from articles about a top
 - Has many `EvidenceBullet`
 
 ### ArticleAnalysis
-Stores per-article stance on a specific question.
+Stores per-article stance on a specific question for a specific month period.
 
 **Fields:**
 - `id` (UUID, primary key)
 - `articleId` (foreign key to Article)
 - `questionId` (foreign key to Question)
+- `month` (date) - Month period for this analysis (YYYY-MM-01 format, always first day of month)
 - `stance` (enum: Yes, LeaningYes, Neutral, LeaningNo, No)
 - `confidence` (float, 0-1) - LLM confidence
 - `reasoning` (text, nullable) - LLM reasoning
 - `analyzedAt` (datetime)
 - `createdAt`, `updatedAt` (timestamps)
 
-**Note**: Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (Outlet.ideology) for internal calculations only. Ideology is NEVER exposed in API responses or UI.
+**Note**: 
+- Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (Outlet.ideology) for internal calculations only. Ideology is NEVER exposed in API responses or UI.
+- Stances are always recorded per month, using data from the last month as the current month. This allows tracking how stances evolve over time.
+- The system maintains a triad relationship: Question > Article > Month
 
 **Relations:**
 - Belongs to `Article`
 - Belongs to `Question`
 
 **Constraints:**
-- Unique constraint on `(articleId, questionId)` - one analysis per article-question pair
+- Unique constraint on `(articleId, questionId, month)` - one analysis per article-question-month triad
 
 ### Verdict
 Stores consensus stance on a question, calculated from all article analyses.
@@ -401,10 +402,16 @@ Links articles to topics (many-to-many).
 ## Technical Architecture
 
 ### LLM Integration
-- **Provider**: OpenAI
+- **Provider**: OpenAI (initial implementation)
 - **Model**: GPT-4 Turbo (or latest GPT-4 variant - evaluate GPT-5 if available at implementation)
 - **Model Selection Rationale**: Use latest stable GPT-4 model for reliability; evaluate GPT-5 when released
-- **API**: OpenAI API with batch processing support
+- **Architecture**: Flexible, composable provider abstraction
+  - **Provider Interface**: Abstract LLM provider interface supporting multiple implementations
+  - **Configuration**: Provider selection via configuration (OpenAI, Anthropic, etc.)
+  - **Composability**: Easy to swap providers or add new ones without changing core logic
+  - **Implementation**: Provider-specific implementations (OpenAIProvider, AnthropicProvider, etc.)
+  - **Future Support**: Architecture supports switching to different LLM providers, fine-tuned models, or local models
+- **API**: OpenAI API with batch processing support (initial)
 - **Rate Limiting**: Implement exponential backoff
 - **Cost Optimization**: Use batch API, optimize prompts, cache results
 
@@ -413,21 +420,25 @@ Links articles to topics (many-to-many).
 #### MVP: Proactive Matching (Current)
 1. **Question Creation & Validation**:
    - Editor submits question manually OR system extracts from articles (future)
-   - Question validated against formulation framework (7 checks)
+   - Question validated against configurable formulation framework (default: 7 checks, composable)
+   - Framework checks can be configured, added, or removed via configuration
    - If validation fails, LLM generates reformulated versions
    - Editor reviews and approves reformulated question
    - Question marked as validated and activated
 2. **Article Ingestion**: Articles arrive from crawler → stored in `Article` table
 3. **Proactive Topic Matching**: Articles matched to pre-defined topics using keyword matching → only matching articles assigned to topics
 4. **Proactive Question Matching**: Articles matched to validated questions → only matching articles analyzed
-5. **Stance Classification**: For each question, analyze only matching articles → classify stance → store in `ArticleAnalysis` table
+5. **Stance Classification**: For each question, analyze only matching articles → classify stance → store in `ArticleAnalysis` table with month period
+   - Stances are always recorded per month (Question > Article > Month triad)
+   - Uses data from the last month as the current month
+   - Tracks stance evolution over time
 6. **Verdict Calculation**: 
-   - Aggregate all stances for question
+   - Aggregate all stances for question (for current month period)
    - Infer article ideology from `article.outlet.ideology` (backend-only, not stored)
    - Weight by outlet credibility and normalize by ideology buckets (Left/Center/Right)
    - Calculate verdict → store in `Verdict` table
    - **Note**: Ideology used internally only, NEVER in API/UI
-7. **Evidence Extraction**: Extract evidence bullets → store in `EvidenceBullet` table
+7. **Evidence Extraction**: Deferred to later phase (not part of MVP)
 
 #### Future: Reactive Detection (Automatic)
 1. **Article Ingestion**: Articles arrive from crawler → stored in `Article` table
@@ -436,9 +447,9 @@ Links articles to topics (many-to-many).
 4. **Reactive Question Detection**: All questions detected from articles about approved topics → stored for moderation
 5. **Question Validation**: Detected questions automatically validated against formulation framework → reformulated if needed
 6. **Question Moderation**: Detected and validated questions reviewed and approved/rejected by editor
-7. **Stance Classification**: For approved questions, analyze all matching articles
-8. **Verdict Calculation**: Aggregate stances for approved questions
-9. **Evidence Extraction**: Extract evidence bullets
+7. **Stance Classification**: For approved questions, analyze all matching articles (per month period)
+8. **Verdict Calculation**: Aggregate stances for approved questions (per month period)
+9. **Evidence Extraction**: Extract evidence bullets (deferred to later phase)
 
 ### Queue System
 - **Queue Type**: Database-backed queue (PostgreSQL)
@@ -454,9 +465,11 @@ Links articles to topics (many-to-many).
   - `questions.topicId`
   - `article_analyses.questionId`
   - `article_analyses.articleId`
+  - `article_analyses.month`
   - `article_analyses.stance`
+  - `article_analyses(questionId, month)` - Composite index for monthly verdict calculation
   - `verdicts.questionId`
-  - `evidence_bullets.verdictId`
+  - `evidence_bullets.verdictId` (for future phase)
 
 ### Caching Strategy
 - **Cache**: Question extraction results (questions don't change often)
@@ -475,7 +488,12 @@ Links articles to topics (many-to-many).
 - **Moderation Workflow**: Support for bulk approval/rejection, editing detected topics/questions
 - **Embeddings-based Classification**: Comparison with LLM-based classification for speed/accuracy trade-offs
 
-### Phase 3: Advanced Features
+### Phase 3: Evidence Extraction
+- Evidence bullet extraction (Why, Dissent, Unknowns)
+- Argument extraction + aggregation
+- Evidence citation and linking
+
+### Phase 4: Advanced Features
 - RAG-based answer synthesis
 - Dead Letter Queue (DLQ) implementation
 - Fine-tuned models for stance classification
