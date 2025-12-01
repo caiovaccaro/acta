@@ -12,7 +12,7 @@ This document consolidates research findings for implementing the article analys
 
 ### Decision: LLM Provider and Model
 
-**Decision**: OpenAI GPT-4 Turbo (or latest GPT-4 variant)
+**Decision**: OpenAI GPT-4 Turbo (or latest GPT-4 variant) with flexible, composable provider architecture
 
 **Rationale**:
 - Best-in-class performance for complex analysis tasks
@@ -21,18 +21,23 @@ This document consolidates research findings for implementing the article analys
 - Strong embeddings model support
 - Function calling support for structured outputs
 - Budget acceptable ($200-300/month for 1000 articles)
+- **Architecture**: Flexible provider abstraction allows switching to other providers (Anthropic, open-source, etc.) without changing core logic
 
 **Alternatives Considered**:
-- **Anthropic Claude**: Excellent for analysis but newer API, no native embeddings
-- **Open Source (Llama/Mistral)**: Lower cost at scale but requires infrastructure, lower quality
+- **Anthropic Claude**: Excellent for analysis but newer API, no native embeddings (supported via provider abstraction)
+- **Open Source (Llama/Mistral)**: Lower cost at scale but requires infrastructure, lower quality (supported via provider abstraction)
 - **Hybrid**: More complex, inconsistent quality
 
 **Implementation Notes**:
-- Use GPT-4 Turbo for all LLM tasks (question validation, stance classification, evidence extraction)
+- **Provider Abstraction**: Implement abstract LLM provider interface supporting multiple implementations
+- **Configuration**: Provider selection via configuration (OpenAI initially, but composable)
+- **Composability**: Easy to swap providers or add new ones without changing core logic
+- Use GPT-4 Turbo for all LLM tasks initially (question validation, stance classification)
 - Evaluate GPT-5 when released (not available as of 2025-01-27)
 - Use batch API when possible (50% cost reduction)
 - Implement retry with exponential backoff
 - Cache results to avoid redundant calls
+- Evidence extraction deferred to later phase
 
 ### Decision: Processing Strategy
 
@@ -72,7 +77,7 @@ This document consolidates research findings for implementing the article analys
 
 ### Decision: Stance Classification Method
 
-**Decision**: LLM-based classification (GPT-4 Turbo)
+**Decision**: LLM-based classification (GPT-4 Turbo) with monthly tracking
 
 **Rationale**:
 - Fast to implement (no training data needed)
@@ -80,13 +85,16 @@ This document consolidates research findings for implementing the article analys
 - Context-aware
 - Can extract reasoning
 - Good accuracy (85% target)
+- Monthly tracking enables historical analysis and trend detection
 
 **Alternatives Considered**:
 - **Fine-tuned Model**: Faster and cheaper at scale but requires training data, time to develop
 - **Embeddings-based**: Very fast but lower accuracy, needs labeled examples
 
 **Implementation Notes**:
-- Per article-question pair classification
+- Per article-question-month triad classification (Question > Article > Month)
+- Always record stances per month, using data from the last month as the current month
+- Track stances over time to enable historical analysis
 - Store confidence score (0-1)
 - Flag low-confidence results (< 0.7) for review
 - Future: Evaluate embeddings-based approach for speed/accuracy trade-off
@@ -151,6 +159,24 @@ This document consolidates research findings for implementing the article analys
 - Maximum 3 retry attempts
 - Log all failures for investigation
 - Future: Dead Letter Queue for persistent failures
+
+### Decision: Question Validation Framework
+
+**Decision**: Configurable, composable validation framework (default: 7 checks)
+
+**Rationale**:
+- Framework checks may need to evolve over time
+- Different questions may require different validation criteria
+- Allows experimentation and iteration
+- Maintains flexibility for future requirements
+
+**Implementation Notes**:
+- **Framework Architecture**: Composable check system - individual checks can be added, removed, or modified
+- **Default Checks**: 7 framework checks (Public Clarity, Alignment with Real Debate, Simplicity Without Bias, Anchoring in Current News, Explicit Objective, Clear Binary Nature, Answerable with Evidence)
+- **Configuration**: Framework checks configurable via configuration file/interface
+- **Custom Checks**: Support for custom check implementations
+- **Validation Logic**: Each check is independently implementable and testable
+- **Future**: Easy to add new checks or modify existing ones without changing core validation logic
 
 ### Decision: Quality Assurance
 
@@ -232,10 +258,10 @@ This document consolidates research findings for implementing the article analys
 
 **OpenAI GPT-4 Turbo**:
 - Question validation: ~$20/month
-- Stance classification: ~$50/month (per article-question pair)
-- Evidence extraction: ~$40/month
+- Stance classification: ~$50/month (per article-question-month triad)
+- Evidence extraction: ~$40/month (deferred to later phase)
 - Embeddings (if used): ~$5/month
-- **Total: ~$115/month** (within $200-300 budget)
+- **Total: ~$75/month** (within $200-300 budget, evidence extraction deferred)
 
 **Optimization Strategies**:
 - Batch API: 50% cost reduction
