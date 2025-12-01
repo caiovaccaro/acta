@@ -78,11 +78,167 @@ model Article {
   // Relations
   outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
   crawlRequest    CrawlRequest? @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
+  topicArticles   TopicArticle[]
+  articleAnalyses ArticleAnalysis[]
+  evidenceBullets EvidenceBullet[]
 
   @@index([outletId])
   @@index([publishedDate])
   @@index([extractedAt])
   @@index([url])
   @@map("articles")
+}
+
+// Article Analysis Pipeline Models
+
+enum QuestionValidationStatus {
+  pending
+  validated
+  rejected
+  needs_reformulation
+}
+
+enum Stance {
+  YesItSeemsSo
+  ProbablyYes
+  Unclear
+  ProbablyNot
+  NoItDoesntSeemSo
+}
+
+enum VerdictLabel {
+  YesItSeemsSo
+  ProbablyYes
+  Unclear
+  ProbablyNot
+  NoItDoesntSeemSo
+}
+
+enum EvidenceType {
+  Why
+  Dissent
+  Unknown
+}
+
+model Topic {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  description         String?  @db.Text
+  safetyNoteRequired  Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  questions           Question[]
+  topicArticles       TopicArticle[]
+
+  @@map("topics")
+}
+
+model Question {
+  id                  String                    @id @default(uuid())
+  topicId             String
+  questionText        String                    @db.Text
+  originalQuestionText String?                   @db.Text
+  extractedAt         DateTime                  @default(now())
+  confidence          Float?
+  sourceArticlesCount Int                       @default(0)
+  validationStatus    QuestionValidationStatus  @default(pending)
+  validationResults   Json?
+  isActive            Boolean                   @default(false)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  // Relations
+  topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  articleAnalyses     ArticleAnalysis[]
+  verdict             Verdict?
+  evidenceBullets     EvidenceBullet[]
+
+  @@index([topicId])
+  @@index([isActive])
+  @@index([validationStatus])
+  @@map("questions")
+}
+
+model TopicArticle {
+  id        String   @id @default(uuid())
+  topicId   String
+  articleId String
+  assignedAt DateTime @default(now())
+  confidence Float?
+
+  // Relations
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, articleId])
+  @@index([topicId])
+  @@index([articleId])
+  @@map("topic_articles")
+}
+
+model ArticleAnalysis {
+  id          String   @id @default(uuid())
+  articleId   String
+  questionId  String
+  month       DateTime // Month period (YYYY-MM-01 format, always first day of month)
+  stance      Stance
+  confidence  Float    // 0-1, LLM confidence in classification
+  reasoning   String?  @db.Text // LLM reasoning for stance
+  analyzedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, questionId, month]) // One analysis per article-question-month triad
+  @@index([questionId])
+  @@index([articleId])
+  @@index([month])
+  @@index([questionId, month]) // Composite index for monthly verdict calculation
+  @@index([stance])
+  @@map("article_analyses")
+}
+
+model Verdict {
+  id           String      @id @default(uuid())
+  questionId   String      @unique
+  verdictLabel VerdictLabel
+  confidence   Float       // 0-100, overall confidence
+  supportShare Float       // 0-1, aggregate support (S)
+  variance     Float       // 0-1, ideological dispersion
+  calculatedAt DateTime    @default(now())
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  evidenceBullets EvidenceBullet[]
+
+  @@index([verdictLabel])
+  @@index([confidence])
+  @@map("verdicts")
+}
+
+model EvidenceBullet {
+  id        String       @id @default(uuid())
+  verdictId String
+  text      String       @db.Text
+  articleId String?
+  type      EvidenceType
+  order     Int
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relations
+  verdict   Verdict      @relation(fields: [verdictId], references: [id], onDelete: Cascade)
+  article   Article?     @relation(fields: [articleId], references: [id], onDelete: SetNull)
+
+  @@index([verdictId])
+  @@index([type])
+  @@map("evidence_bullets")
 }
 

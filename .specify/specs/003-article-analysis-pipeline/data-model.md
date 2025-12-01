@@ -152,11 +152,11 @@ Per-article stance on a specific question for a specific month period.
 
 ```prisma
 enum Stance {
-  Yes
-  LeaningYes
-  Neutral
-  LeaningNo
-  No
+  YesItSeemsSo
+  ProbablyYes
+  Unclear
+  ProbablyNot
+  NoItDoesntSeemSo
 }
 
 model ArticleAnalysis {
@@ -186,7 +186,7 @@ model ArticleAnalysis {
 ```
 
 **Validation Rules**:
-- `stance` must be one of: Yes, LeaningYes, Neutral, LeaningNo, No
+- `stance` must be one of: YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo
 - `confidence` must be between 0 and 1
 - `month` must be the first day of a month (YYYY-MM-01 format)
 - Unique constraint on `(articleId, questionId, month)` - one analysis per article-question-month triad
@@ -213,11 +213,11 @@ Consensus stance on a question, calculated from all article analyses.
 
 ```prisma
 enum VerdictLabel {
-  Yes
-  LeaningYes
-  Split
-  LeaningNo
-  No
+  YesItSeemsSo
+  ProbablyYes
+  Unclear
+  ProbablyNot
+  NoItDoesntSeemSo
 }
 
 model Verdict {
@@ -242,7 +242,7 @@ model Verdict {
 ```
 
 **Validation Rules**:
-- `verdictLabel` must be one of: Yes, LeaningYes, Split, LeaningNo, No
+- `verdictLabel` must be one of: YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo
 - `confidence` must be between 0 and 100
 - `supportShare` must be between 0 and 1
 - `variance` must be between 0 and 1

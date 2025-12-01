@@ -450,7 +450,7 @@ components:
           format: uuid
         verdictLabel:
           type: string
-          enum: [Yes, LeaningYes, Split, LeaningNo, No]
+          enum: [YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo]
         confidence:
           type: number
           minimum: 0
@@ -502,7 +502,7 @@ components:
           format: uuid
         stance:
           type: string
-          enum: [Yes, LeaningYes, Neutral, LeaningNo, No]
+          enum: [YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo]
         confidence:
           type: number
           minimum: 0
