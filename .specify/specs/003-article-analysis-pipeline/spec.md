@@ -83,7 +83,7 @@ The system validates and polishes questions against the formulation framework be
 
 ### User Story 3 - Stance Classification per Question (Priority: P1)
 
-For each extracted question, the system analyzes all related articles to determine each article's stance (Yes/Leaning Yes/Neutral/Leaning No/No) on that specific question.
+For each extracted question, the system analyzes all related articles to determine each article's stance ("Yes, it seems so"/"Probably yes"/"Unclear"/"Probably not"/"No, it doesn't seem so") on that specific question.
 
 **Why this priority**: Stance classification is required to calculate consensus verdicts. Without knowing how each article positions itself on a question, we cannot aggregate to a verdict.
 
@@ -91,7 +91,7 @@ For each extracted question, the system analyzes all related articles to determi
 
 **Acceptance Scenarios**:
 
-1. **Given** a question exists with related articles, **When** stance classification runs, **Then** each article receives a stance classification (Yes/Leaning Yes/Neutral/Leaning No/No) stored in `ArticleAnalysis`.
+1. **Given** a question exists with related articles, **When** stance classification runs, **Then** each article receives a stance classification ("Yes, it seems so"/"Probably yes"/"Unclear"/"Probably not"/"No, it doesn't seem so") stored in `ArticleAnalysis`.
 
 2. **Given** an article's stance classification confidence is below threshold (e.g., < 0.7), **When** classification completes, **Then** the result is flagged for review and stored with low confidence.
 
@@ -103,7 +103,7 @@ For each extracted question, the system analyzes all related articles to determi
 
 ### User Story 4 - Consensus Verdict Calculation (Priority: P1)
 
-The system aggregates all article stances for a question to calculate a weighted consensus verdict (Yes/Leaning Yes/Split/Leaning No/No) with confidence score.
+The system aggregates all article stances for a question to calculate a weighted consensus verdict ("Yes, it seems so"/"Probably yes"/"Unclear"/"Probably not"/"No, it doesn't seem so") with confidence score.
 
 **Why this priority**: Verdicts are the core output of the system. Users need to see the consensus position on questions to make informed decisions.
 
@@ -113,7 +113,7 @@ The system aggregates all article stances for a question to calculate a weighted
 
 1. **Given** a question has at least 6 article analyses from at least 2 different outlets, **When** verdict calculation runs, **Then** a verdict is calculated and stored in the `Verdict` table.
 
-2. **Given** a question has insufficient data (fewer than 6 articles or only 1 outlet), **When** verdict calculation runs, **Then** the verdict is set to "Split" with "Low" confidence and a note about insufficient data.
+2. **Given** a question has insufficient data (fewer than 6 articles or only 1 outlet), **When** verdict calculation runs, **Then** the verdict is set to "Unclear" with "Low" confidence and a note about insufficient data.
 
 3. **Given** outlets have different credibility scores, **When** verdict calculation runs, **Then** articles are weighted by outlet credibility in the consensus calculation.
 
@@ -181,7 +181,7 @@ The system processes articles in batches using a queue system to optimize costs 
 #### FR-003: Stance Classification
 - **FR-003.1**: System MUST classify article stance on questions using LLM (GPT-4 Turbo initially, but architecture supports multiple providers)
 - **FR-003.2**: System MUST classify stance per article-question-month triad (not per-article)
-- **FR-003.3**: System MUST support stance values: Yes, Leaning Yes, Neutral, Leaning No, No
+- **FR-003.3**: System MUST support stance values: "Yes, it seems so", "Probably yes", "Unclear", "Probably not", "No, it doesn't seem so"
 - **FR-003.4**: System MUST store stance in `ArticleAnalysis` table with confidence score (0-1) and month period
 - **FR-003.5**: System MUST always record stances per month, using data from the last month as the current month
 - **FR-003.6**: System MUST track stances over time - each ArticleAnalysis is uniquely identified by (articleId, questionId, month)
@@ -196,19 +196,19 @@ The system processes articles in batches using a queue system to optimize costs 
 - **FR-004.4**: System MUST calculate support share (S) from weighted stances
 - **FR-004.5**: System MUST calculate variance (ideological dispersion) across outlets
 - **FR-004.6**: System MUST determine verdict label using PRD rules:
-  - Yes: S ≥ 0.67, low variance
-  - Leaning Yes: S 0.55-0.67 or moderate variance
-  - Split: S 0.45-0.55 or high variance
-  - Leaning No: S 0.33-0.45
-  - No: S ≤ 0.33
+  - "Yes, it seems so": S ≥ 0.67, low variance
+  - "Probably yes": S 0.55-0.67 or moderate variance
+  - "Unclear": S 0.45-0.55 or high variance
+  - "Probably not": S 0.33-0.45
+  - "No, it doesn't seem so": S ≤ 0.33
 - **FR-004.7**: System MUST calculate confidence: distance from 0.5 × (1 - variance)
 - **FR-004.8**: System MUST store verdict in `Verdict` table linked to `Question`
 
 #### FR-005: Evidence Extraction (Deferred to Later Phase)
 - **FR-005.1**: Evidence extraction is deferred to a later phase - not required for MVP
 - **FR-005.2**: System MUST support path to evidence extraction in future phases
-- **FR-005.3**: When implemented, system MUST extract 3 "Why" bullets from articles with Yes/Leaning Yes stances
-- **FR-005.4**: When implemented, system MUST extract 1 "Dissent" bullet from articles with No/Leaning No stances
+- **FR-005.3**: When implemented, system MUST extract 3 "Why" bullets from articles with "Yes, it seems so"/"Probably yes" stances
+- **FR-005.4**: When implemented, system MUST extract 1 "Dissent" bullet from articles with "No, it doesn't seem so"/"Probably not" stances
 - **FR-005.5**: When implemented, system MUST extract 1 "Unknowns" bullet identifying missing facts
 - **FR-005.6**: When implemented, system MUST store evidence in `EvidenceBullet` table with citations
 - **FR-005.7**: When implemented, system MUST use argument extraction + aggregation method
@@ -318,7 +318,7 @@ Stores per-article stance on a specific question for a specific month period.
 - `articleId` (foreign key to Article)
 - `questionId` (foreign key to Question)
 - `month` (date) - Month period for this analysis (YYYY-MM-01 format, always first day of month)
-- `stance` (enum: Yes, LeaningYes, Neutral, LeaningNo, No)
+- `stance` (enum: YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo)
 - `confidence` (float, 0-1) - LLM confidence
 - `reasoning` (text, nullable) - LLM reasoning
 - `analyzedAt` (datetime)
@@ -342,7 +342,7 @@ Stores consensus stance on a question, calculated from all article analyses.
 **Fields:**
 - `id` (UUID, primary key)
 - `questionId` (foreign key to Question, unique)
-- `verdictLabel` (enum: Yes, LeaningYes, Split, LeaningNo, No)
+- `verdictLabel` (enum: YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo)
 - `confidence` (float, 0-100)
 - `supportShare` (float, 0-1) - Aggregate support (S)
 - `variance` (float, 0-1) - Ideological dispersion
@@ -503,8 +503,8 @@ Links articles to topics (many-to-many).
 
 - **No Topic Match**: If article doesn't match any pre-defined topic, skip processing (not assigned)
 - **No Question Match**: If article matches topic but not any questions, skip stance analysis
-- **Insufficient Matching Articles**: If question has < 6 matching articles, verdict set to "Split" with "Low" confidence
-- **No Stance**: If article doesn't address question, classify as "Neutral"
+- **Insufficient Matching Articles**: If question has < 6 matching articles, verdict set to "Unclear" with "Low" confidence
+- **No Stance**: If article doesn't address question, classify as "Unclear"
 - **API Failures**: Retry with backoff, fallback to pre-defined questions if available
 - **Low Confidence**: Flag for review, store with low confidence
 - **Multiple Questions**: Support multiple questions per topic (article can match multiple)
