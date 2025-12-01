@@ -12,7 +12,7 @@ Implement an article analysis pipeline that processes crawled articles to extrac
 ## Technical Context
 
 **Language/Version**: TypeScript / Node.js 20+  
-**Primary Dependencies**: OpenAI API (GPT-4 Turbo), Prisma ORM, PostgreSQL with pgvector, pnpm workspaces  
+**Primary Dependencies**: OpenAI API (GPT-4 Turbo initially, but architecture supports multiple providers), Prisma ORM, PostgreSQL with pgvector, pnpm workspaces  
 **Storage**: PostgreSQL (existing `modules/db` with Prisma schema)  
 **Testing**: Jest with TypeScript support  
 **Target Platform**: Linux server (Node.js runtime)  
@@ -21,17 +21,21 @@ Implement an article analysis pipeline that processes crawled articles to extrac
 - Process 100 articles per hour in batch mode
 - Question extraction: < 30 seconds per topic (10-50 articles)
 - Stance classification: 10 articles per minute
-- Verdict calculation: < 5 seconds per question
+- Verdict calculation: < 5 seconds per question (per month period)
 **Constraints**: 
 - Budget: $200-300/month for LLM API calls
 - Batch processing required for cost optimization
 - Confidence thresholds for quality assurance
 - Retry with exponential backoff for API failures
+- LLM provider abstraction for flexibility (OpenAI initially, but composable)
+- Question validation framework must be configurable and composable
 **Scale/Scope**: 
 - Initial: 3 pre-defined topics (Gaza, Drug Policy, AI Regulation)
 - Process all articles matching pre-defined topics/questions
 - Support multiple questions per topic
 - Queue system for batch processing
+- Monthly stance tracking (Question > Article > Month triad)
+- Evidence extraction deferred to later phase
 
 ## Constitution Check
 
@@ -130,13 +134,26 @@ modules/
 │   │   │   ├── stanceClassifier.ts  # LLM stance classification
 │   │   │   ├── verdictCalculator.ts # Consensus calculation
 │   │   │   └── evidenceExtractor.ts # Evidence bullet extraction
-│   │   ├── llm/            # LLM integration
-│   │   │   ├── client.ts            # OpenAI client with retry
+│   │   ├── llm/            # LLM integration (flexible, composable)
+│   │   │   ├── provider.ts         # Abstract LLM provider interface
+│   │   │   ├── providers/          # Provider implementations
+│   │   │   │   ├── openaiProvider.ts
+│   │   │   │   └── anthropicProvider.ts (future)
 │   │   │   ├── prompts/             # Prompt templates
 │   │   │   │   ├── questionValidation.ts
-│   │   │   │   ├── stanceClassification.ts
-│   │   │   │   └── evidenceExtraction.ts
+│   │   │   │   └── stanceClassification.ts
 │   │   │   └── batchProcessor.ts    # Batch API calls
+│   │   ├── validation/    # Question validation framework
+│   │   │   ├── framework.ts        # Configurable validation framework
+│   │   │   ├── checks/              # Individual validation checks
+│   │   │   │   ├── publicClarity.ts
+│   │   │   │   ├── alignmentWithDebate.ts
+│   │   │   │   ├── simplicityWithoutBias.ts
+│   │   │   │   ├── anchoringInNews.ts
+│   │   │   │   ├── explicitObjective.ts
+│   │   │   │   ├── clearBinaryNature.ts
+│   │   │   │   └── answerableWithEvidence.ts
+│   │   │   └── config.ts            # Framework configuration
 │   │   └── index.ts
 │   └── tests/
 │       └── analysis/
@@ -167,9 +184,11 @@ apps/
 
 **Structure Decision**: 
 - Analysis logic in `modules/core` (pure, testable functions)
-- LLM integration in `modules/core/llm` (reusable across features)
-- Database schema extended in `modules/db`
+- LLM integration in `modules/core/llm` (flexible, composable provider abstraction)
+- Question validation framework in `modules/core/validation` (configurable, composable checks)
+- Database schema extended in `modules/db` (includes monthly stance tracking)
 - Batch processing job in `apps/api/src/jobs` (can run as scheduled task)
+- Evidence extraction deferred to later phase
 - Follows existing monorepo structure and module boundaries
 
 ## Complexity Tracking
