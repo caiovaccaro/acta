@@ -24,17 +24,17 @@ enum CrawlStatus {
 }
 
 model Outlet {
-  id              String   @id @default(uuid())
-  name            String   @unique
-  ideology        Ideology
-  credibilityScore Float   @default(0.5) // 0-1 scale
-  rssFeeds        Json     // Array of RSS feed URLs
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  name             String   @unique
+  ideology         Ideology
+  credibilityScore Float    @default(0.5) // 0-1 scale
+  rssFeeds         Json // Array of RSS feed URLs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  crawlRequests   CrawlRequest[]
-  articles        Article[]
+  crawlRequests CrawlRequest[]
+  articles      Article[]
 
   @@index([ideology])
   @@index([credibilityScore])
@@ -42,18 +42,18 @@ model Outlet {
 }
 
 model CrawlRequest {
-  id           String       @id @default(uuid())
-  url          String       @unique
+  id           String      @id @default(uuid())
+  url          String      @unique
   outletId     String
-  status       CrawlStatus  @default(pending)
-  attempts    Int          @default(0)
-  errorMessage String?      @db.Text
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  status       CrawlStatus @default(pending)
+  attempts     Int         @default(0)
+  errorMessage String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   // Relations
-  outlet       Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  article      Article?
+  outlet  Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  article Article?
 
   @@index([status])
   @@index([outletId])
@@ -63,21 +63,21 @@ model CrawlRequest {
 }
 
 model Article {
-  id              String    @id @default(uuid())
-  url             String    @unique
-  crawlRequestId  String?   @unique
-  outletId        String
-  title           String    @db.Text
-  textContent     String    @db.Text
-  excerpt         String?   @db.Text
-  publishedDate   DateTime?
-  extractedAt     DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  url            String    @unique
+  crawlRequestId String?   @unique
+  outletId       String
+  title          String    @db.Text
+  textContent    String    @db.Text
+  excerpt        String?   @db.Text
+  publishedDate  DateTime?
+  extractedAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
-  outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  crawlRequest    CrawlRequest? @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
+  outlet          Outlet            @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  crawlRequest    CrawlRequest?     @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
   topicArticles   TopicArticle[]
   articleAnalyses ArticleAnalysis[]
   evidenceBullets EvidenceBullet[]
@@ -121,39 +121,38 @@ enum EvidenceType {
 }
 
 model Topic {
-  id                  String   @id @default(uuid())
-  name                String   @unique
-  description         String?  @db.Text
-  safetyNoteRequired  Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  description        String?  @db.Text
+  safetyNoteRequired Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   // Relations
-  questions           Question[]
-  topicArticles       TopicArticle[]
+  questions     Question[]
+  topicArticles TopicArticle[]
 
   @@map("topics")
 }
 
 model Question {
-  id                  String                    @id @default(uuid())
-  topicId             String
-  questionText        String                    @db.Text
-  originalQuestionText String?                   @db.Text
-  extractedAt         DateTime                  @default(now())
-  confidence          Float?
-  sourceArticlesCount Int                       @default(0)
-  validationStatus    QuestionValidationStatus  @default(pending)
-  validationResults   Json?
-  isActive            Boolean                   @default(false)
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  id                   String                   @id @default(uuid())
+  topicId              String
+  questionText         String                   @db.Text
+  originalQuestionText String?                  @db.Text
+  extractedAt          DateTime                 @default(now())
+  confidence           Float?
+  sourceArticlesCount  Int                      @default(0)
+  validationStatus     QuestionValidationStatus @default(pending)
+  validationResults    Json?
+  isActive             Boolean                  @default(false)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 
   // Relations
-  topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  articleAnalyses     ArticleAnalysis[]
-  verdict             Verdict?
-  evidenceBullets     EvidenceBullet[]
+  topic           Topic             @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  articleAnalyses ArticleAnalysis[]
+  verdict         Verdict?
 
   @@index([topicId])
   @@index([isActive])
@@ -162,15 +161,15 @@ model Question {
 }
 
 model TopicArticle {
-  id        String   @id @default(uuid())
-  topicId   String
-  articleId String
+  id         String   @id @default(uuid())
+  topicId    String
+  articleId  String
   assignedAt DateTime @default(now())
   confidence Float?
 
   // Relations
-  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  topic   Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([topicId, articleId])
   @@index([topicId])
@@ -179,20 +178,20 @@ model TopicArticle {
 }
 
 model ArticleAnalysis {
-  id          String   @id @default(uuid())
-  articleId   String
-  questionId  String
-  month       DateTime // Month period (YYYY-MM-01 format, always first day of month)
-  stance      Stance
-  confidence  Float    // 0-1, LLM confidence in classification
-  reasoning   String?  @db.Text // LLM reasoning for stance
-  analyzedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  articleId  String
+  questionId String
+  month      DateTime // Month period (YYYY-MM-01 format, always first day of month)
+  stance     Stance
+  confidence Float // 0-1, LLM confidence in classification
+  reasoning  String?  @db.Text // LLM reasoning for stance
+  analyzedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  article  Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([articleId, questionId, month]) // One analysis per article-question-month triad
   @@index([questionId])
@@ -204,18 +203,18 @@ model ArticleAnalysis {
 }
 
 model Verdict {
-  id           String      @id @default(uuid())
-  questionId   String      @unique
+  id           String       @id @default(uuid())
+  questionId   String       @unique
   verdictLabel VerdictLabel
-  confidence   Float       // 0-100, overall confidence
-  supportShare Float       // 0-1, aggregate support (S)
-  variance     Float       // 0-1, ideological dispersion
-  calculatedAt DateTime    @default(now())
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  confidence   Float // 0-100, overall confidence
+  supportShare Float // 0-1, aggregate support (S)
+  variance     Float // 0-1, ideological dispersion
+  calculatedAt DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   // Relations
-  question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
   evidenceBullets EvidenceBullet[]
 
   @@index([verdictLabel])
@@ -234,11 +233,10 @@ model EvidenceBullet {
   updatedAt DateTime     @updatedAt
 
   // Relations
-  verdict   Verdict      @relation(fields: [verdictId], references: [id], onDelete: Cascade)
-  article   Article?     @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  verdict Verdict  @relation(fields: [verdictId], references: [id], onDelete: Cascade)
+  article Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
 
   @@index([verdictId])
   @@index([type])
   @@map("evidence_bullets")
 }
-

@@ -39,17 +39,44 @@ pnpm db:migrate
 
 ### Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the `apps/crawler/` directory:
 
 ```env
 DATABASE_URL="postgresql://acta:acta_dev_password@localhost:5432/acta_dev?schema=public"
 NODE_ENV=development
+
+# Google News API (optional, for paid outlet discovery)
+# Get your API key from: https://developers.google.com/custom-search/v1/overview
+GOOGLE_CUSTOM_SEARCH_API_KEY=your_google_api_key_here
+GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your_search_engine_id_here
+
+# Subscription credentials for paid outlets (optional)
+# Used for Playwright-based content extraction
+WSJ_EMAIL=your_wsj_email@example.com
+WSJ_PASSWORD=your_wsj_password
+FT_EMAIL=your_ft_email@example.com
+FT_PASSWORD=your_ft_password
+ECONOMIST_EMAIL=your_economist_email@example.com
+ECONOMIST_PASSWORD=your_economist_password
+
+# Playwright user data directory (optional, for persistent browser sessions)
+# If set, browser will reuse cookies/sessions between runs
+# This helps establish trust with Cloudflare and reduces challenges
+# Example: PLAYWRIGHT_USER_DATA_DIR=/tmp/playwright-user-data
+PLAYWRIGHT_USER_DATA_DIR=
 
 # Optional: Batch processing configuration
 BATCH_SIZE=100                    # Articles per batch (default: 100)
 MAX_ARTICLES_PER_RUN=null         # Max articles per run (null = all, for periodic jobs)
 STUCK_REQUEST_THRESHOLD_MINUTES=60 # Reset stuck requests after this many minutes
 ```
+
+**Note**: The `.env` file should be located at `apps/crawler/.env`. 
+
+For paid outlets (WSJ, FT, The Economist), the crawler uses:
+- **Google News API** (optional) for article discovery via RSS or Custom Search
+- **Playwright** with a real (non-headless) browser for content extraction
+- Your subscription credentials for authenticated access
 
 ## Usage
 
@@ -63,6 +90,27 @@ pnpm crawler:start
 cd apps/crawler
 pnpm start
 ```
+
+### Google News + Playwright Ingestion
+
+For paid outlets (WSJ, FT, The Economist):
+
+```bash
+# Run Google News + Playwright ingestion
+pnpm crawler:ingest:googlenews
+
+# Or from crawler directory
+cd apps/crawler
+pnpm ingest:googlenews
+```
+
+This will:
+1. Discover articles using Google News (RSS or Custom Search API)
+2. Extract content using Playwright with a real browser (non-headless)
+3. Handle login flows automatically using your subscription credentials
+4. Save articles to the database
+
+**Note**: The browser window will be visible so you can monitor the process.
 
 ### Export Data
 

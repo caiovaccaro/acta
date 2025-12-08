@@ -6,9 +6,12 @@
     "main": "src/jobs/refreshFeeds.js",
     "scripts": {
         "start": "tsx src/jobs/refreshFeeds.js",
+        "ingest:googlenews": "tsx src/jobs/googleNewsIngestion.js",
         "export:rss": "tsx src/scripts/exportRss.js",
         "export:articles": "tsx src/scripts/exportArticles.js",
         "migrate:storage": "tsx src/scripts/migrateFromFileStorage.js",
+        "scraperai": "tsx src/scripts/testScraperAPIParser.js",
+        "test:playwright": "tsx src/scripts/testPlaywrightExtraction.js",
         "test": "jest",
         "test:watch": "jest --watch"
     },

@@ -1,0 +1,19 @@
+{
+  "domains": [
+    "theguardian.com",
+    "aljazeera.com",
+    "bbc.com",
+    "politico.com",
+    "foxnews.com",
+    "nationalreview.com",
+    "dw.com",
+    "thedispatch.com",
+    "wsj.com",
+    "telegraph.co.uk",
+    "ft.com",
+    "economist.com"
+  ],
+  "updatedAt": "2025-01-27",
+  "note": "Whitelisted domains for ingestion. Includes free outlets and paid outlets (WSJ, Telegraph, FT, Economist)."
+}
+
