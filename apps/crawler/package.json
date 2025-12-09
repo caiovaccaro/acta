@@ -9,11 +9,13 @@
         "export:rss": "tsx src/scripts/exportRss.js",
         "export:articles": "tsx src/scripts/exportArticles.js",
         "migrate:storage": "tsx src/scripts/migrateFromFileStorage.js",
+        "analyze:articles": "tsx src/scripts/runAnalysisPipeline.js",
         "test": "jest",
         "test:watch": "jest --watch"
     },
     "dependencies": {
         "@acta/db": "workspace:*",
+        "@acta/core": "workspace:*",
         "@mozilla/readability": "^0.6.0",
         "crawlee": "^3.0.0",
         "dotenv": "^17.2.3",
