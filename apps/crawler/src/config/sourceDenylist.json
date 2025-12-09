@@ -1,0 +1,6 @@
+{
+  "domains": [],
+  "updatedAt": "2025-01-27",
+  "note": "Denied domains for ingestion. Empty by default, can be populated to block specific domains."
+}
+

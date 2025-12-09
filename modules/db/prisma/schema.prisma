@@ -153,7 +153,6 @@ model Question {
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalyses     ArticleAnalysis[]
   verdict             Verdict?
-  evidenceBullets     EvidenceBullet[]
 
   @@index([topicId])
   @@index([isActive])
