@@ -1,0 +1,29 @@
+{
+  "name": "@acta/core",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Acta Core Module - Domain logic and utilities",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./llm": "./src/llm/index.ts",
+    "./validation": "./src/validation/index.ts"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "openai": "^4.20.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  },
+  "author": "Caio Vaccaro",
+  "license": "ISC"
+}
+

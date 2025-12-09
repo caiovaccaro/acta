@@ -14,6 +14,17 @@ export const prisma = new PrismaClient({
 // Export Prisma types
 export * from '@prisma/client';
 
+// Export repositories
+export * from './repositories/articleRepository.js';
+export * from './repositories/outletRepository.js';
+export * from './repositories/crawlRequestRepository.js';
+export * from './repositories/topicRepository.js';
+export * from './repositories/questionRepository.js';
+export * from './repositories/articleAnalysisRepository.js';
+export * from './repositories/verdictRepository.js';
+export * from './repositories/topicArticleRepository.js';
+export * from './repositories/evidenceBulletRepository.js';
+
 // Database connection utilities
 export async function connectDatabase() {
   try {
@@ -55,6 +66,12 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 export * from './repositories/outletRepository.js';
 export * from './repositories/crawlRequestRepository.js';
 export * from './repositories/articleRepository.js';
+export * from './repositories/topicRepository.js';
+export * from './repositories/questionRepository.js';
+export * from './repositories/articleAnalysisRepository.js';
+export * from './repositories/verdictRepository.js';
+export * from './repositories/topicArticleRepository.js';
+export * from './repositories/evidenceBulletRepository.js';
 
 // Re-export countArticles for convenience
 export { countArticles } from './repositories/articleRepository.js';

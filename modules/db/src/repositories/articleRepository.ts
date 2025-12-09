@@ -181,3 +181,113 @@ export async function countArticles(outletId?: string): Promise<number> {
   return prisma.article.count({ where });
 }
 
+/**
+ * Finds articles by topic ID
+ * @param topicId - Topic ID
+ * @param limit - Maximum number of articles to return
+ * @param offset - Number of articles to skip
+ * @returns Array of Articles
+ */
+export async function findArticlesByTopic(
+  topicId: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<Article[]> {
+  return prisma.article.findMany({
+    where: {
+      topicArticles: {
+        some: {
+          topicId,
+        },
+      },
+    },
+    orderBy: { extractedAt: 'desc' },
+    take: limit,
+    skip: offset,
+    include: {
+      outlet: true,
+      topicArticles: {
+        where: { topicId },
+        include: {
+          topic: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Finds articles by question ID (articles that have analyses for this question)
+ * @param questionId - Question ID
+ * @param limit - Maximum number of articles to return
+ * @param offset - Number of articles to skip
+ * @returns Array of Articles
+ */
+export async function findArticlesByQuestion(
+  questionId: string,
+  limit: number = 100,
+  offset: number = 0
+): Promise<Article[]> {
+  return prisma.article.findMany({
+    where: {
+      articleAnalyses: {
+        some: {
+          questionId,
+        },
+      },
+    },
+    orderBy: { extractedAt: 'desc' },
+    take: limit,
+    skip: offset,
+    include: {
+      outlet: true,
+      articleAnalyses: {
+        where: { questionId },
+      },
+    },
+  });
+}
+
+/**
+ * Finds articles with their topic assignments
+ * @param articleId - Article ID
+ * @returns Article with topics
+ */
+export async function findArticleWithTopics(articleId: string): Promise<Article | null> {
+  return prisma.article.findUnique({
+    where: { id: articleId },
+    include: {
+      outlet: true,
+      topicArticles: {
+        include: {
+          topic: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Finds articles with their analyses
+ * @param articleId - Article ID
+ * @returns Article with analyses
+ */
+export async function findArticleWithAnalyses(articleId: string): Promise<Article | null> {
+  return prisma.article.findUnique({
+    where: { id: articleId },
+    include: {
+      outlet: true,
+      articleAnalyses: {
+        include: {
+          question: {
+            include: {
+              topic: true,
+            },
+          },
+        },
+        orderBy: { analyzedAt: 'desc' },
+      },
+    },
+  });
+}
+
