@@ -79,8 +79,9 @@ model Article {
   outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
   crawlRequest    CrawlRequest? @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
   topicArticles   TopicArticle[]
-  articleAnalyses ArticleAnalysis[]
+  articleAnalysisAttempts ArticleAnalysisAttempt[]
   evidenceBullets EvidenceBullet[]
+  articleStances ArticleStance[]
 
   @@index([outletId])
   @@index([publishedDate])
@@ -120,6 +121,8 @@ enum EvidenceType {
   Unknown
 }
 
+// Removed MatchClassificationStatus - ArticleQuestionMatch only stores successfully classified matches
+
 model Topic {
   id                  String   @id @default(uuid())
   name                String   @unique
@@ -151,7 +154,8 @@ model Question {
 
   // Relations
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  articleAnalyses     ArticleAnalysis[]
+  articleAnalysisAttempts ArticleAnalysisAttempt[]
+  articleStances ArticleStance[]
   verdict             Verdict?
 
   @@index([topicId])
@@ -177,7 +181,7 @@ model TopicArticle {
   @@map("topic_articles")
 }
 
-model ArticleAnalysis {
+model ArticleAnalysisAttempt {
   id          String   @id @default(uuid())
   articleId   String
   questionId  String
@@ -192,14 +196,35 @@ model ArticleAnalysis {
   // Relations
   article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleStances ArticleStance[]
 
-  @@unique([articleId, questionId, month]) // One analysis per article-question-month triad
+  @@unique([articleId, questionId, month]) // One analysis attempt per article-question-month triad
   @@index([questionId])
   @@index([articleId])
   @@index([month])
   @@index([questionId, month]) // Composite index for monthly verdict calculation
   @@index([stance])
   @@map("article_analyses")
+}
+
+model ArticleStance {
+  id                    String   @id @default(uuid())
+  articleId             String
+  questionId            String
+  articleAnalysisAttemptId String   @unique // Link to ArticleAnalysisAttempt (required - only successful classifications)
+  matchedAt             DateTime @default(now())
+  
+  // Relations
+  article               Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question              Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleAnalysisAttempt ArticleAnalysisAttempt @relation(fields: [articleAnalysisAttemptId], references: [id], onDelete: Cascade)
+  
+  @@unique([articleId, questionId]) // One stance per article-question pair
+  @@index([articleId])
+  @@index([questionId])
+  @@index([matchedAt])
+  @@index([questionId, matchedAt]) // For querying "which articles have stances on this question"
+  @@map("article_stances")
 }
 
 model Verdict {
@@ -240,4 +265,3 @@ model EvidenceBullet {
   @@index([type])
   @@map("evidence_bullets")
 }
-

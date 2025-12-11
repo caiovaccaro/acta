@@ -68,11 +68,15 @@ export async function findQuestionsByTopicId(
 
 /**
  * Finds active questions
+ * @param topicId - Optional filter by topic ID
  * @returns Array of active Questions
  */
-export async function findActiveQuestions(): Promise<Question[]> {
+export async function findActiveQuestions(topicId?: string): Promise<Question[]> {
   return prisma.question.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(topicId ? { topicId } : {}),
+    },
     include: {
       topic: true,
       verdict: true,
