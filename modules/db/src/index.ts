@@ -20,10 +20,11 @@ export * from './repositories/outletRepository.js';
 export * from './repositories/crawlRequestRepository.js';
 export * from './repositories/topicRepository.js';
 export * from './repositories/questionRepository.js';
-export * from './repositories/articleAnalysisRepository.js';
+export * from './repositories/articleAnalysisAttemptRepository.js';
 export * from './repositories/verdictRepository.js';
 export * from './repositories/topicArticleRepository.js';
 export * from './repositories/evidenceBulletRepository.js';
+export * from './repositories/articleStanceRepository.js';
 
 // Database connection utilities
 export async function connectDatabase() {
@@ -68,10 +69,11 @@ export * from './repositories/crawlRequestRepository.js';
 export * from './repositories/articleRepository.js';
 export * from './repositories/topicRepository.js';
 export * from './repositories/questionRepository.js';
-export * from './repositories/articleAnalysisRepository.js';
+export * from './repositories/articleAnalysisAttemptRepository.js';
 export * from './repositories/verdictRepository.js';
 export * from './repositories/topicArticleRepository.js';
 export * from './repositories/evidenceBulletRepository.js';
+export * from './repositories/articleStanceRepository.js';
 
 // Re-export countArticles for convenience
 export { countArticles } from './repositories/articleRepository.js';

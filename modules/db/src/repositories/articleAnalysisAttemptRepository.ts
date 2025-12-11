@@ -1,12 +1,12 @@
 /**
- * ArticleAnalysis Repository
- * Handles ArticleAnalysis model operations
+ * ArticleAnalysisAttempt Repository
+ * Handles ArticleAnalysisAttempt model operations
  */
 
 import { prisma } from '../index.js';
-import type { ArticleAnalysis, Stance } from '@prisma/client';
+import type { ArticleAnalysisAttempt, Stance } from '@prisma/client';
 
-export interface CreateArticleAnalysisInput {
+export interface CreateArticleAnalysisAttemptInput {
   articleId: string;
   questionId: string;
   month: Date; // Should be first day of month (YYYY-MM-01)
@@ -15,21 +15,21 @@ export interface CreateArticleAnalysisInput {
   reasoning?: string | null;
 }
 
-export interface UpdateArticleAnalysisInput {
+export interface UpdateArticleAnalysisAttemptInput {
   stance?: Stance;
   confidence?: number;
   reasoning?: string | null;
 }
 
 /**
- * Finds an article analysis by ID
- * @param id - ArticleAnalysis ID
- * @returns ArticleAnalysis or null if not found
+ * Finds an article analysis attempt by ID
+ * @param id - ArticleAnalysisAttempt ID
+ * @returns ArticleAnalysisAttempt or null if not found
  */
-export async function findArticleAnalysisById(
+export async function findArticleAnalysisAttemptById(
   id: string
-): Promise<ArticleAnalysis | null> {
-  return prisma.articleAnalysis.findUnique({
+): Promise<ArticleAnalysisAttempt | null> {
+  return prisma.articleAnalysisAttempt.findUnique({
     where: { id },
     include: {
       article: {
@@ -47,14 +47,14 @@ export async function findArticleAnalysisById(
 }
 
 /**
- * Finds article analyses by article ID
+ * Finds article analysis attempts by article ID
  * @param articleId - Article ID
- * @returns Array of ArticleAnalyses
+ * @returns Array of ArticleAnalysisAttempts
  */
-export async function findArticleAnalysesByArticleId(
+export async function findArticleAnalysisAttemptsByArticleId(
   articleId: string
-): Promise<ArticleAnalysis[]> {
-  return prisma.articleAnalysis.findMany({
+): Promise<ArticleAnalysisAttempt[]> {
+  return prisma.articleAnalysisAttempt.findMany({
     where: { articleId },
     include: {
       question: {
@@ -68,16 +68,16 @@ export async function findArticleAnalysesByArticleId(
 }
 
 /**
- * Finds article analyses by question ID
+ * Finds article analysis attempts by question ID
  * @param questionId - Question ID
  * @param month - Optional month filter (first day of month)
- * @returns Array of ArticleAnalyses
+ * @returns Array of ArticleAnalysisAttempts
  */
-export async function findArticleAnalysesByQuestionId(
+export async function findArticleAnalysisAttemptsByQuestionId(
   questionId: string,
   month?: Date
-): Promise<ArticleAnalysis[]> {
-  return prisma.articleAnalysis.findMany({
+): Promise<ArticleAnalysisAttempt[]> {
+  return prisma.articleAnalysisAttempt.findMany({
     where: {
       questionId,
       ...(month ? { month } : {}),
@@ -94,18 +94,18 @@ export async function findArticleAnalysesByQuestionId(
 }
 
 /**
- * Finds article analysis by article, question, and month (unique triad)
+ * Finds article analysis attempt by article, question, and month (unique triad)
  * @param articleId - Article ID
  * @param questionId - Question ID
  * @param month - Month period (first day of month)
- * @returns ArticleAnalysis or null if not found
+ * @returns ArticleAnalysisAttempt or null if not found
  */
-export async function findArticleAnalysisByTriad(
+export async function findArticleAnalysisAttemptByTriad(
   articleId: string,
   questionId: string,
   month: Date
-): Promise<ArticleAnalysis | null> {
-  return prisma.articleAnalysis.findUnique({
+): Promise<ArticleAnalysisAttempt | null> {
+  return prisma.articleAnalysisAttempt.findUnique({
     where: {
       articleId_questionId_month: {
         articleId,
@@ -129,14 +129,14 @@ export async function findArticleAnalysisByTriad(
 }
 
 /**
- * Creates a new article analysis
- * @param input - ArticleAnalysis input data
- * @returns Created ArticleAnalysis
+ * Creates a new article analysis attempt
+ * @param input - ArticleAnalysisAttempt input data
+ * @returns Created ArticleAnalysisAttempt
  */
-export async function createArticleAnalysis(
-  input: CreateArticleAnalysisInput
-): Promise<ArticleAnalysis> {
-  return prisma.articleAnalysis.create({
+export async function createArticleAnalysisAttempt(
+  input: CreateArticleAnalysisAttemptInput
+): Promise<ArticleAnalysisAttempt> {
+  return prisma.articleAnalysisAttempt.create({
     data: {
       articleId: input.articleId,
       questionId: input.questionId,
@@ -161,14 +161,14 @@ export async function createArticleAnalysis(
 }
 
 /**
- * Creates or updates an article analysis (upsert by triad)
- * @param input - ArticleAnalysis input data
- * @returns Created or updated ArticleAnalysis
+ * Creates or updates an article analysis attempt (upsert by triad)
+ * @param input - ArticleAnalysisAttempt input data
+ * @returns Created or updated ArticleAnalysisAttempt
  */
-export async function createOrUpdateArticleAnalysis(
-  input: CreateArticleAnalysisInput
-): Promise<ArticleAnalysis> {
-  return prisma.articleAnalysis.upsert({
+export async function createOrUpdateArticleAnalysisAttempt(
+  input: CreateArticleAnalysisAttemptInput
+): Promise<ArticleAnalysisAttempt> {
+  return prisma.articleAnalysisAttempt.upsert({
     where: {
       articleId_questionId_month: {
         articleId: input.articleId,
@@ -206,16 +206,16 @@ export async function createOrUpdateArticleAnalysis(
 }
 
 /**
- * Updates an existing article analysis
- * @param id - ArticleAnalysis ID
+ * Updates an existing article analysis attempt
+ * @param id - ArticleAnalysisAttempt ID
  * @param input - Update data
- * @returns Updated ArticleAnalysis
+ * @returns Updated ArticleAnalysisAttempt
  */
-export async function updateArticleAnalysis(
+export async function updateArticleAnalysisAttempt(
   id: string,
   input: UpdateArticleAnalysisInput
-): Promise<ArticleAnalysis> {
-  return prisma.articleAnalysis.update({
+): Promise<ArticleAnalysisAttempt> {
+  return prisma.articleAnalysisAttempt.update({
     where: { id },
     data: {
       ...input,
@@ -237,27 +237,27 @@ export async function updateArticleAnalysis(
 }
 
 /**
- * Deletes an article analysis
- * @param id - ArticleAnalysis ID
- * @returns Deleted ArticleAnalysis
+ * Deletes an article analysis attempt
+ * @param id - ArticleAnalysisAttempt ID
+ * @returns Deleted ArticleAnalysisAttempt
  */
-export async function deleteArticleAnalysis(id: string): Promise<ArticleAnalysis> {
-  return prisma.articleAnalysis.delete({
+export async function deleteArticleAnalysisAttempt(id: string): Promise<ArticleAnalysisAttempt> {
+  return prisma.articleAnalysisAttempt.delete({
     where: { id },
   });
 }
 
 /**
- * Counts article analyses for a question in a specific month
+ * Counts article analysis attempts for a question in a specific month
  * @param questionId - Question ID
  * @param month - Month period (first day of month)
  * @returns Count
  */
-export async function countArticleAnalysesByQuestionAndMonth(
+export async function countArticleAnalysisAttemptsByQuestionAndMonth(
   questionId: string,
   month: Date
 ): Promise<number> {
-  return prisma.articleAnalysis.count({
+  return prisma.articleAnalysisAttempt.count({
     where: {
       questionId,
       month,

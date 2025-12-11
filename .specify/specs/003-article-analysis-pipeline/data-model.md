@@ -159,7 +159,7 @@ enum Stance {
   NoItDoesntSeemSo
 }
 
-model ArticleAnalysis {
+model ArticleAnalysisAttempt {
   id          String   @id @default(uuid())
   articleId   String
   questionId  String
@@ -174,14 +174,35 @@ model ArticleAnalysis {
   // Relations
   article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleStances ArticleStance[] // Link to ArticleStance if successfully classified
 
-  @@unique([articleId, questionId, month]) // One analysis per article-question-month triad
+  @@unique([articleId, questionId, month]) // One analysis attempt per article-question-month triad
   @@index([questionId])
   @@index([articleId])
   @@index([month])
   @@index([questionId, month]) // Composite index for monthly verdict calculation
   @@index([stance])
   @@map("article_analyses")
+}
+
+model ArticleStance {
+  id                    String   @id @default(uuid())
+  articleId             String
+  questionId            String
+  articleAnalysisAttemptId String   @unique // Link to ArticleAnalysisAttempt (required - only successful classifications)
+  matchedAt             DateTime @default(now())
+  
+  // Relations
+  article               Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question              Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleAnalysisAttempt ArticleAnalysisAttempt @relation(fields: [articleAnalysisAttemptId], references: [id], onDelete: Cascade)
+  
+  @@unique([articleId, questionId]) // One stance per article-question pair
+  @@index([articleId])
+  @@index([questionId])
+  @@index([matchedAt])
+  @@index([questionId, matchedAt]) // For querying "which articles have stances on this question"
+  @@map("article_stances")
 }
 ```
 
@@ -203,9 +224,11 @@ model ArticleAnalysis {
 - Index on `stance` (for filtering by stance)
 
 **Note**: 
-- Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
+- Ideology is NOT stored in ArticleAnalysisAttempt. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
 - The `month` field always uses the first day of the month (e.g., 2025-01-01 for January 2025) to ensure consistent grouping and querying.
 - Stances are calculated using data from the last month as the current month, enabling historical tracking and trend analysis.
+- `ArticleAnalysisAttempt` stores **all** classification attempts (including rejections). Only successful classifications are linked to `ArticleStance`.
+- `ArticleStance` is a clean index for quickly querying article stances tied to questions, ideal for UI reporting and linking.
 
 ### Verdict
 
