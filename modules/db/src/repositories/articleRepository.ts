@@ -182,6 +182,31 @@ export async function countArticles(outletId?: string): Promise<number> {
 }
 
 /**
+ * Finds all articles with optional limit
+ * @param limit - Maximum number of articles to return
+ * @param offset - Number of articles to skip
+ * @returns Array of Articles
+ */
+export async function findAllArticles(
+  limit: number = 1000,
+  offset: number = 0
+): Promise<Article[]> {
+  return prisma.article.findMany({
+    orderBy: { extractedAt: 'desc' },
+    take: limit,
+    skip: offset,
+    include: {
+      outlet: true,
+      topicArticles: {
+        include: {
+          topic: true,
+        },
+      },
+    },
+  });
+}
+
+/**
  * Finds articles by topic ID
  * @param topicId - Topic ID
  * @param limit - Maximum number of articles to return

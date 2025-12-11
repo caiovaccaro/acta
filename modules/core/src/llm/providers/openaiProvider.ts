@@ -170,7 +170,9 @@ Article URL: ${article.url}
 Article Content: ${article.textContent.substring(0, 5000)}...
 Analysis Period: ${monthStr}
 
-Based on the article content, classify the article's stance on the question. Consider:
+IMPORTANT: First determine if this article is actually relevant to the question. If the article does not address, discuss, or relate to the question in any meaningful way, return "Unclear" with low confidence (< 0.3) and explain why it's not relevant.
+
+If the article IS relevant, then classify the article's stance on the question. Consider:
 - What position does the article take on this question?
 - How confident is the article's position?
 - What evidence or arguments does the article present?
@@ -179,7 +181,7 @@ Return a JSON object with:
 {
   "stance": "YesItSeemsSo" | "ProbablyYes" | "Unclear" | "ProbablyNot" | "NoItDoesntSeemSo",
   "confidence": 0.0-1.0,
-  "reasoning": "Brief explanation of why this stance was chosen"
+  "reasoning": "Brief explanation of why this stance was chosen. If the article is not relevant, explain why."
 }`;
   }
 
@@ -200,7 +202,7 @@ Evaluate the question against these 7 criteria:
 3. Simplicity Without Bias: Is the question simple and free from loaded language?
 4. Anchoring in Current News: Is the question relevant to current events?
 5. Explicit Objective: Does the question have a clear, explicit objective?
-6. Clear Binary Nature: Can the question be answered with a clear yes/no or similar binary response?
+6. Clear Binary Nature: Can the question be answered with one of these stances: "Yes, it seems so", "Probably yes", "Unclear", "Probably not", or "No, it doesn't seem so"? The question MUST be answerable with these specific stance options.
 7. Answerable with Evidence: Can the question be answered using evidence from articles?
 
 Return a JSON object with:
@@ -231,10 +233,18 @@ Topic: ${topic}
 Original Question: ${originalQuestion}
 Failed Checks: ${failedChecks.join(', ')}
 
-Generate 2-3 reformulated versions of the question that address the failed checks. Each reformulation should:
+IMPORTANT: The question MUST be answerable with one of these specific stances:
+- "Yes, it seems so"
+- "Probably yes"
+- "Unclear"
+- "Probably not"
+- "No, it doesn't seem so"
+
+Generate 2 reformulated versions of the question that address the failed checks. Each reformulation should:
 - Maintain the core intent of the original question
 - Address the specific validation failures
 - Follow the formulation framework
+- Be answerable with the stance options above
 
 Return a JSON object with:
 {

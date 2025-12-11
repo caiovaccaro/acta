@@ -12,7 +12,7 @@
         "crawler:start": "cd apps/crawler && npm start",
         "crawler:export:rss": "cd apps/crawler && npm run export:rss",
         "crawler:export:articles": "cd apps/crawler && npm run export:articles",
-        "crawler:analyze": "cd apps/crawler && npm run analyze:articles",
+        "crawler:analyze": "cd apps/crawler && npm run analyze:articles --",
         "start": "npm run crawler:start",
         "export:rss": "npm run crawler:export:rss",
         "export:articles": "npm run crawler:export:articles",
@@ -22,7 +22,9 @@
         "db:migrate": "cd modules/db && npm run db:migrate",
         "db:migrate:deploy": "cd modules/db && npm run db:migrate:deploy",
         "db:push": "cd modules/db && npm run db:push",
-        "db:health": "cd modules/db && npm run db:health"
+        "db:health": "cd modules/db && npm run db:health",
+        "db:seed:topics": "cd modules/db && npm run db:seed:topics",
+        "db:seed:questions": "cd modules/db && npm run db:seed:questions"
     },
     "author": "Caio Vaccaro",
     "license": "ISC"

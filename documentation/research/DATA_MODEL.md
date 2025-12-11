@@ -12,9 +12,10 @@ This document defines the database schema for the article analysis and verdict g
 
 1. **Topic**: Broad theme/subject (e.g., "Gaza", "Drug Policy", "AI Regulation")
 2. **Question**: Specific ideological question extracted from articles about a topic (e.g., "Is what's happening in Gaza a genocide?")
-3. **Article Analysis**: Per-article stance on a specific question
-4. **Verdict**: Consensus stance on a question, calculated from all article analyses
-5. **Evidence Bullet**: Supporting evidence for a verdict
+3. **Article Analysis Attempt**: Per-article stance classification attempt on a specific question (includes all attempts, even rejections)
+4. **Article Stance**: Successfully classified article stances on questions (only successful classifications)
+5. **Verdict**: Consensus stance on a question, calculated from all article stances
+6. **Evidence Bullet**: Supporting evidence for a verdict
 
 ## Data Flow
 
@@ -24,9 +25,10 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 
 1. Articles are assigned to Topics (many-to-many possible, but typically one-to-many)
 2. Questions are extracted from articles about a Topic (one-to-many: Topic → Questions)
-3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysis)
-4. Verdict is calculated from all ArticleAnalyses for a Question (one-to-one: Question → Verdict)
-5. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
+3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysisAttempt)
+4. Successful classifications are tracked in ArticleStance (one-to-one: ArticleAnalysisAttempt → ArticleStance)
+5. Verdict is calculated from all ArticleStances for a Question (one-to-one: Question → Verdict)
+6. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
 
 ## Database Schema
 
@@ -79,7 +81,8 @@ model Question {
 
   // Relations
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  articleAnalyses     ArticleAnalysis[]
+  articleAnalysisAttempts ArticleAnalysisAttempt[]
+  articleStances      ArticleStance[]
   verdict             Verdict?
   evidenceBullets     EvidenceBullet[]
 
@@ -113,23 +116,24 @@ model TopicArticle {
 }
 ```
 
-### ArticleAnalysis
+### ArticleAnalysisAttempt
 
-Per-article stance on a specific question.
+Per-article stance classification attempt on a specific question. This table stores **all** classification attempts, including rejections and unclear classifications, providing a complete audit trail.
 
 ```prisma
 enum Stance {
-  Yes
-  LeaningYes
-  Neutral
-  LeaningNo
-  No
+  YesItSeemsSo
+  ProbablyYes
+  Unclear
+  ProbablyNot
+  NoItDoesntSeemSo
 }
 
-model ArticleAnalysis {
+model ArticleAnalysisAttempt {
   id          String   @id @default(uuid())
   articleId   String
   questionId  String
+  month       DateTime // Month period (YYYY-MM-01 format, always first day of month)
   stance      Stance
   confidence  Float    // 0-1, LLM confidence in classification
   reasoning   String?  @db.Text // LLM reasoning for stance
@@ -140,20 +144,53 @@ model ArticleAnalysis {
   // Relations
   article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleStances ArticleStance[] // Link to ArticleStance if successfully classified
 
-  @@unique([articleId, questionId]) // One analysis per article-question pair
+  @@unique([articleId, questionId, month]) // One analysis attempt per article-question-month triad
   @@index([questionId])
   @@index([articleId])
+  @@index([month])
+  @@index([questionId, month]) // Composite index for monthly verdict calculation
   @@index([stance])
   @@map("article_analyses")
 }
 ```
 
-**Note**: Ideology is NOT stored in ArticleAnalysis. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
+**Note**: 
+- Ideology is NOT stored in ArticleAnalysisAttempt. Article ideology is inferred from outlet ideology (`article.outlet.ideology`) for internal consensus calculations only. Ideology is **NEVER** exposed in API responses or UI - it is backend-only for weighting purposes.
+- This table stores **all** classification attempts, including rejections (Unclear with low confidence). Only successful classifications are linked to `ArticleStance`.
+
+### ArticleStance
+
+Successfully classified article stances on questions. This table only contains stances that resulted in successful classifications (not rejected/unclear).
+
+```prisma
+model ArticleStance {
+  id                    String   @id @default(uuid())
+  articleId             String
+  questionId            String
+  articleAnalysisAttemptId String   @unique // Link to ArticleAnalysisAttempt (required)
+  matchedAt             DateTime @default(now())
+  
+  // Relations
+  article               Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question              Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  articleAnalysisAttempt ArticleAnalysisAttempt @relation(fields: [articleAnalysisAttemptId], references: [id], onDelete: Cascade)
+  
+  @@unique([articleId, questionId]) // One stance per article-question pair
+  @@index([articleId])
+  @@index([questionId])
+  @@index([matchedAt])
+  @@index([questionId, matchedAt]) // For querying "which articles have stances on this question"
+  @@map("article_stances")
+}
+```
+
+**Note**: This table is a clean index for quickly querying article stances tied to questions. It only contains successfully classified matches, making it ideal for UI reporting and linking.
 
 ### Verdict
 
-Consensus stance on a question, calculated from all article analyses.
+Consensus stance on a question, calculated from all article stances (via ArticleStance).
 
 ```prisma
 enum VerdictLabel {
@@ -226,7 +263,8 @@ model Article {
   
   // New relations
   topicArticles    TopicArticle[]
-  articleAnalyses  ArticleAnalysis[]
+  articleAnalysisAttempts ArticleAnalysisAttempt[]
+  articleStances   ArticleStance[]
   evidenceBullets  EvidenceBullet[]
 }
 ```
@@ -235,8 +273,9 @@ model Article {
 
 **Performance Critical:**
 - `questions.topicId` - Find questions for a topic
-- `article_analyses.questionId` - Find all analyses for a question (consensus calculation)
-- `article_analyses.articleId` - Find all analyses for an article
+- `article_analyses.questionId` - Find all analysis attempts for a question
+- `article_stances.questionId` - Find all successful stances for a question (consensus calculation)
+- `article_stances.articleId` - Find all stances for an article
 - `article_analyses.stance` - Filter by stance
 - `verdicts.questionId` - Get verdict for a question
 - `evidence_bullets.verdictId` - Get evidence for a verdict
@@ -250,9 +289,20 @@ const questions = await prisma.question.findMany({
 });
 ```
 
-### Get all article analyses for a question
+### Get all article stances for a question (successful classifications only)
 ```typescript
-const analyses = await prisma.articleAnalysis.findMany({
+const stances = await prisma.articleStance.findMany({
+  where: { questionId: questionId },
+  include: { 
+    article: { include: { outlet: true } },
+    articleAnalysisAttempt: true
+  }
+});
+```
+
+### Get all article analysis attempts for a question (including rejections)
+```typescript
+const attempts = await prisma.articleAnalysisAttempt.findMany({
   where: { questionId: questionId },
   include: { article: { include: { outlet: true } } }
 });
@@ -273,12 +323,13 @@ const verdict = await prisma.verdict.findUnique({
 
 ## Migration Strategy
 
-1. Create new tables (Topic, Question, ArticleAnalysis, Verdict, EvidenceBullet, TopicArticle)
+1. Create new tables (Topic, Question, ArticleAnalysisAttempt, ArticleStance, Verdict, EvidenceBullet, TopicArticle)
 2. Migrate existing data:
    - Create topics from PRD (3 initial topics)
    - Assign articles to topics (keyword-based initially)
    - Extract questions (LLM or pre-defined)
-   - Analyze articles (batch process)
-   - Calculate verdicts
+   - Analyze articles (batch process) - creates ArticleAnalysisAttempt records
+   - Successful classifications create ArticleStance records
+   - Calculate verdicts from ArticleStance records
    - Generate evidence bullets
 
