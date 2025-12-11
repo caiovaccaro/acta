@@ -10,13 +10,17 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx src/seed.ts",
+    "db:seed:topics": "tsx src/scripts/seedTopics.ts",
+    "db:seed:questions": "tsx src/scripts/seedQuestions.ts",
     "db:reset": "prisma migrate reset",
     "db:health": "tsx src/scripts/healthCheck.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0"
+    "@prisma/client": "^6.19.0",
+    "@acta/core": "workspace:*",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
