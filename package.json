@@ -24,7 +24,9 @@
         "db:push": "cd modules/db && npm run db:push",
         "db:health": "cd modules/db && npm run db:health",
         "db:seed:topics": "cd modules/db && npm run db:seed:topics",
-        "db:seed:questions": "cd modules/db && npm run db:seed:questions"
+        "db:seed:questions": "cd modules/db && npm run db:seed:questions",
+        "db:validate:bar-questions": "cd modules/db && npm run db:validate:bar-questions",
+        "db:revert:bar-reformulations": "cd modules/db && npm run db:revert:bar-reformulations"
     },
     "author": "Caio Vaccaro",
     "license": "ISC"

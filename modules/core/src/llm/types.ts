@@ -70,3 +70,18 @@ export type Stance =
   | 'ProbablyNot' 
   | 'NoItDoesntSeemSo';
 
+export interface ValidateBarQuestionParams {
+  question: string;
+  topic: string;
+}
+
+export interface BarQuestionValidation {
+  barReadinessScore: number; // 0-100 score indicating how suitable the question is for bar conversation
+  confidence: number; // 0-1 confidence in the score
+  reasoning: string; // Explanation of the score
+  issues?: string[]; // Specific issues (too technical, too specific, etc.)
+  suggestions?: string[]; // How to improve the score
+  reformulatedQuestion?: string; // Reformulated version with higher bar readiness
+  reformulationScore?: number; // Bar readiness score of the reformulation (0-100)
+}
+

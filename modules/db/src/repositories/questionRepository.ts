@@ -24,6 +24,7 @@ export interface UpdateQuestionInput {
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
   validationResults?: Record<string, unknown> | null;
+  suggestions?: string[];
   isActive?: boolean;
 }
 
@@ -117,6 +118,7 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       sourceArticlesCount: input.sourceArticlesCount ?? 0,
       validationStatus: input.validationStatus ?? 'pending',
       validationResults: input.validationResults ?? null,
+      suggestions: input.suggestions ?? [],
       isActive: input.isActive ?? false,
     },
     include: {
@@ -142,6 +144,7 @@ export async function updateQuestion(
       originalQuestionText: input.originalQuestionText ?? undefined,
       confidence: input.confidence ?? undefined,
       validationResults: input.validationResults ?? undefined,
+      suggestions: input.suggestions ?? undefined,
     },
     include: {
       topic: true,

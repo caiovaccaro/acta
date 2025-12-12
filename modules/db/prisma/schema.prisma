@@ -148,6 +148,7 @@ model Question {
   sourceArticlesCount Int                       @default(0)
   validationStatus    QuestionValidationStatus  @default(pending)
   validationResults   Json?
+  suggestions         String[]                  @default([]) // Bar validation suggestions
   isActive            Boolean                   @default(false)
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
