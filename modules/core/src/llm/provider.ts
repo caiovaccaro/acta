@@ -11,6 +11,8 @@ import type {
   BatchClassifyStancesParams,
   QuestionReformulation,
   ReformulateQuestionParams,
+  ValidateBarQuestionParams,
+  BarQuestionValidation,
 } from './types.js';
 
 // Re-export types for convenience
@@ -22,6 +24,8 @@ export type {
   BatchClassifyStancesParams,
   QuestionReformulation,
   ReformulateQuestionParams,
+  ValidateBarQuestionParams,
+  BarQuestionValidation,
   Stance,
 } from './types.js';
 
@@ -61,6 +65,16 @@ export interface LLMProvider {
   reformulateQuestion(
     params: ReformulateQuestionParams
   ): Promise<QuestionReformulation[]>;
+
+  /**
+   * Validate if a question would be asked in a bar conversation
+   * Checks if the question is simple, non-technical, and understandable by average person
+   * @param params - Bar validation parameters
+   * @returns Bar validation result
+   */
+  validateBarQuestion(
+    params: ValidateBarQuestionParams
+  ): Promise<BarQuestionValidation>;
 
   /**
    * Get provider name
