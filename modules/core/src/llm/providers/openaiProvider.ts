@@ -16,6 +16,8 @@ import type {
   ValidateBarQuestionParams,
   BarQuestionValidation,
   Stance,
+  VerdictSummaryParams,
+  VerdictSummaryResult,
 } from '../provider.js';
 import {
   LLMProviderError,
@@ -78,6 +80,52 @@ export class OpenAIProvider implements LLMProvider {
           });
 
           return this.parseBarQuestionValidationResponse(response);
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async summarizeVerdict(
+    params: VerdictSummaryParams
+  ): Promise<VerdictSummaryResult> {
+    const prompt = this.buildVerdictSummaryPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an impartial analyst who explains consensus findings from a set of news articles. Your job is to summarize why a verdict was reached, not to argue for a side.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when summarizing verdict',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            summary: parsed.summary || '',
+          };
         } catch (error) {
           throw this.handleError(error);
         }
@@ -439,6 +487,63 @@ Return a JSON object with:
         false
       );
     }
+  }
+
+  /**
+   * Build prompt for verdict summarization.
+   * Takes question, verdict metrics, and contributing article stances and asks
+   * the model to produce a short, neutral explanation of why the verdict was reached.
+   */
+  private buildVerdictSummaryPrompt(
+    params: VerdictSummaryParams
+  ): string {
+    const { question, verdict, stances } = params;
+
+    const articleCount = verdict.articleCount ?? stances.length;
+    const hasArticles = stances.length > 0;
+
+    const stanceLines = hasArticles
+      ? stances
+          .map((s, idx) => {
+            return `${idx + 1}. Outlet: ${s.outletName} (credibility: ${
+              s.outletCredibility
+            })\n` +
+              `   Article: ${s.articleTitle} (${s.articleUrl})\n` +
+              `   Stance: ${s.stance} (confidence: ${(
+                s.confidence * 100
+              ).toFixed(1)}%)\n` +
+              `   Reasoning: ${s.reasoning}`;
+          })
+          .join('\n\n')
+      : 'No articles available.';
+
+    return `You are given a question, a consensus verdict, and a set of article-level stances with their reasoning.
+
+Question: "${question.text}"
+Topic: ${question.topicName ?? 'N/A'}
+
+Verdict:
+- Label: ${verdict.label}
+- Support share (S): ${(verdict.supportShare * 100).toFixed(1)}%
+- Variance (disagreement): ${(verdict.variance * 100).toFixed(1)}%
+- Confidence: ${verdict.confidence.toFixed(1)}%
+- Article count: ${articleCount}
+
+Contributing article stances:
+
+${stanceLines}
+
+${!hasArticles ? `\n⚠️ IMPORTANT: There are NO articles available for this verdict. The verdict metrics (support share, variance, confidence) are default values due to insufficient evidence. Do NOT invent or reference articles that don't exist. Instead, explain that the verdict is "Unclear" because there is insufficient evidence (no articles have been analyzed yet).` : ''}
+
+TASK:
+- Write a short, neutral explanation (3–6 sentences) of WHY this verdict was reached.
+${hasArticles ? '- Emphasize the main patterns in the evidence: how many and which outlets support each side, how strong their arguments are, and where there is remaining uncertainty or disagreement.\n- Do NOT restate the entire articles; focus on the big picture.' : '- Explain that the verdict is unclear due to insufficient evidence (no articles analyzed).\n- Do NOT invent or reference articles that don\'t exist.'}
+- Do NOT take a personal stance; just describe what the evidence from the articles suggests (or lack thereof).
+
+Return a JSON object with:
+{
+  "summary": "short explanation of why the verdict is what it is"
+}`;
   }
 
   private parseBarQuestionValidationResponse(

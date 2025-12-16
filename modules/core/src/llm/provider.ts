@@ -14,6 +14,10 @@ import type {
   ValidateBarQuestionParams,
   BarQuestionValidation,
 } from './types.js';
+import type {
+  VerdictSummaryParams,
+  VerdictSummaryResult,
+} from './types.verdictSummary.js';
 
 // Re-export types for convenience
 export type {
@@ -28,6 +32,7 @@ export type {
   BarQuestionValidation,
   Stance,
 } from './types.js';
+export type { VerdictSummaryParams, VerdictSummaryResult } from './types.verdictSummary.js';
 
 /**
  * LLM Provider Interface
@@ -75,6 +80,12 @@ export interface LLMProvider {
   validateBarQuestion(
     params: ValidateBarQuestionParams
   ): Promise<BarQuestionValidation>;
+
+  /**
+   * Summarize a verdict given the question, verdict metrics, and contributing article stances.
+   * Returns a short, neutral explanation of why the verdict is what it is.
+   */
+  summarizeVerdict(params: VerdictSummaryParams): Promise<VerdictSummaryResult>;
 
   /**
    * Get provider name

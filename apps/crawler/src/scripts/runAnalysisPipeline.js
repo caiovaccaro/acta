@@ -38,8 +38,9 @@ import { createDefaultValidationFramework } from '@acta/core/validation';
 import {
   processArticlesForTopics,
   classifyArticleStances,
+  getCurrentMonthPeriod,
+  calculateAndStoreVerdicts,
 } from '@acta/core/analysis';
-import { getCurrentMonthPeriod } from '@acta/core/analysis';
 
 /**
  * Main execution function
@@ -219,7 +220,60 @@ async function main() {
     console.log(`      - Errors: ${errorCount}`);
     console.log('');
 
-    // Step 5: Summary
+    // Step 5: Verdict Calculation (Phase 3)
+    console.log('⚖️  Step 3: Verdict Calculation...');
+    console.log(`   📅 Month period: ${monthPeriod.toISOString().slice(0, 7)}`);
+    
+    // Get unique question IDs from the questions we processed
+    const processedQuestionIds = Array.from(
+      new Set(
+        questions
+          .filter(q => {
+            // Check if any matched article's topics include this question's topic
+            const questionTopicId = q.topicId;
+            return matchedArticles.some(article => {
+              const articleTopicIds = articleTopicMap.get(article.id) || [];
+              return articleTopicIds.includes(questionTopicId);
+            });
+          })
+          .map(q => q.id)
+      )
+    );
+
+    if (processedQuestionIds.length === 0) {
+      console.log('   ⚠️  No questions to calculate verdicts for');
+    } else {
+      console.log(`   📋 Calculating verdicts for ${processedQuestionIds.length} questions...`);
+      
+      try {
+        const verdicts = await calculateAndStoreVerdicts(processedQuestionIds, monthPeriod);
+        
+        const verdictCounts = {
+          YesItSeemsSo: 0,
+          ProbablyYes: 0,
+          Unclear: 0,
+          ProbablyNot: 0,
+          NoItDoesntSeemSo: 0,
+        };
+        
+        verdicts.forEach((verdict) => {
+          verdictCounts[verdict.verdictLabel]++;
+        });
+        
+        console.log(`   ✅ Verdicts calculated: ${verdicts.length}`);
+        console.log(`   📊 Breakdown:`);
+        console.log(`      "Yes, it seems so": ${verdictCounts.YesItSeemsSo}`);
+        console.log(`      "Probably yes": ${verdictCounts.ProbablyYes}`);
+        console.log(`      "Unclear": ${verdictCounts.Unclear}`);
+        console.log(`      "Probably not": ${verdictCounts.ProbablyNot}`);
+        console.log(`      "No, it doesn't seem so": ${verdictCounts.NoItDoesntSeemSo}`);
+      } catch (error) {
+        console.error(`   ❌ Error calculating verdicts:`, error.message);
+      }
+    }
+    console.log('');
+
+    // Step 6: Summary
     console.log('📊 Pipeline Summary:');
     console.log(`   Topics: ${topics.length}`);
     console.log(`   Active Questions: ${questions.length}`);
@@ -229,8 +283,7 @@ async function main() {
     console.log(`   Stance Classifications Stored: ${totalClassifications}`);
     console.log(`   Stance Classifications Attempted: ${totalClassificationsAttempted}`);
     console.log(`   Month Period: ${monthPeriod.toISOString().slice(0, 7)}`);
-    console.log('\n✅ Phase 2 pipeline complete!');
-    console.log('\n💡 Next steps: Implement Phase 3 (Verdict Calculation)');
+    console.log('\n✅ Phase 2 & 3 pipeline complete!');
 
   } catch (error) {
     console.error('❌ Error running analysis pipeline:', error);
