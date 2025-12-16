@@ -27,7 +27,7 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 2. Questions are extracted from articles about a Topic (one-to-many: Topic → Questions)
 3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysisAttempt)
 4. Successful classifications are tracked in ArticleStance (one-to-one: ArticleAnalysisAttempt → ArticleStance)
-5. Verdict is calculated from all ArticleStances for a Question (one-to-one: Question → Verdict)
+5. Verdict is calculated from all ArticleStances for a Question per month period (one-to-many: Question → Verdicts, one per month)
 6. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
 
 ## Database Schema
@@ -83,7 +83,7 @@ model Question {
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalysisAttempts ArticleAnalysisAttempt[]
   articleStances      ArticleStance[]
-  verdict             Verdict?
+  verdicts            Verdict[]        // One-to-many: multiple verdicts per question (one per month)
   evidenceBullets     EvidenceBullet[]
 
   @@index([topicId])
@@ -190,7 +190,7 @@ model ArticleStance {
 
 ### Verdict
 
-Consensus stance on a question, calculated from all article stances (via ArticleStance).
+Consensus stance on a question, calculated from all article stances (via ArticleStance). **Verdicts are stored per month period** to enable historical tracking and trend analysis.
 
 ```prisma
 enum VerdictLabel {
@@ -203,11 +203,13 @@ enum VerdictLabel {
 
 model Verdict {
   id           String      @id @default(uuid())
-  questionId   String      @unique // One verdict per question
+  questionId   String      // One verdict per question per month
+  month        DateTime    // Month period (YYYY-MM-01 format, always first day of month)
   verdictLabel VerdictLabel
   confidence   Float       // 0-100, overall confidence
   supportShare Float       // 0-1, aggregate support (S)
-  variance     Float       // 0-1, ideological dispersion
+  variance     Float       // 0-1, dispersion of stance scores (not ideological)
+  reasoning    String?     @db.Text // LLM-generated summary: "why this verdict"
   calculatedAt DateTime    @default(now())
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -216,11 +218,21 @@ model Verdict {
   question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   evidenceBullets EvidenceBullet[]
 
+  @@unique([questionId, month]) // One verdict per question per month
+  @@index([month]) // For efficient month-based queries
+  @@index([questionId, month]) // Composite index for common query pattern
   @@index([verdictLabel])
   @@index([confidence])
   @@map("verdicts")
 }
 ```
+
+**Key Features**:
+- **Monthly Tracking**: Each question can have multiple verdicts, one per month
+- **Historical Preservation**: All monthly verdicts are preserved for trend analysis
+- **Composite Unique Constraint**: `(questionId, month)` ensures one verdict per question per month
+- **Reasoning Field**: LLM-generated explanation of why the verdict was reached
+- **Update Behavior**: Running calculation in the same month updates existing verdict; new month creates new entry
 
 ### EvidenceBullet
 

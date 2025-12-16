@@ -58,17 +58,25 @@ Key tables:
 - Pre-defined topics/questions
 - Basic processing
 
-### Phase 2: Core Analysis
+### Phase 2: Core Analysis ✅
 - Question extraction
 - Stance classification
-- Verdict calculation
-- Evidence extraction
+- Topic/question matching
+- Article stance classification
 
-### Phase 3: Optimization
+### Phase 3: Verdict Calculation ✅
+- Weighted consensus verdict calculation
+- Monthly verdict tracking (one verdict per question per month)
+- Historical verdict preservation
+- LLM-based verdict reasoning generation
+- Verdict summarization and logging tools
+
+### Phase 4: Optimization (Future)
 - Batch processing
 - Caching
 - Error handling
 - Quality assurance
+- Evidence extraction
 
 ## Related Documents
 

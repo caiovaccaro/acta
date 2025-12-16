@@ -192,17 +192,23 @@ The system processes articles in batches using a queue system to optimize costs 
 #### FR-004: Consensus Verdict Calculation
 - **FR-004.1**: System MUST calculate verdicts per question (not per topic)
 - **FR-004.2**: System MUST aggregate all article stances for a question
-- **FR-004.3**: System MUST weight articles by outlet credibility (0-1 scale)
+- **FR-004.3**: System MUST weight articles by outlet credibility (0-1 scale) **only** (ideology NOT used in calculation)
 - **FR-004.4**: System MUST calculate support share (S) from weighted stances
-- **FR-004.5**: System MUST calculate variance (ideological dispersion) across outlets
+- **FR-004.5**: System MUST calculate variance (dispersion of stance scores, not ideological dispersion) across outlets
 - **FR-004.6**: System MUST determine verdict label using PRD rules:
   - "Yes, it seems so": S ≥ 0.67, low variance
   - "Probably yes": S 0.55-0.67 or moderate variance
-  - "Unclear": S 0.45-0.55 or high variance
+  - "Unclear": S 0.45-0.55 or high variance > 0.5
   - "Probably not": S 0.33-0.45
   - "No, it doesn't seem so": S ≤ 0.33
 - **FR-004.7**: System MUST calculate confidence: distance from 0.5 × (1 - variance)
 - **FR-004.8**: System MUST store verdict in `Verdict` table linked to `Question`
+- **FR-004.9**: System MUST calculate verdicts per month period (one verdict per question per month)
+- **FR-004.10**: System MUST preserve historical verdicts (all monthly verdicts retained for trend analysis)
+- **FR-004.11**: System MUST use composite unique constraint `(questionId, month)` to ensure one verdict per question per month
+- **FR-004.12**: System MUST generate LLM-based reasoning summaries explaining why each verdict was reached
+- **FR-004.13**: System MUST store reasoning in `verdict.reasoning` field
+- **FR-004.14**: System MUST handle zero-article verdicts without LLM hallucination (set default reasoning)
 
 #### FR-005: Evidence Extraction (Deferred to Later Phase)
 - **FR-005.1**: Evidence extraction is deferred to a later phase - not required for MVP
