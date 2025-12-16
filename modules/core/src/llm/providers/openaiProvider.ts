@@ -13,7 +13,11 @@ import type {
   BatchClassifyStancesParams,
   QuestionReformulation,
   ReformulateQuestionParams,
+  ValidateBarQuestionParams,
+  BarQuestionValidation,
   Stance,
+  VerdictSummaryParams,
+  VerdictSummaryResult,
 } from '../provider.js';
 import {
   LLMProviderError,
@@ -49,6 +53,85 @@ export class OpenAIProvider implements LLMProvider {
     this.model = config.model || 'gpt-4-turbo-preview';
     this.maxRetries = config.maxRetries || 3;
     this.timeout = config.timeout || 30000;
+  }
+
+  async validateBarQuestion(
+    params: ValidateBarQuestionParams
+  ): Promise<BarQuestionValidation> {
+    const prompt = this.buildBarQuestionValidationPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert at evaluating whether questions are simple and conversational enough to be asked in a casual bar conversation by average people.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          return this.parseBarQuestionValidationResponse(response);
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async summarizeVerdict(
+    params: VerdictSummaryParams
+  ): Promise<VerdictSummaryResult> {
+    const prompt = this.buildVerdictSummaryPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an impartial analyst who explains consensus findings from a set of news articles. Your job is to summarize why a verdict was reached, not to argue for a side.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when summarizing verdict',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            summary: parsed.summary || '',
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
   }
 
   getName(): string {
@@ -259,6 +342,80 @@ Return a JSON object with:
 }`;
   }
 
+  private buildBarQuestionValidationPrompt(
+    params: ValidateBarQuestionParams
+  ): string {
+    const { question, topic } = params;
+
+    return `Score this question on "bar readiness" (0-100) - how suitable it is to be asked in a casual bar conversation by average people.
+
+Topic: ${topic}
+Question: ${question}
+
+CRITICAL FRAMEWORK RULES (MUST BE MAINTAINED):
+1. NO FIRST-PERSON QUESTIONS - Questions must be in third person (not "Should I..." or "Do we...")
+2. Clear Binary Nature - Must be answerable with: "Yes, it seems so", "Probably yes", "Unclear", "Probably not", or "No, it doesn't seem so"
+3. Explicit Objective - Must have a clear, measurable goal
+4. Public Clarity - Must be understandable to general public
+5. Simplicity Without Bias - Must be neutral, avoiding loaded language
+6. Never directed to a person - Questions should be about topics, not addressing individuals
+
+BAR READINESS SCORING CRITERIA (0-100):
+- 90-100: Golden questions - Perfect balance of simplicity, completeness, and directness
+  Examples:
+  - "Is Israel committing war crimes in Gaza?"
+  - "Should AI be more regulated now?"
+  - "Is universal basic income an effective way to reduce inequality?"
+  - "Is police repression the most effective way to reduce drug-related violence?"
+  - "Should social media platforms moderate content to limit misinformation and hate speech?"
+
+- 70-89: Good questions - Simple, complete, direct, but could be slightly improved
+- 50-69: Acceptable questions - Understandable but could be simpler or more direct
+- 30-49: Needs improvement - Too technical, too wordy, or too complex
+- 0-29: Poor questions - Too technical, too specific, uses jargon, or violates framework rules
+
+KEY FACTORS FOR HIGH SCORES:
+- Simple in number of words (concise but complete)
+- Complete - fully expresses the question without ambiguity
+- Direct - gets to the point without unnecessary complexity
+- Not too technical - avoids jargon and specialized terminology
+- Never directed to a person - third person only
+- Maintains question structure when applicable (e.g., "Is X the most effective way to achieve Y?")
+
+REFORMULATION GUIDELINES (if score < 90):
+- Simplify technical terms: "government regulation" → "regulating", "harm reduction" → "safe use"
+- Simplify complex phrases: "abstinence-based approaches" → "banning drugs", "civilian casualties" → "peace"
+- Maintain comparison structure when present: "Is X more effective than Y?" → "Is X better than Y?"
+- Maintain "Is X the most effective way to achieve Y?" structure when applicable
+- Keep the question formal enough to be answerable with the stance options
+- Do NOT make it too casual or lose the question structure
+- Aim for the golden question style: simple words, complete, direct, not too technical
+
+Examples of GOOD reformulations (aiming for 90-100 score):
+- "Is government regulation the most effective way to ensure AI safety?" → "Should AI be more regulated now?" (Score: 85 → 95)
+- "Is harm reduction more effective than abstinence-based approaches for drug policy?" → "Is safe use of drugs better than banning them for reducing harm?" (Score: 60 → 80)
+- "Is a ceasefire the most effective way to reduce civilian casualties in Gaza?" → "Is a ceasefire the best way to bring peace to Gaza?" (Score: 70 → 85)
+
+IMPORTANT: Provide a reformulated version if the score is below 90 (aiming for golden question status). The reformulation should:
+- Aim for 90-100 bar readiness score
+- Be simple in number of words but complete
+- Be direct and not too technical
+- Never be directed to a person
+- Maintain ALL framework rules
+- Maintain the original question structure when applicable
+
+Return a JSON object with:
+{
+  "barReadinessScore": 0-100,
+  "confidence": 0.0-1.0,
+  "reasoning": "Explanation of the score and what makes it suitable or not for bar conversation",
+  "issues": ["List of specific issues if score < 90, e.g., 'too technical', 'too wordy', 'uses jargon'"],
+  "suggestions": ["Optional suggestions for improving the score"],
+  "reformulatedQuestion": "Reformulated version with higher bar readiness. REQUIRED if score < 90 (must provide a reformulation aiming for 90-100 score). If score >= 90, return the same question text. Must maintain framework rules and question structure.",
+  "reformulationScore": 0-100
+}`;
+  }
+
   private parseStanceResponse(
     response: OpenAI.Chat.Completions.ChatCompletion
   ): StanceClassification {
@@ -326,6 +483,91 @@ Return a JSON object with:
     } catch (error) {
       throw new LLMProviderError(
         'Failed to parse reformulation response',
+        error,
+        false
+      );
+    }
+  }
+
+  /**
+   * Build prompt for verdict summarization.
+   * Takes question, verdict metrics, and contributing article stances and asks
+   * the model to produce a short, neutral explanation of why the verdict was reached.
+   */
+  private buildVerdictSummaryPrompt(
+    params: VerdictSummaryParams
+  ): string {
+    const { question, verdict, stances } = params;
+
+    const articleCount = verdict.articleCount ?? stances.length;
+    const hasArticles = stances.length > 0;
+
+    const stanceLines = hasArticles
+      ? stances
+          .map((s, idx) => {
+            return `${idx + 1}. Outlet: ${s.outletName} (credibility: ${
+              s.outletCredibility
+            })\n` +
+              `   Article: ${s.articleTitle} (${s.articleUrl})\n` +
+              `   Stance: ${s.stance} (confidence: ${(
+                s.confidence * 100
+              ).toFixed(1)}%)\n` +
+              `   Reasoning: ${s.reasoning}`;
+          })
+          .join('\n\n')
+      : 'No articles available.';
+
+    return `You are given a question, a consensus verdict, and a set of article-level stances with their reasoning.
+
+Question: "${question.text}"
+Topic: ${question.topicName ?? 'N/A'}
+
+Verdict:
+- Label: ${verdict.label}
+- Support share (S): ${(verdict.supportShare * 100).toFixed(1)}%
+- Variance (disagreement): ${(verdict.variance * 100).toFixed(1)}%
+- Confidence: ${verdict.confidence.toFixed(1)}%
+- Article count: ${articleCount}
+
+Contributing article stances:
+
+${stanceLines}
+
+${!hasArticles ? `\n⚠️ IMPORTANT: There are NO articles available for this verdict. The verdict metrics (support share, variance, confidence) are default values due to insufficient evidence. Do NOT invent or reference articles that don't exist. Instead, explain that the verdict is "Unclear" because there is insufficient evidence (no articles have been analyzed yet).` : ''}
+
+TASK:
+- Write a short, neutral explanation (3–6 sentences) of WHY this verdict was reached.
+${hasArticles ? '- Emphasize the main patterns in the evidence: how many and which outlets support each side, how strong their arguments are, and where there is remaining uncertainty or disagreement.\n- Do NOT restate the entire articles; focus on the big picture.' : '- Explain that the verdict is unclear due to insufficient evidence (no articles analyzed).\n- Do NOT invent or reference articles that don\'t exist.'}
+- Do NOT take a personal stance; just describe what the evidence from the articles suggests (or lack thereof).
+
+Return a JSON object with:
+{
+  "summary": "short explanation of why the verdict is what it is"
+}`;
+  }
+
+  private parseBarQuestionValidationResponse(
+    response: OpenAI.Chat.Completions.ChatCompletion
+  ): BarQuestionValidation {
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new LLMProviderError('Empty response from OpenAI', undefined, false);
+    }
+
+    try {
+      const parsed = JSON.parse(content);
+      return {
+        barReadinessScore: Math.max(0, Math.min(100, parsed.barReadinessScore || 0)),
+        confidence: parsed.confidence || 0.5,
+        reasoning: parsed.reasoning || '',
+        issues: parsed.issues || [],
+        suggestions: parsed.suggestions || [],
+        reformulatedQuestion: parsed.reformulatedQuestion || undefined,
+        reformulationScore: parsed.reformulationScore ? Math.max(0, Math.min(100, parsed.reformulationScore)) : undefined,
+      };
+    } catch (error) {
+      throw new LLMProviderError(
+        'Failed to parse bar question validation response',
         error,
         false
       );

@@ -7,5 +7,7 @@ export * from './topicMatcher.js';
 export * from './questionMatcher.js';
 export * from './questionValidator.js';
 export * from './stanceClassifier.js';
+export * from './verdictCalculator.js';
+export * from './verdictService.js';
 export * from '../utils/monthPeriod.js';
 
