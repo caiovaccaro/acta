@@ -36,11 +36,14 @@ export interface UpdateQuestionInput {
 export async function findQuestionById(id: string): Promise<Question | null> {
   return prisma.question.findUnique({
     where: { id },
-    include: {
-      topic: true,
-      articleAnalyses: true,
-      verdict: true,
-    },
+      include: {
+        topic: true,
+        articleAnalyses: true,
+        verdicts: {
+          orderBy: { month: 'desc' },
+          take: 1, // Get latest verdict for backward compatibility
+        },
+      },
   });
 }
 
@@ -62,7 +65,10 @@ export async function findQuestionsByTopicId(
     orderBy: { createdAt: 'desc' },
     include: {
       topic: true,
-      verdict: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
+      },
     },
   });
 }
@@ -80,7 +86,10 @@ export async function findActiveQuestions(topicId?: string): Promise<Question[]>
     },
     include: {
       topic: true,
-      verdict: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
+      },
     },
     orderBy: { createdAt: 'desc' },
   });

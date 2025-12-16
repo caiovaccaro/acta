@@ -8,10 +8,12 @@ import type { Verdict, VerdictLabel } from '@prisma/client';
 
 export interface CreateVerdictInput {
   questionId: string;
+  month: Date; // Month period (normalized to first day of month)
   verdictLabel: VerdictLabel;
   confidence: number; // 0-100
   supportShare: number; // 0-1
   variance: number; // 0-1
+  reasoning?: string | null; // Optional summary text
 }
 
 export interface UpdateVerdictInput {
@@ -19,6 +21,7 @@ export interface UpdateVerdictInput {
   confidence?: number;
   supportShare?: number;
   variance?: number;
+  reasoning?: string | null;
 }
 
 /**
@@ -41,15 +44,22 @@ export async function findVerdictById(id: string): Promise<Verdict | null> {
 }
 
 /**
- * Finds a verdict by question ID
+ * Finds a verdict by question ID and month
  * @param questionId - Question ID
+ * @param month - Month period (normalized to first day of month)
  * @returns Verdict or null if not found
  */
-export async function findVerdictByQuestionId(
-  questionId: string
+export async function findVerdictByQuestionAndMonth(
+  questionId: string,
+  month: Date
 ): Promise<Verdict | null> {
   return prisma.verdict.findUnique({
-    where: { questionId },
+    where: {
+      questionId_month: {
+        questionId,
+        month,
+      },
+    },
     include: {
       question: {
         include: {
@@ -59,6 +69,62 @@ export async function findVerdictByQuestionId(
       evidenceBullets: true,
     },
   });
+}
+
+/**
+ * Finds all verdicts for a question (historical verdicts across all months)
+ * @param questionId - Question ID
+ * @returns Array of Verdicts ordered by month (most recent first)
+ */
+export async function findVerdictsByQuestion(
+  questionId: string
+): Promise<Verdict[]> {
+  return prisma.verdict.findMany({
+    where: { questionId },
+    include: {
+      question: {
+        include: {
+          topic: true,
+        },
+      },
+      evidenceBullets: true,
+    },
+    orderBy: { month: 'desc' },
+  });
+}
+
+/**
+ * Finds the latest verdict for a question (most recent month)
+ * @param questionId - Question ID
+ * @returns Verdict or null if not found
+ */
+export async function findLatestVerdictByQuestion(
+  questionId: string
+): Promise<Verdict | null> {
+  return prisma.verdict.findFirst({
+    where: { questionId },
+    include: {
+      question: {
+        include: {
+          topic: true,
+        },
+      },
+      evidenceBullets: true,
+    },
+    orderBy: { month: 'desc' },
+  });
+}
+
+/**
+ * Finds a verdict by question ID (backward compatibility - returns latest)
+ * @param questionId - Question ID
+ * @returns Latest Verdict or null if not found
+ * @deprecated Use findLatestVerdictByQuestion or findVerdictByQuestionAndMonth instead
+ */
+export async function findVerdictByQuestionId(
+  questionId: string
+): Promise<Verdict | null> {
+  return findLatestVerdictByQuestion(questionId);
 }
 
 /**
@@ -88,10 +154,12 @@ export async function createVerdict(input: CreateVerdictInput): Promise<Verdict>
   return prisma.verdict.create({
     data: {
       questionId: input.questionId,
+      month: input.month,
       verdictLabel: input.verdictLabel,
       confidence: input.confidence,
       supportShare: input.supportShare,
       variance: input.variance,
+      reasoning: input.reasoning ?? null,
     },
     include: {
       question: {
@@ -104,29 +172,53 @@ export async function createVerdict(input: CreateVerdictInput): Promise<Verdict>
 }
 
 /**
- * Creates or updates a verdict (upsert by questionId)
- * @param input - Verdict input data
+ * Creates or updates a verdict (upsert by questionId and month)
+ * If a verdict exists for the same question and month, it updates it.
+ * If it's a new month, it creates a new verdict entry.
+ * @param input - Verdict input data (must include month)
  * @returns Created or updated Verdict
  */
 export async function createOrUpdateVerdict(
   input: CreateVerdictInput
 ): Promise<Verdict> {
-  return prisma.verdict.upsert({
-    where: { questionId: input.questionId },
-    create: {
-      questionId: input.questionId,
-      verdictLabel: input.verdictLabel,
-      confidence: input.confidence,
-      supportShare: input.supportShare,
-      variance: input.variance,
-    },
-    update: {
-      verdictLabel: input.verdictLabel,
-      confidence: input.confidence,
-      supportShare: input.supportShare,
-      variance: input.variance,
-      calculatedAt: new Date(),
-    },
+  // Use raw SQL to handle upsert with the composite unique constraint
+  // Use the constraint name explicitly to avoid ambiguity
+  const result = await prisma.$queryRaw<Array<{
+    id: string;
+    questionId: string;
+    month: Date;
+    verdictLabel: string;
+    confidence: number;
+    supportShare: number;
+    variance: number;
+    reasoning: string | null;
+    calculatedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+  }>>`
+    INSERT INTO "verdicts" ("id", "questionId", "month", "verdictLabel", "confidence", "supportShare", "variance", "reasoning", "calculatedAt", "createdAt", "updatedAt")
+    VALUES (gen_random_uuid(), ${input.questionId}::text, ${input.month}::timestamp, ${input.verdictLabel}::"VerdictLabel", ${input.confidence}::float, ${input.supportShare}::float, ${input.variance}::float, ${input.reasoning ?? null}::text, NOW(), NOW(), NOW())
+    ON CONFLICT ON CONSTRAINT "verdicts_questionId_month_key"
+    DO UPDATE SET
+      "verdictLabel" = EXCLUDED."verdictLabel"::"VerdictLabel",
+      "confidence" = EXCLUDED."confidence",
+      "supportShare" = EXCLUDED."supportShare",
+      "variance" = EXCLUDED."variance",
+      "reasoning" = EXCLUDED."reasoning",
+      "calculatedAt" = NOW(),
+      "updatedAt" = NOW()
+    RETURNING *
+  `;
+
+  if (!result || result.length === 0) {
+    throw new Error('Failed to create or update verdict');
+  }
+
+  const verdictData = result[0];
+
+  // Fetch the full verdict with relations
+  return prisma.verdict.findUniqueOrThrow({
+    where: { id: verdictData.id },
     include: {
       question: {
         include: {
