@@ -24,6 +24,7 @@ export interface UpdateQuestionInput {
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
   validationResults?: Record<string, unknown> | null;
+  suggestions?: string[];
   isActive?: boolean;
 }
 
@@ -35,11 +36,14 @@ export interface UpdateQuestionInput {
 export async function findQuestionById(id: string): Promise<Question | null> {
   return prisma.question.findUnique({
     where: { id },
-    include: {
-      topic: true,
-      articleAnalyses: true,
-      verdict: true,
-    },
+      include: {
+        topic: true,
+        articleAnalyses: true,
+        verdicts: {
+          orderBy: { month: 'desc' },
+          take: 1, // Get latest verdict for backward compatibility
+        },
+      },
   });
 }
 
@@ -61,7 +65,10 @@ export async function findQuestionsByTopicId(
     orderBy: { createdAt: 'desc' },
     include: {
       topic: true,
-      verdict: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
+      },
     },
   });
 }
@@ -79,7 +86,10 @@ export async function findActiveQuestions(topicId?: string): Promise<Question[]>
     },
     include: {
       topic: true,
-      verdict: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -117,6 +127,7 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       sourceArticlesCount: input.sourceArticlesCount ?? 0,
       validationStatus: input.validationStatus ?? 'pending',
       validationResults: input.validationResults ?? null,
+      suggestions: input.suggestions ?? [],
       isActive: input.isActive ?? false,
     },
     include: {
@@ -142,6 +153,7 @@ export async function updateQuestion(
       originalQuestionText: input.originalQuestionText ?? undefined,
       confidence: input.confidence ?? undefined,
       validationResults: input.validationResults ?? undefined,
+      suggestions: input.suggestions ?? undefined,
     },
     include: {
       topic: true,

@@ -180,6 +180,65 @@ export async function deleteArticleStanceByArticleAndQuestion(
 }
 
 /**
+ * Finds article stances by question ID and month period
+ * @param questionId - Question ID
+ * @param month - Month period (first day of month)
+ * @returns Array of ArticleStances with article and outlet information
+ */
+export async function findArticleStancesByQuestionAndMonth(
+  questionId: string,
+  month: Date
+): Promise<Array<ArticleStance & {
+  article: {
+    outlet: {
+      id: string;
+      credibilityScore: number;
+      ideology: string;
+    };
+  };
+  articleAnalysisAttempt: {
+    stance: string;
+    confidence: number;
+  };
+}>> {
+  // Ensure month is normalized to first day of month
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1, 0, 0, 0, 0);
+  const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 1, 0, 0, 0, 0);
+
+  return prisma.articleStance.findMany({
+    where: {
+      questionId,
+      articleAnalysisAttempt: {
+        month: {
+          gte: monthStart,
+          lt: monthEnd,
+        },
+      },
+    },
+    include: {
+      article: {
+        include: {
+          outlet: {
+            select: {
+              id: true,
+              credibilityScore: true,
+              ideology: true,
+            },
+          },
+        },
+      },
+      articleAnalysisAttempt: {
+        select: {
+          stance: true,
+          confidence: true,
+        },
+      },
+    },
+    orderBy: { matchedAt: 'desc' },
+  });
+}
+
+/**
  * Counts articles with stances on a question (only successfully classified)
  * @param questionId - Question ID
  * @returns Count

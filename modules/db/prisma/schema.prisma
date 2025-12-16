@@ -148,6 +148,7 @@ model Question {
   sourceArticlesCount Int                       @default(0)
   validationStatus    QuestionValidationStatus  @default(pending)
   validationResults   Json?
+  suggestions         String[]                  @default([]) // Bar validation suggestions
   isActive            Boolean                   @default(false)
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
@@ -156,7 +157,7 @@ model Question {
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalysisAttempts ArticleAnalysisAttempt[]
   articleStances ArticleStance[]
-  verdict             Verdict?
+  verdicts            Verdict[]        // Multiple verdicts (one per month)
 
   @@index([topicId])
   @@index([isActive])
@@ -229,11 +230,13 @@ model ArticleStance {
 
 model Verdict {
   id           String      @id @default(uuid())
-  questionId   String      @unique
+  questionId   String
+  month        DateTime    // Month period (YYYY-MM-01 format, always first day of month)
   verdictLabel VerdictLabel
   confidence   Float       // 0-100, overall confidence
   supportShare Float       // 0-1, aggregate support (S)
   variance     Float       // 0-1, ideological dispersion
+  reasoning    String?     @db.Text // LLM-generated summary of why the verdict is what it is
   calculatedAt DateTime    @default(now())
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -242,8 +245,11 @@ model Verdict {
   question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   evidenceBullets EvidenceBullet[]
 
+  @@unique([questionId, month]) // One verdict per question per month
   @@index([verdictLabel])
   @@index([confidence])
+  @@index([month]) // For efficient month-based queries
+  @@index([questionId, month]) // Composite index for common query pattern
   @@map("verdicts")
 }
 

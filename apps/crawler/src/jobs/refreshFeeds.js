@@ -13,8 +13,10 @@ import { config } from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from .env file
-config({ path: resolve(__dirname, '../../.env') });
+// Load environment variables from the project root .env file
+// __dirname: apps/crawler/src/jobs
+// Root .env:  /<repo>/.env  -> ../../../../.env from here
+config({ path: resolve(__dirname, '../../../../.env') });
 
 // Parse command line arguments for outlet filtering
 // Usage: npm run crawler:start -- "BBC"
