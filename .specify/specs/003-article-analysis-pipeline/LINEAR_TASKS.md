@@ -314,13 +314,13 @@ Use this format to create tasks in Linear. Each task includes:
 - Determine verdict label
 - Calculate confidence
 - Use outlet credibility for weighting
-- Use outlet ideology for normalization (backend-only)
+- **Note**: Ideology NOT used in calculation (backend-only metadata)
 - Filter by month period
 - Write unit tests
 - Write integration tests
 
 **Priority**: High  
-**Status**: Todo  
+**Status**: ✅ Completed  
 **Dependencies**: Tasks 2.6, 1.2  
 **Effort**: 8-10 hours  
 **Labels**: `analysis`, `verdict`, `consensus`
@@ -334,14 +334,33 @@ Use this format to create tasks in Linear. Each task includes:
 - Update `modules/core/src/analysis/verdictCalculator.ts`
 - Calculate verdicts per month
 - Preserve historical verdicts
-- Use efficient queries with composite index
+- Use efficient queries with composite index `(questionId, month)`
+- Composite unique constraint `@@unique([questionId, month])`
 - Write unit tests
 
 **Priority**: High  
-**Status**: Todo  
+**Status**: ✅ Completed  
 **Dependencies**: Tasks 3.1, 2.7  
 **Effort**: 3-4 hours  
 **Labels**: `analysis`, `verdict`, `monthly-tracking`
+
+---
+
+### Task 3.3: Implement Verdict Reasoning (LLM Summarization)
+**Title**: Implement verdict reasoning generation  
+**Description**:
+- Generate LLM-based reasoning summaries for verdicts
+- Add `summarizeVerdict` method to LLM provider
+- Store reasoning in `verdict.reasoning` field
+- Handle zero-article verdicts (no hallucination)
+- Create script to generate reasoning for all verdicts
+- Create comprehensive logging script with statistics
+
+**Priority**: High  
+**Status**: ✅ Completed  
+**Dependencies**: Tasks 3.1, 3.2  
+**Effort**: 4-5 hours  
+**Labels**: `analysis`, `verdict`, `llm`, `reasoning`
 
 ---
 

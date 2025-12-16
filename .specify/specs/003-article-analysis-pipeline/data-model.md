@@ -13,9 +13,10 @@ This document defines the database schema for the article analysis and verdict g
 
 1. **Topic**: Broad theme/subject (e.g., "Gaza", "Drug Policy", "AI Regulation")
 2. **Question**: Specific ideological question extracted from articles about a topic (e.g., "Is what's happening in Gaza a genocide?")
-3. **ArticleAnalysis**: Per-article stance on a specific question
-4. **Verdict**: Consensus stance on a question, calculated from all article analyses
-5. **EvidenceBullet**: Supporting evidence for a verdict
+3. **ArticleAnalysisAttempt**: Per-article stance classification attempt on a specific question (includes all attempts, even rejections)
+4. **ArticleStance**: Successfully classified article stances on questions (only successful classifications)
+5. **Verdict**: Consensus stance on a question, calculated from all article stances, stored per month period
+6. **EvidenceBullet**: Supporting evidence for a verdict
 
 ## Data Flow
 
@@ -25,9 +26,10 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 
 1. Articles are assigned to Topics (many-to-many via TopicArticle)
 2. Questions are linked to Topics (one-to-many: Topic → Questions)
-3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysis)
-4. Verdict is calculated from all ArticleAnalyses for a Question (one-to-one: Question → Verdict)
-5. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
+3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysisAttempt)
+4. Successful classifications are tracked in ArticleStance (one-to-one: ArticleAnalysisAttempt → ArticleStance)
+5. Verdict is calculated from all ArticleStances for a Question per month period (one-to-many: Question → Verdicts, one per month)
+6. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
 
 ## Database Schema
 
@@ -89,8 +91,9 @@ model Question {
 
   // Relations
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  articleAnalyses     ArticleAnalysis[]
-  verdict             Verdict?
+  articleAnalysisAttempts ArticleAnalysisAttempt[]
+  articleStances      ArticleStance[]
+  verdicts            Verdict[]        // One-to-many: multiple verdicts per question (one per month)
   evidenceBullets     EvidenceBullet[]
 
   @@index([topicId])
@@ -232,7 +235,7 @@ model ArticleStance {
 
 ### Verdict
 
-Consensus stance on a question, calculated from all article analyses.
+Consensus stance on a question, calculated from all article stances (via ArticleStance). **Verdicts are stored per month period** to enable historical tracking and trend analysis.
 
 ```prisma
 enum VerdictLabel {
@@ -245,11 +248,13 @@ enum VerdictLabel {
 
 model Verdict {
   id           String      @id @default(uuid())
-  questionId   String      @unique // One verdict per question
+  questionId   String      // One verdict per question per month
+  month        DateTime    // Month period (YYYY-MM-01 format, always first day of month)
   verdictLabel VerdictLabel
   confidence   Float       // 0-100, overall confidence
   supportShare Float       // 0-1, aggregate support (S)
-  variance     Float       // 0-1, ideological dispersion
+  variance     Float       // 0-1, dispersion of stance scores (not ideological)
+  reasoning    String?     @db.Text // LLM-generated summary: "why this verdict"
   calculatedAt DateTime    @default(now())
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -258,22 +263,35 @@ model Verdict {
   question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   evidenceBullets EvidenceBullet[]
 
+  @@unique([questionId, month]) // One verdict per question per month
+  @@index([month]) // For efficient month-based queries
+  @@index([questionId, month]) // Composite index for common query pattern
   @@index([verdictLabel])
   @@index([confidence])
   @@map("verdicts")
 }
 ```
 
+**Key Features**:
+- **Monthly Tracking**: Each question can have multiple verdicts, one per month
+- **Historical Preservation**: All monthly verdicts are preserved for trend analysis
+- **Composite Unique Constraint**: `(questionId, month)` ensures one verdict per question per month
+- **Reasoning Field**: LLM-generated explanation of why the verdict was reached
+- **Update Behavior**: Running calculation in the same month updates existing verdict; new month creates new entry
+
 **Validation Rules**:
 - `verdictLabel` must be one of: YesItSeemsSo, ProbablyYes, Unclear, ProbablyNot, NoItDoesntSeemSo
 - `confidence` must be between 0 and 100
 - `supportShare` must be between 0 and 1
 - `variance` must be between 0 and 1
-- Unique constraint on `questionId` - one verdict per question
+- `month` must be normalized to first day of month (YYYY-MM-01)
+- Composite unique constraint on `(questionId, month)` - one verdict per question per month
 
 **Indexes**:
 - Primary key on `id`
-- Unique constraint on `questionId`
+- Composite unique constraint on `(questionId, month)`
+- Index on `month` (for month-based queries)
+- Composite index on `(questionId, month)` (for common query pattern)
 - Index on `verdictLabel` (for filtering by verdict)
 - Index on `confidence` (for sorting/filtering)
 
@@ -344,7 +362,8 @@ model Article {
 - `article_analyses.month` - Filter by time period
 - `article_analyses(questionId, month)` - Composite index for monthly verdict calculation
 - `article_analyses.stance` - Filter by stance
-- `verdicts.questionId` - Get verdict for a question (unique)
+- `verdicts.questionId` - Get verdicts for a question (one-to-many)
+- `verdicts(questionId, month)` - Get specific month's verdict for a question (composite unique)
 - `evidence_bullets.verdictId` - Get evidence for a verdict (future phase)
 - `topic_articles.topicId` - Find articles by topic
 - `topic_articles.articleId` - Find topics by article
@@ -388,10 +407,50 @@ const analyses = await prisma.articleAnalysis.findMany({
 });
 ```
 
-### Get verdict with evidence for a question
+### Get latest verdict with evidence for a question
 ```typescript
-const verdict = await prisma.verdict.findUnique({
+const verdict = await prisma.verdict.findFirst({
   where: { questionId: questionId },
+  orderBy: { month: 'desc' }, // Get latest month
+  include: {
+    evidenceBullets: {
+      include: { article: true },
+      orderBy: { order: 'asc' }
+    },
+    question: {
+      include: { topic: true }
+    }
+  }
+});
+```
+
+### Get verdict for a specific month
+```typescript
+const monthPeriod = getMonthPeriod(new Date()); // Normalized to first day of month
+const verdict = await prisma.verdict.findUnique({
+  where: {
+    questionId_month: {
+      questionId: questionId,
+      month: monthPeriod
+    }
+  },
+  include: {
+    evidenceBullets: {
+      include: { article: true },
+      orderBy: { order: 'asc' }
+    },
+    question: {
+      include: { topic: true }
+    }
+  }
+});
+```
+
+### Get all historical verdicts for a question
+```typescript
+const verdicts = await prisma.verdict.findMany({
+  where: { questionId: questionId },
+  orderBy: { month: 'desc' },
   include: {
     evidenceBullets: {
       include: { article: true },
