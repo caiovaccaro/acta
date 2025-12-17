@@ -23,9 +23,10 @@ This specification defines the implementation of the article analysis pipeline t
 - **Error Handling**: Retry with exponential backoff (DLQ in future phase)
 
 ### Implementation Approach
-- **Topics**: Pre-defined topics (3 from PRD) with **proactive matching** - articles are matched to topics, only matching articles are processed
-- **Questions**: Pre-defined questions with LLM validation, **proactive matching** - only articles matching questions are analyzed
-- **Future (Automatic)**: **Reactive detection** - all topics/questions detected from articles, can be moderated/approved later
+- **Topics**: Pre-defined topics (seeded) with **proactive matching**. **Reactive detection** now implemented: auto-discovered topics from articles, stored with `source` & `moderationStatus`, must be approved before use.
+- **Questions**: Pre-defined questions with LLM validation, **proactive matching**. **Reactive detection** now implemented: auto-discovered questions from approved topics, stored with `source`, validated, and then moderated/approved.
+- **Admin UI**: Topics, Questions, Reformulations, Verdicts pages for moderation and review.
+- **Verdicts**: Monthly, one per question per month, with LLM reasoning stored.
 - **Ideology**: Backend-only (tied to outlets/sources) - Used for internal weighting calculations, **NEVER exposed in UI**
 - **Stance Classification**: LLM-based (embeddings comparison to be evaluated later)
 - **Answer Synthesis**: Argument extraction + aggregation (RAG in future phase)
@@ -192,17 +193,23 @@ The system processes articles in batches using a queue system to optimize costs 
 #### FR-004: Consensus Verdict Calculation
 - **FR-004.1**: System MUST calculate verdicts per question (not per topic)
 - **FR-004.2**: System MUST aggregate all article stances for a question
-- **FR-004.3**: System MUST weight articles by outlet credibility (0-1 scale)
+- **FR-004.3**: System MUST weight articles by outlet credibility (0-1 scale) **only** (ideology NOT used in calculation)
 - **FR-004.4**: System MUST calculate support share (S) from weighted stances
-- **FR-004.5**: System MUST calculate variance (ideological dispersion) across outlets
+- **FR-004.5**: System MUST calculate variance (dispersion of stance scores, not ideological dispersion) across outlets
 - **FR-004.6**: System MUST determine verdict label using PRD rules:
   - "Yes, it seems so": S ≥ 0.67, low variance
   - "Probably yes": S 0.55-0.67 or moderate variance
-  - "Unclear": S 0.45-0.55 or high variance
+  - "Unclear": S 0.45-0.55 or high variance > 0.5
   - "Probably not": S 0.33-0.45
   - "No, it doesn't seem so": S ≤ 0.33
 - **FR-004.7**: System MUST calculate confidence: distance from 0.5 × (1 - variance)
 - **FR-004.8**: System MUST store verdict in `Verdict` table linked to `Question`
+- **FR-004.9**: System MUST calculate verdicts per month period (one verdict per question per month)
+- **FR-004.10**: System MUST preserve historical verdicts (all monthly verdicts retained for trend analysis)
+- **FR-004.11**: System MUST use composite unique constraint `(questionId, month)` to ensure one verdict per question per month
+- **FR-004.12**: System MUST generate LLM-based reasoning summaries explaining why each verdict was reached
+- **FR-004.13**: System MUST store reasoning in `verdict.reasoning` field
+- **FR-004.14**: System MUST handle zero-article verdicts without LLM hallucination (set default reasoning)
 
 #### FR-005: Evidence Extraction (Deferred to Later Phase)
 - **FR-005.1**: Evidence extraction is deferred to a later phase - not required for MVP
@@ -440,16 +447,16 @@ Links articles to topics (many-to-many).
    - **Note**: Ideology used internally only, NEVER in API/UI
 7. **Evidence Extraction**: Deferred to later phase (not part of MVP)
 
-#### Future: Reactive Detection (Automatic)
-1. **Article Ingestion**: Articles arrive from crawler → stored in `Article` table
-2. **Reactive Topic Detection**: All topics detected from articles using clustering/LLM → stored for moderation
-3. **Topic Moderation**: Detected topics reviewed and approved/rejected
-4. **Reactive Question Detection**: All questions detected from articles about approved topics → stored for moderation
-5. **Question Validation**: Detected questions automatically validated against formulation framework → reformulated if needed
-6. **Question Moderation**: Detected and validated questions reviewed and approved/rejected by editor
-7. **Stance Classification**: For approved questions, analyze all matching articles (per month period)
-8. **Verdict Calculation**: Aggregate stances for approved questions (per month period)
-9. **Evidence Extraction**: Extract evidence bullets (deferred to later phase)
+#### Reactive Detection (Automatic) - Implemented
+1. **Article Ingestion**: Articles arrive from crawler → stored in `Article` table.
+2. **Topic Discovery**: Detect topics from articles via LLM → store with `source: auto_discovered`, `moderationStatus: pending`.
+3. **Topic Moderation**: Admin UI to approve/reject detected topics (only approved are used for matching).
+4. **Question Discovery**: Detect questions from articles for approved topics → store with `source: auto_discovered`, `validationStatus: pending`.
+5. **Question Validation**: LLM framework + bar validation; reformulation suggestions stored; questions remain pending until approved.
+6. **Question Moderation**: Admin UI to approve/reject/edit questions and apply reformulations.
+7. **Stance Classification**: For approved questions, analyze matching articles (per month period).
+8. **Verdict Calculation**: Aggregate stances per question per month; store verdicts with reasoning.
+9. **Verdict Review**: Admin UI verdicts page with article/outlet counts and per-outlet stances.
 
 ### Queue System
 - **Queue Type**: Database-backed queue (PostgreSQL)

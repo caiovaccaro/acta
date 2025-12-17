@@ -9,7 +9,7 @@
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { connectDatabase, disconnectDatabase } from '../index.js';
+import { connectDatabase, disconnectDatabase, prisma } from '../index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,9 +45,27 @@ async function seedTopics() {
     const results = [];
     
     for (const topicData of INITIAL_TOPICS) {
-      const topic = await findOrCreateTopic(topicData);
-      results.push(topic);
-      console.log(`✅ Topic: ${topic.name} (${topic.id})`);
+      const topic = await findOrCreateTopic({
+        ...topicData,
+        source: 'seeded',
+        moderationStatus: 'pending',
+        discoveredAt: new Date(),
+        discoveredFromArticles: [],
+      });
+
+      // Ensure seeded topics go through moderation (pending)
+      const updated = await prisma.topic.update({
+        where: { id: topic.id },
+        data: {
+          source: 'seeded',
+          moderationStatus: 'pending',
+          discoveredAt: topic.discoveredAt ?? new Date(),
+          discoveredFromArticles: topic.discoveredFromArticles ?? [],
+        },
+      });
+
+      results.push(updated);
+      console.log(`✅ Topic (pending moderation): ${updated.name} (${updated.id})`);
       if (topic.safetyNoteRequired) {
         console.log(`   ⚠️  Safety note required`);
       }

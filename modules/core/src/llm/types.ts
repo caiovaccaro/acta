@@ -85,3 +85,24 @@ export interface BarQuestionValidation {
   reformulationScore?: number; // Bar readiness score of the reformulation (0-100)
 }
 
+export interface DiscoveredTopic {
+  name: string;
+  description: string;
+  confidence: number; // 0-1
+  articleIds: string[];
+}
+
+export interface TopicDiscoveryResult {
+  topics: DiscoveredTopic[];
+}
+
+export interface DiscoveredQuestion {
+  questionText: string;
+  confidence: number; // 0-1
+  articleIds: string[];
+}
+
+export interface QuestionDiscoveryResult {
+  questions: DiscoveredQuestion[];
+}
+
