@@ -4,18 +4,26 @@
  */
 
 import { prisma } from '../index.js';
-import type { Topic } from '@prisma/client';
+import type { Topic, ModerationStatus, TopicSource } from '@prisma/client';
 
 export interface CreateTopicInput {
   name: string;
   description?: string | null;
   safetyNoteRequired?: boolean;
+  source?: TopicSource;
+  moderationStatus?: ModerationStatus;
+  discoveredAt?: Date | null;
+  discoveredFromArticles?: Record<string, unknown> | null;
 }
 
 export interface UpdateTopicInput {
   name?: string;
   description?: string | null;
   safetyNoteRequired?: boolean;
+  source?: TopicSource;
+  moderationStatus?: ModerationStatus;
+  discoveredAt?: Date | null;
+  discoveredFromArticles?: Record<string, unknown> | null;
 }
 
 /**
@@ -57,8 +65,15 @@ export async function findTopicByName(name: string): Promise<Topic | null> {
  * Finds all topics
  * @returns Array of Topics
  */
-export async function findAllTopics(): Promise<Topic[]> {
+export async function findAllTopics(
+  includePending: boolean = false
+): Promise<Topic[]> {
   return prisma.topic.findMany({
+    where: includePending
+      ? {}
+      : {
+          moderationStatus: 'approved',
+        },
     orderBy: { name: 'asc' },
     include: {
       questions: {
@@ -80,6 +95,10 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
       name: input.name,
       description: input.description ?? null,
       safetyNoteRequired: input.safetyNoteRequired ?? false,
+      source: input.source ?? 'seeded',
+      moderationStatus: input.moderationStatus ?? 'approved',
+      discoveredAt: input.discoveredAt ?? null,
+      discoveredFromArticles: input.discoveredFromArticles ?? null,
     },
   });
 }
@@ -99,6 +118,8 @@ export async function updateTopic(
     data: {
       ...input,
       description: input.description ?? undefined,
+      discoveredAt: input.discoveredAt ?? undefined,
+      discoveredFromArticles: input.discoveredFromArticles ?? undefined,
     },
   });
 }
@@ -129,5 +150,28 @@ export async function findOrCreateTopic(
   }
   
   return createTopic(input);
+}
+
+export async function findTopicsByModerationStatus(
+  status: ModerationStatus
+): Promise<Topic[]> {
+  return prisma.topic.findMany({
+    where: { moderationStatus: status },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function approveTopic(id: string): Promise<Topic> {
+  return prisma.topic.update({
+    where: { id },
+    data: { moderationStatus: 'approved' },
+  });
+}
+
+export async function rejectTopic(id: string): Promise<Topic> {
+  return prisma.topic.update({
+    where: { id },
+    data: { moderationStatus: 'rejected' },
+  });
 }
 

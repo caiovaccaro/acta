@@ -17,6 +17,10 @@
     "db:calculate:verdicts": "tsx src/scripts/calculateVerdicts.ts",
     "db:summarize:verdicts": "tsx src/scripts/summarizeVerdicts.ts",
     "db:log:verdict-reasoning": "tsx src/scripts/logVerdictReasoning.ts",
+    "db:discover:topics": "tsx src/scripts/discoverTopics.ts",
+    "db:discover:questions": "tsx src/scripts/discoverQuestions.ts",
+    "db:approve:topic": "tsx src/scripts/approveTopic.ts",
+    "db:reject:topic": "tsx src/scripts/rejectTopic.ts",
     "db:reset": "bash scripts/load-env-and-run.sh npx prisma migrate reset",
     "db:health": "tsx src/scripts/healthCheck.ts",
     "test": "jest",
@@ -24,7 +28,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
-    "@acta/core": "workspace:*",
+    "@acta/core": "file:../core",
     "dotenv": "^17.2.3"
   },
   "devDependencies": {

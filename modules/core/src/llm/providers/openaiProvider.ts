@@ -18,6 +18,8 @@ import type {
   Stance,
   VerdictSummaryParams,
   VerdictSummaryResult,
+  TopicDiscoveryResult,
+  QuestionDiscoveryResult,
 } from '../provider.js';
 import {
   LLMProviderError,
@@ -572,6 +574,161 @@ Return a JSON object with:
         false
       );
     }
+  }
+
+  async discoverTopicsFromArticles(
+    articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>
+  ): Promise<TopicDiscoveryResult> {
+    const prompt = this.buildTopicDiscoveryPrompt(articles);
+
+    const response = await withRetry(
+      () =>
+        this.client.chat.completions.create({
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0,
+        }),
+      this.maxRetries,
+      this.timeout
+    );
+
+    const content = response.choices[0]?.message?.content ?? '{}';
+    return this.parseTopicDiscoveryResponse(content);
+  }
+
+  async discoverQuestionsFromArticles(
+    params: {
+      topic: { id: string; name: string; description?: string | null };
+      articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>;
+    }
+  ): Promise<QuestionDiscoveryResult> {
+    const prompt = this.buildQuestionDiscoveryPrompt(params.topic, params.articles);
+
+    const response = await withRetry(
+      () =>
+        this.client.chat.completions.create({
+          model: this.model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0,
+        }),
+      this.maxRetries,
+      this.timeout
+    );
+
+    const content = response.choices[0]?.message?.content ?? '{}';
+    return this.parseQuestionDiscoveryResponse(content);
+  }
+
+  private buildTopicDiscoveryPrompt(
+    articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>
+  ): string {
+    const articleLines = articles
+      .map((a) => {
+        const snippet = this.truncateText(a.excerpt || a.textContent || '', 400);
+        return `- [${a.id}] ${a.title}\n  Snippet: ${snippet}`;
+      })
+      .join('\n');
+
+    return `You are an editor discovering topics from a set of articles.
+
+Articles:
+${articleLines}
+
+Task:
+- Identify the main topics/themes discussed across these articles.
+- Return a JSON object:
+{
+  "topics": [
+    {
+      "name": "topic name",
+      "description": "brief description",
+      "confidence": 0.0-1.0,
+      "articleIds": ["id1", "id2"]
+    }
+  ]
+}
+- Keep 3-10 topics. Prefer concise names. Confidence reflects how strong the cluster is.`;
+  }
+
+  private parseTopicDiscoveryResponse(content: string): TopicDiscoveryResult {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed.topics)) {
+        return {
+          topics: parsed.topics.map((t: any) => ({
+            name: String(t.name ?? '').trim(),
+            description: String(t.description ?? '').trim(),
+            confidence: Math.max(0, Math.min(1, Number(t.confidence ?? 0))),
+            articleIds: Array.isArray(t.articleIds)
+              ? t.articleIds.map((id: any) => String(id))
+              : [],
+          })),
+        };
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+    return { topics: [] };
+  }
+
+  private buildQuestionDiscoveryPrompt(
+    topic: { id: string; name: string; description?: string | null },
+    articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>
+  ): string {
+    const articleLines = articles
+      .map((a) => {
+        const snippet = this.truncateText(a.excerpt || a.textContent || '', 400);
+        return `- [${a.id}] ${a.title}\n  Snippet: ${snippet}`;
+      })
+      .join('\n');
+
+    return `You are extracting questions being debated for the topic "${topic.name}" (${topic.description ?? 'no description'}).
+
+Articles:
+${articleLines}
+
+Task:
+- Identify the main binary/evidence-based questions being debated in these articles about the topic.
+- Return a JSON object:
+{
+  "questions": [
+    {
+      "questionText": "Is X the best way to Y?",
+      "confidence": 0.0-1.0,
+      "articleIds": ["id1", "id2"]
+    }
+  ]
+}
+- Questions must be clear, binary (yes/no or effective/ineffective), public-facing, and evidence-based.
+- Keep up to 10 high-quality questions.`;
+  }
+
+  private parseQuestionDiscoveryResponse(content: string): QuestionDiscoveryResult {
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed.questions)) {
+        return {
+          questions: parsed.questions.map((q: any) => ({
+            questionText: String(q.questionText ?? '').trim(),
+            confidence: Math.max(0, Math.min(1, Number(q.confidence ?? 0))),
+            articleIds: Array.isArray(q.articleIds)
+              ? q.articleIds.map((id: any) => String(id))
+              : [],
+          })),
+        };
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+    return { questions: [] };
+  }
+
+  private truncateText(text: string, maxLength: number): string {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}...`;
   }
 
   private handleError(error: unknown): LLMProviderError {

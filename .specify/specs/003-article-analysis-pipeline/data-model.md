@@ -38,18 +38,34 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 The broad theme or subject matter.
 
 ```prisma
+enum TopicSource {
+  seeded
+  auto_discovered
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
 model Topic {
   id                  String   @id @default(uuid())
-  name                String   @unique // e.g., "Gaza", "Drug Policy"
+  name                String   @unique
   description         String?  @db.Text
   safetyNoteRequired  Boolean  @default(false)
+  source              TopicSource        @default(seeded)
+  moderationStatus    ModerationStatus   @default(approved)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  // Relations
   questions           Question[]
-  topicArticles      TopicArticle[]
+  topicArticles       TopicArticle[]
 
+  @@index([moderationStatus])
+  @@index([source])
   @@map("topics")
 }
 ```
@@ -78,14 +94,18 @@ enum QuestionValidationStatus {
 model Question {
   id                  String                    @id @default(uuid())
   topicId             String
-  questionText        String                    @db.Text // e.g., "Is what's happening in Gaza a genocide?"
-  originalQuestionText String?                  @db.Text // Original text before reformulation (if polished)
+  questionText        String                    @db.Text
+  originalQuestionText String?                  @db.Text
   extractedAt         DateTime                  @default(now())
-  confidence          Float?                    // LLM confidence in question extraction (0-1)
-  sourceArticlesCount Int                       @default(0) // Number of articles used to extract question
-  validationStatus    QuestionValidationStatus  @default(pending) // Framework validation status
-  validationResults   Json?                     // Results of 7 framework checks with pass/fail and notes
-  isActive            Boolean                   @default(false) // Only true if validationStatus = 'validated'
+  confidence          Float?
+  sourceArticlesCount Int                       @default(0)
+  source              TopicSource               @default(seeded)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
+  validationStatus    QuestionValidationStatus  @default(pending)
+  validationResults   Json?
+  suggestions         String[]                  @default([])
+  isActive            Boolean                   @default(false)
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
 
@@ -93,7 +113,7 @@ model Question {
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalysisAttempts ArticleAnalysisAttempt[]
   articleStances      ArticleStance[]
-  verdicts            Verdict[]        // One-to-many: multiple verdicts per question (one per month)
+  verdicts            Verdict[]
   evidenceBullets     EvidenceBullet[]
 
   @@index([topicId])
