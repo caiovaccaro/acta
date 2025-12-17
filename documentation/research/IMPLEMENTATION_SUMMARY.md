@@ -7,8 +7,8 @@
 ## Key Decisions
 
 ### 1. Theme Extraction
-- **MVP**: Pre-defined topics (3 from PRD) with keyword matching
-- **Future**: LLM-based clustering for auto-discovery
+- **MVP**: Pre-defined topics (seeded) with keyword matching
+- **Reactive**: LLM-based topic discovery (auto-discovered topics) stored with `source`/`moderationStatus`; only approved topics used for matching
 
 ### 2. Question Extraction & Validation (Critical)
 - **Process**: Analyze articles about a topic together → Extract main question → Validate against formulation framework (7 checks)
@@ -16,11 +16,12 @@
 - **Reformulation**: If validation fails, LLM generates reformulated versions
 - **Storage**: Questions live in their own table, linked to Topic, with validation status
 - **MVP**: Pre-defined questions from PRD, validated against framework, reformulated if needed
-- **Future**: Auto-extract questions from article clusters, then validate against framework
+- **Reactive**: Auto-discovered questions from articles for approved topics (`source: auto_discovered`, `validationStatus: pending`), validated, then moderated
+- **Bar validation**: Bar readiness score with suggested reformulation; admin can apply/edit reformulation
 
 ### 3. Ideology Handling
 - **Approach**: Backend-only - inferred from outlet ideology (not stored per article)
-- **Usage**: Used for internal weighting calculations in consensus (normalize by ideology buckets)
+- **Usage**: **NOT used in verdict calculation** - remains backend-only metadata for future use/debugging
 - **Exposure**: **NEVER exposed in UI or API** - backend-only for calculations
 
 ### 4. Stance Classification per Question
@@ -28,12 +29,22 @@
 - **Process**: After extracting question, analyze all articles for that question
 - **Approach**: LLM prompt-based per article-question pair
 - **Output**: Yes / Leaning Yes / Neutral / Leaning No / No + confidence
-- **Storage**: ArticleAnalysis table (article_id, question_id, stance)
+- **Storage**: 
+  - `ArticleAnalysisAttempt` table (all attempts, including rejections)
+  - `ArticleStance` table (only successful classifications, clean index for UI)
 
-### 5. Consensus Calculation per Question
-- **Process**: Aggregate all article stances for a question
-- **Method**: Weight by outlet credibility, normalize by ideology, calculate support share and variance
-- **Output**: Verdict label (Yes/Leaning Yes/Split/etc.) + confidence
+### 5. Consensus Calculation per Question (Phase 3 ✅)
+- **Process**: Aggregate all article stances for a question per month period
+- **Method**: Weight by outlet credibility **only** (ideology NOT used in calculation), calculate support share and variance
+- **Output**: Verdict label (Yes/Leaning Yes/Unclear/etc.) + confidence + reasoning
+- **Monthly Tracking**: One verdict per question per month, historical verdicts preserved
+- **Reasoning**: LLM-generated summaries explaining why each verdict was reached
+
+### 6. Admin UI
+- Topics moderation (approve/reject/edit) with source/status
+- Questions moderation with bar score and reformulation apply/edit; suggestions stored
+- Verdicts view with reasoning, article/outlet counts, per-outlet stance (deduped)
+- Tailwind-inspired styling, nav across pages
 
 ### 6. Answer Synthesis
 - **Approach**: Multi-document summarization from stance-grouped articles

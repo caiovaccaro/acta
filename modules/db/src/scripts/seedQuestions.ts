@@ -32,7 +32,6 @@ import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { createDefaultValidationFramework } from '@acta/core/validation';
 import {
   validateQuestion,
-  activateValidatedQuestion,
 } from '@acta/core/analysis';
 
 // Pre-defined questions by topic
@@ -81,8 +80,15 @@ async function validateWithReformulation(
   );
 
   if (validationResult.isValid) {
-    const activated = await activateValidatedQuestion(validationResult.question);
-    return { validated: true, question: activated, attempts: 0, shouldDelete: false };
+    const saved = await updateQuestion(bestQuestion.id, {
+      validationStatus: 'pending', // pending moderation
+      validationResults: validationResult.validationResults ?? null,
+      isActive: false,
+      source: 'seeded',
+      discoveredAt: bestQuestion.discoveredAt ?? new Date(),
+      discoveredFromArticles: (validationResult as any)?.articleIds ?? [],
+    });
+    return { validated: true, question: saved, attempts: 0, shouldDelete: false };
   }
 
   bestConfidence = validationResult.validationResults?.overallConfidence || 0;
@@ -149,10 +155,15 @@ async function validateWithReformulation(
       );
 
       if (reformValidationResult.isValid) {
-        const activated = await activateValidatedQuestion(
-          reformValidationResult.question
-        );
-        return { validated: true, question: activated, attempts: roundsCompleted, shouldDelete: false };
+        const saved = await updateQuestion(updatedQuestion.id, {
+          validationStatus: 'pending', // pending moderation
+          validationResults: reformValidationResult.validationResults ?? null,
+          isActive: false,
+          source: 'seeded',
+          discoveredAt: updatedQuestion.discoveredAt ?? new Date(),
+          discoveredFromArticles: (reformValidationResult as any)?.articleIds ?? [],
+        });
+        return { validated: true, question: saved, attempts: roundsCompleted, shouldDelete: false };
       }
 
       // Keep track of the best reformulation (highest confidence)
@@ -214,7 +225,7 @@ async function seedQuestions() {
     console.log(`✅ Validation framework initialized\n`);
     
     // Get all topics
-    const topics = await findAllTopics();
+    const topics = await findAllTopics(true); // include pending for moderation flow
     const topicMap = new Map(topics.map((t) => [t.name, t]));
     
     let totalCreated = 0;
@@ -322,6 +333,10 @@ async function seedQuestions() {
           topicId: topic.id,
           questionText,
           validationStatus: 'pending',
+          isActive: false,
+          source: 'seeded',
+          discoveredAt: new Date(),
+          discoveredFromArticles: [],
         });
         
         totalCreated++;
@@ -433,6 +448,10 @@ async function seedQuestions() {
                   topicId: topic.id,
                   questionText: fallbackText,
                   validationStatus: 'pending',
+                  isActive: false,
+                  source: 'seeded',
+                  discoveredAt: new Date(),
+                  discoveredFromArticles: [],
                 });
                 
                 const fallbackResult = await validateWithReformulation(
@@ -462,6 +481,10 @@ async function seedQuestions() {
             topicId: topic.id,
             questionText: fallbackText,
             validationStatus: 'pending',
+            isActive: false,
+            source: 'seeded',
+            discoveredAt: new Date(),
+            discoveredFromArticles: [],
           });
           
           const fallbackResult = await validateWithReformulation(

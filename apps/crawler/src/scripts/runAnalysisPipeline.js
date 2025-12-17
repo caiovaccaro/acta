@@ -67,7 +67,7 @@ async function main() {
     // Phase 2: Core Analysis Pipeline
     console.log('📊 Phase 2: Core Analysis Pipeline\n');
 
-    // Step 1: Load topics and questions
+    // Step 1: Load topics and questions (only approved)
     const topics = await findAllTopics();
     console.log(`📋 Found ${topics.length} topics`);
     
@@ -88,16 +88,17 @@ async function main() {
 
     // Step 2: Load articles (filtered by args if provided)
     let articles = [];
+    const offset = args.offset || 0;
     if (args.topicId) {
       console.log(`📰 Loading articles for topic: ${args.topicId}`);
-      articles = await findArticlesByTopic(args.topicId, args.limit || 1000);
+      articles = await findArticlesByTopic(args.topicId, args.limit || 1000, offset);
     } else if (args.questionId) {
       console.log(`📰 Loading articles for question: ${args.questionId}`);
       articles = await findArticlesByQuestion(args.questionId, args.limit || 1000);
     } else {
       const limit = args.limit || 1000;
-      console.log(`📰 Loading all articles${limit ? ` (limit: ${limit})` : ''}`);
-      articles = await findAllArticles(limit);
+      console.log(`📰 Loading all articles${limit ? ` (limit: ${limit})` : ''}${offset ? ` (offset: ${offset})` : ''}`);
+      articles = await findAllArticles(limit, offset);
     }
     
     console.log(`📰 Found ${articles.length} articles to process\n`);
@@ -301,6 +302,7 @@ function parseArgs() {
     topicId: null,
     questionId: null,
     limit: null,
+    offset: null,
   };
 
   // Parse all arguments, including those passed through npm
@@ -320,6 +322,8 @@ function parseArgs() {
       args.questionId = arg.split('=')[1];
     } else if (arg.startsWith('--limit=')) {
       args.limit = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--offset=')) {
+      args.offset = parseInt(arg.split('=')[1], 10);
     } else if (arg === '--topic-id' || arg === '--question-id' || arg === '--limit') {
       // Handle space-separated arguments (not used but for completeness)
       const index = allArgs.indexOf(arg);

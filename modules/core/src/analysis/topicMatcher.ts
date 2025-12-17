@@ -18,9 +18,30 @@ export interface TopicMatchResult {
 }
 
 export interface TopicMatcherConfig {
-  minConfidence?: number; // Minimum confidence to assign (default: 0.5 - increased for better precision)
+  minConfidence?: number; // Minimum confidence to assign (default: 0.3 for seeded)
+  minConfidenceAuto?: number; // Minimum confidence for auto-discovered topics (default: 0.25)
   caseSensitive?: boolean; // Whether keyword matching is case-sensitive (default: false)
 }
+
+const TOPIC_SYNONYMS: Record<string, string[]> = {
+  'drug policy': [
+    'drug',
+    'drugs',
+    'narcotics',
+    'decriminalization',
+    'legalization',
+    'harm reduction',
+    'overdose',
+    'opioid',
+    'opioids',
+    'fentanyl',
+    'cannabis',
+    'marijuana',
+    'controlled substances',
+    'drug reform',
+    'war on drugs',
+  ],
+};
 
 /**
  * Extracts keywords from topic name and description
@@ -30,9 +51,19 @@ export interface TopicMatcherConfig {
 function extractTopicKeywords(topic: Topic): string[] {
   const keywords: string[] = [];
   
-  // Add topic name as keyword
+  // Add topic name as whole
   if (topic.name) {
     keywords.push(topic.name.toLowerCase());
+  }
+
+  // Tokenize topic name (helps auto-discovered topics with broad names)
+  if (topic.name) {
+    const nameTokens = topic.name
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 3)
+      .filter((word) => !/^(the|and|or|but|for|with|from|that|this|are|was|were|been|have|has|had)$/i.test(word));
+    keywords.push(...nameTokens);
   }
   
   // Extract words from description
@@ -41,9 +72,15 @@ function extractTopicKeywords(topic: Topic): string[] {
       .toLowerCase()
       .split(/\s+/)
       .filter((word) => word.length > 3) // Filter out short words
-      .filter((word) => !/^(the|and|or|but|for|with|from|that|this|are|was|were|been|have|has|had)$/.test(word)); // Filter common words
+      .filter((word) => !/^(the|and|or|but|for|with|from|that|this|are|was|were|been|have|has|had)$/i.test(word)); // Filter common words
     
     keywords.push(...words);
+  }
+
+  // Add synonyms for known topics
+  const nameKey = topic.name?.toLowerCase().trim() || '';
+  if (TOPIC_SYNONYMS[nameKey]) {
+    keywords.push(...TOPIC_SYNONYMS[nameKey]);
   }
   
   return [...new Set(keywords)]; // Remove duplicates
@@ -69,34 +106,26 @@ function calculateMatchConfidence(
   const topicName = keywords[0] || '';
   const otherKeywords = keywords.slice(1);
   
-  // Check for topic name match (required for high confidence)
+  // Check for topic name match (strong signal)
   const topicNameMatch = topicName && searchText.includes(caseSensitive ? topicName : topicName.toLowerCase());
-  
-  if (!topicNameMatch && otherKeywords.length > 0) {
-    // If topic name doesn't match, require at least 2 other keywords
-    let matchedOther = 0;
-    for (const keyword of otherKeywords) {
-      const searchKeyword = caseSensitive ? keyword : keyword.toLowerCase();
-      if (searchText.includes(searchKeyword)) {
-        matchedKeywords.push(keyword);
-        matchedOther++;
-      }
+
+  // Collect keyword matches
+  let matchedOther = 0;
+  for (const keyword of otherKeywords) {
+    const searchKeyword = caseSensitive ? keyword : keyword.toLowerCase();
+    if (searchText.includes(searchKeyword)) {
+      matchedKeywords.push(keyword);
+      matchedOther++;
     }
-    
-    // Require at least 2 keyword matches if topic name doesn't match
-    if (matchedOther < 2) {
-      return { confidence: 0, matchedKeywords: [] };
-    }
-  } else if (topicNameMatch) {
+  }
+
+  // If no topic name match, allow match with >=1 other keyword (less strict)
+  if (!topicNameMatch && matchedOther < 1) {
+    return { confidence: 0, matchedKeywords: [] };
+  }
+
+  if (topicNameMatch) {
     matchedKeywords.push(topicName);
-    
-    // Check for additional keyword matches
-    for (const keyword of otherKeywords) {
-      const searchKeyword = caseSensitive ? keyword : keyword.toLowerCase();
-      if (searchText.includes(searchKeyword)) {
-        matchedKeywords.push(keyword);
-      }
-    }
   }
   
   // Calculate confidence with higher requirements
@@ -105,9 +134,9 @@ function calculateMatchConfidence(
     ? matchedKeywords.filter(k => k !== topicName).length / otherKeywords.length 
     : 0;
   
-  // Require topic name match OR at least 30% of other keywords
-  const minKeywordRatio = topicNameMatch ? 0 : 0.3;
-  if (keywordMatchRatio < minKeywordRatio) {
+  // Require topic name match OR at least 20% of other keywords
+  const minKeywordRatio = topicNameMatch ? 0 : 0.2;
+  if (!topicNameMatch && keywordMatchRatio < minKeywordRatio) {
     return { confidence: 0, matchedKeywords: [] };
   }
   
@@ -128,7 +157,7 @@ export async function matchArticleToTopic(
   topic: Topic,
   config: TopicMatcherConfig = {}
 ): Promise<TopicMatchResult | null> {
-  const { minConfidence = 0.5, caseSensitive = false } = config;
+  const { minConfidence = 0.3, minConfidenceAuto = 0.25, caseSensitive = false } = config;
   
   const keywords = extractTopicKeywords(topic);
   if (keywords.length === 0) {
@@ -143,7 +172,8 @@ export async function matchArticleToTopic(
     caseSensitive
   );
   
-  if (confidence < minConfidence) {
+  const threshold = topic.source === 'auto_discovered' ? minConfidenceAuto : minConfidence;
+  if (confidence < threshold) {
     return null;
   }
   

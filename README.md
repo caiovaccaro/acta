@@ -40,7 +40,20 @@ Data-driven consensus verdicts on complex topics.
 
 5. **Run crawler:**
    ```bash
-   pnpm start
+   npm run crawler:start
+   ```
+
+6. **Admin UI:**
+   ```bash
+   ADMIN_PORT=4303 npm run admin:start
+   # Pages: /admin/topics, /admin/questions, /admin/verdicts, /admin/suggestions
+   ```
+
+7. **Reactive discovery (optional):**
+   ```bash
+   npm run db:discover:topics
+   npm run db:discover:questions
+   # Then approve in admin UI before analysis
    ```
 
 ## Project Structure

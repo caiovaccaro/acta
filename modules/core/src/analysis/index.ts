@@ -10,4 +10,6 @@ export * from './stanceClassifier.js';
 export * from './verdictCalculator.js';
 export * from './verdictService.js';
 export * from '../utils/monthPeriod.js';
+export * from './topicDiscovery.js';
+export * from './questionDiscovery.js';
 

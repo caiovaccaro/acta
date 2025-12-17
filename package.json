@@ -29,7 +29,12 @@
         "db:revert:bar-reformulations": "cd modules/db && npm run db:revert:bar-reformulations",
         "db:calculate:verdicts": "cd modules/db && npm run db:calculate:verdicts",
         "db:summarize:verdicts": "cd modules/db && npm run db:summarize:verdicts",
-        "db:log:verdict-reasoning": "cd modules/db && npm run db:log:verdict-reasoning"
+        "db:log:verdict-reasoning": "cd modules/db && npm run db:log:verdict-reasoning",
+        "db:discover:topics": "cd modules/db && npm run db:discover:topics",
+        "db:discover:questions": "cd modules/db && npm run db:discover:questions",
+        "db:approve:topic": "cd modules/db && npm run db:approve:topic",
+        "db:reject:topic": "cd modules/db && npm run db:reject:topic",
+        "admin:start": "npm run --workspace @acta/admin start"
     },
     "author": "Caio Vaccaro",
     "license": "ISC"
