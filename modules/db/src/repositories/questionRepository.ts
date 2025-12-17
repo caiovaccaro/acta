@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '../index.js';
-import type { Question, QuestionValidationStatus } from '@prisma/client';
+import type { Question, QuestionValidationStatus, TopicSource } from '@prisma/client';
 
 export interface CreateQuestionInput {
   topicId: string;
@@ -14,6 +14,10 @@ export interface CreateQuestionInput {
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
   validationResults?: Record<string, unknown> | null;
+  suggestions?: string[];
+  source?: TopicSource;
+  discoveredAt?: Date | null;
+  discoveredFromArticles?: Record<string, unknown> | null;
   isActive?: boolean;
 }
 
@@ -25,6 +29,9 @@ export interface UpdateQuestionInput {
   validationStatus?: QuestionValidationStatus;
   validationResults?: Record<string, unknown> | null;
   suggestions?: string[];
+  source?: TopicSource;
+  discoveredAt?: Date | null;
+  discoveredFromArticles?: Record<string, unknown> | null;
   isActive?: boolean;
 }
 
@@ -128,6 +135,9 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       validationStatus: input.validationStatus ?? 'pending',
       validationResults: input.validationResults ?? null,
       suggestions: input.suggestions ?? [],
+      source: input.source ?? 'seeded',
+      discoveredAt: input.discoveredAt ?? null,
+      discoveredFromArticles: input.discoveredFromArticles ?? null,
       isActive: input.isActive ?? false,
     },
     include: {
@@ -154,6 +164,9 @@ export async function updateQuestion(
       confidence: input.confidence ?? undefined,
       validationResults: input.validationResults ?? undefined,
       suggestions: input.suggestions ?? undefined,
+      source: input.source ?? undefined,
+      discoveredAt: input.discoveredAt ?? undefined,
+      discoveredFromArticles: input.discoveredFromArticles ?? undefined,
     },
     include: {
       topic: true,

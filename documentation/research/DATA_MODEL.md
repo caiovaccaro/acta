@@ -5,8 +5,9 @@
 This document defines the database schema for the article analysis and verdict generation system.
 
 **Important**: 
-- **Question Validation**: All questions must be validated against the formulation framework (see `documentation/formulating_questions.md`) before activation. The `validationStatus` field tracks this process.
-- **Ideology**: Ideology exists in the backend (tied to outlets) and is used for internal weighting calculations, but is **NEVER exposed in the UI or API responses**. Article ideology is inferred from outlet ideology when needed for consensus calculations.
+- **Question Validation**: All questions must be validated against the formulation framework (see `documentation/formulating_questions.md`) before activation. The `validationStatus` field tracks this process; bar validation results and reformulation suggestions are stored and moderated.
+- **Reactive Discovery**: Topics and questions can be auto-discovered from articles (`source: auto_discovered`). Topics carry `moderationStatus`; questions carry `validationStatus`. Only approved topics and validated/approved questions are used in analysis.
+- **Ideology**: Ideology exists in the backend (tied to outlets) and is **not used** in verdict calculation and **never exposed** in UI/API.
 
 ## Key Concepts
 
@@ -14,8 +15,8 @@ This document defines the database schema for the article analysis and verdict g
 2. **Question**: Specific ideological question extracted from articles about a topic (e.g., "Is what's happening in Gaza a genocide?")
 3. **Article Analysis Attempt**: Per-article stance classification attempt on a specific question (includes all attempts, even rejections)
 4. **Article Stance**: Successfully classified article stances on questions (only successful classifications)
-5. **Verdict**: Consensus stance on a question, calculated from all article stances
-6. **Evidence Bullet**: Supporting evidence for a verdict
+5. **Verdict**: Consensus stance on a question, calculated from all article stances (per month, one per question per month) with stored reasoning
+6. **Evidence Bullet**: Supporting evidence for a verdict (future)
 
 ## Data Flow
 
@@ -27,8 +28,8 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 2. Questions are extracted from articles about a Topic (one-to-many: Topic → Questions)
 3. Each Article is analyzed for each Question (many-to-many: Articles ↔ Questions via ArticleAnalysisAttempt)
 4. Successful classifications are tracked in ArticleStance (one-to-one: ArticleAnalysisAttempt → ArticleStance)
-5. Verdict is calculated from all ArticleStances for a Question per month period (one-to-many: Question → Verdicts, one per month)
-6. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets)
+5. Verdict is calculated from all ArticleStances for a Question per month period (one-to-many: Question → Verdicts, one per month, with reasoning)
+6. Evidence Bullets are generated from articles and linked to Verdict (one-to-many: Verdict → EvidenceBullets) — future
 
 ## Database Schema
 
@@ -37,18 +38,34 @@ Articles → Topics → Questions → Article Analyses → Verdict → Evidence 
 The broad theme or subject matter.
 
 ```prisma
+enum TopicSource {
+  seeded
+  auto_discovered
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
 model Topic {
   id                  String   @id @default(uuid())
-  name                String   @unique // e.g., "Gaza", "Drug Policy"
+  name                String   @unique
   description         String?  @db.Text
   safetyNoteRequired  Boolean  @default(false)
+  source              TopicSource        @default(seeded)
+  moderationStatus    ModerationStatus   @default(approved)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  // Relations
   questions           Question[]
-  topicArticles      TopicArticle[] // Many-to-many with Articles
+  topicArticles       TopicArticle[]
 
+  @@index([moderationStatus])
+  @@index([source])
   @@map("topics")
 }
 ```
@@ -68,14 +85,18 @@ enum QuestionValidationStatus {
 model Question {
   id                  String                    @id @default(uuid())
   topicId             String
-  questionText        String                    @db.Text // e.g., "Is what's happening in Gaza a genocide?"
-  originalQuestionText String?                  @db.Text // Original text before reformulation (if polished)
+  questionText        String                    @db.Text
+  originalQuestionText String?                  @db.Text
   extractedAt         DateTime                  @default(now())
-  confidence          Float?                    // LLM confidence in question extraction (0-1)
-  sourceArticlesCount Int                       @default(0) // Number of articles used to extract question
-  validationStatus    QuestionValidationStatus  @default(pending) // Framework validation status
-  validationResults   Json?                     // Results of 7 framework checks with pass/fail and notes
-  isActive            Boolean                   @default(false) // Only true if validationStatus = 'validated'
+  confidence          Float?
+  sourceArticlesCount Int                       @default(0)
+  source              TopicSource               @default(seeded)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
+  validationStatus    QuestionValidationStatus  @default(pending)
+  validationResults   Json?
+  suggestions         String[]                  @default([])
+  isActive            Boolean                   @default(false)
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
 
@@ -83,7 +104,7 @@ model Question {
   topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalysisAttempts ArticleAnalysisAttempt[]
   articleStances      ArticleStance[]
-  verdicts            Verdict[]        // One-to-many: multiple verdicts per question (one per month)
+  verdicts            Verdict[]
   evidenceBullets     EvidenceBullet[]
 
   @@index([topicId])

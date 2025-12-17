@@ -3,8 +3,8 @@
  * Handles Outlet model operations
  */
 
-import { prisma, Ideology } from '../index.js';
-import type { Outlet } from '@prisma/client';
+import { prisma } from '../index.js';
+import type { Outlet, Ideology } from '@prisma/client';
 
 /**
  * Finds an outlet by name (case-insensitive)

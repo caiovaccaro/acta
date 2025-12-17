@@ -13,6 +13,8 @@ import type {
   ReformulateQuestionParams,
   ValidateBarQuestionParams,
   BarQuestionValidation,
+  TopicDiscoveryResult,
+  QuestionDiscoveryResult,
 } from './types.js';
 import type {
   VerdictSummaryParams,
@@ -31,6 +33,8 @@ export type {
   ValidateBarQuestionParams,
   BarQuestionValidation,
   Stance,
+  TopicDiscoveryResult,
+  QuestionDiscoveryResult,
 } from './types.js';
 export type { VerdictSummaryParams, VerdictSummaryResult } from './types.verdictSummary.js';
 
@@ -86,6 +90,23 @@ export interface LLMProvider {
    * Returns a short, neutral explanation of why the verdict is what it is.
    */
   summarizeVerdict(params: VerdictSummaryParams): Promise<VerdictSummaryResult>;
+
+  /**
+   * Discover topics from a set of articles (reactive discovery).
+   */
+  discoverTopicsFromArticles(
+    articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>
+  ): Promise<TopicDiscoveryResult>;
+
+  /**
+   * Discover questions from a set of articles for a given topic (reactive discovery).
+   */
+  discoverQuestionsFromArticles(
+    params: {
+      topic: { id: string; name: string; description?: string | null };
+      articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>;
+    }
+  ): Promise<QuestionDiscoveryResult>;
 
   /**
    * Get provider name

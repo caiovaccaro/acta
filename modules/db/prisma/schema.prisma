@@ -115,6 +115,17 @@ enum VerdictLabel {
   NoItDoesntSeemSo
 }
 
+enum TopicSource {
+  seeded
+  auto_discovered
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
 enum EvidenceType {
   Why
   Dissent
@@ -128,6 +139,10 @@ model Topic {
   name                String   @unique
   description         String?  @db.Text
   safetyNoteRequired  Boolean  @default(false)
+  source              TopicSource        @default(seeded)
+  moderationStatus    ModerationStatus   @default(approved)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -135,6 +150,8 @@ model Topic {
   questions           Question[]
   topicArticles       TopicArticle[]
 
+  @@index([moderationStatus])
+  @@index([source])
   @@map("topics")
 }
 
@@ -146,6 +163,9 @@ model Question {
   extractedAt         DateTime                  @default(now())
   confidence          Float?
   sourceArticlesCount Int                       @default(0)
+  source              TopicSource               @default(seeded)
+  discoveredAt        DateTime?
+  discoveredFromArticles Json?
   validationStatus    QuestionValidationStatus  @default(pending)
   validationResults   Json?
   suggestions         String[]                  @default([]) // Bar validation suggestions
