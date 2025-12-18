@@ -70,7 +70,7 @@ export async function classifyStance(
   }
   
   // Get topic name for classification
-  const topicName = question.topic?.name || 'Unknown';
+  const topicName = (question as any).topic?.name || 'Unknown';
   
   // Classify using LLM
   const classification = await llmProvider.classifyStance({
@@ -146,7 +146,7 @@ export async function classifyStances(
   
   // Use batch processing if available
   const batchItems = items.map((item) => {
-    const topicName = item.question.topic?.name || 'Unknown';
+    const topicName = (item.question as any).topic?.name || 'Unknown';
     const monthPeriod = month || getCurrentMonthPeriod();
     
     return {

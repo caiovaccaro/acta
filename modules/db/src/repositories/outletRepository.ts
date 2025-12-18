@@ -4,7 +4,8 @@
  */
 
 import { prisma } from '../index.js';
-import type { Outlet, Ideology } from '@prisma/client';
+import type { Outlet } from '@prisma/client';
+import { Ideology } from '@prisma/client';
 
 /**
  * Finds an outlet by name (case-insensitive)

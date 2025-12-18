@@ -98,7 +98,7 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
       source: input.source ?? 'seeded',
       moderationStatus: input.moderationStatus ?? 'approved',
       discoveredAt: input.discoveredAt ?? null,
-      discoveredFromArticles: input.discoveredFromArticles ?? null,
+      discoveredFromArticles: (input.discoveredFromArticles ?? null) as any,
     },
   });
 }
@@ -119,7 +119,7 @@ export async function updateTopic(
       ...input,
       description: input.description ?? undefined,
       discoveredAt: input.discoveredAt ?? undefined,
-      discoveredFromArticles: input.discoveredFromArticles ?? undefined,
+      discoveredFromArticles: (input.discoveredFromArticles ?? undefined) as any,
     },
   });
 }

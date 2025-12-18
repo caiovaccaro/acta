@@ -16,7 +16,7 @@
  * aggregation formula.
  */
 
-import type { Stance, VerdictLabel } from '@prisma/client';
+import type { Stance, VerdictLabel, Ideology } from '@prisma/client';
 import { getMonthPeriod } from '../utils/monthPeriod.js';
 
 /**
