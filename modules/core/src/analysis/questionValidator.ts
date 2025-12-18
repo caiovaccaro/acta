@@ -34,7 +34,7 @@ export interface QuestionValidationResult {
  * @returns Validation result
  */
 export async function validateQuestion(
-  question: Question,
+  question: Question & { topic?: { name: string } | null },
   validationFramework: ValidationFramework,
   context?: string
 ): Promise<QuestionValidationResult> {
@@ -96,7 +96,7 @@ export async function validateQuestion(
  * @returns Validation result with reformulations if needed
  */
 export async function validateAndReformulateQuestion(
-  question: Question,
+  question: Question & { topic?: { name: string } | null },
   validationFramework: ValidationFramework,
   llmProvider: LLMProvider,
   context?: string

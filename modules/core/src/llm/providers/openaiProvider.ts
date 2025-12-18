@@ -589,8 +589,7 @@ Return a JSON object with:
           response_format: { type: 'json_object' },
           temperature: 0,
         }),
-      this.maxRetries,
-      this.timeout
+      { maxRetries: this.maxRetries }
     );
 
     const content = response.choices[0]?.message?.content ?? '{}';
@@ -613,8 +612,7 @@ Return a JSON object with:
           response_format: { type: 'json_object' },
           temperature: 0,
         }),
-      this.maxRetries,
-      this.timeout
+      { maxRetries: this.maxRetries }
     );
 
     const content = response.choices[0]?.message?.content ?? '{}';

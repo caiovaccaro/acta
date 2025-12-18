@@ -5,7 +5,8 @@
 
 import { prisma } from '../index.js';
 import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer.js';
-import type { CrawlRequest, CrawlStatus } from '@prisma/client';
+import type { CrawlRequest } from '@prisma/client';
+import { CrawlStatus } from '@prisma/client';
 
 /**
  * Maximum number of retry attempts before giving up on a crawl request
