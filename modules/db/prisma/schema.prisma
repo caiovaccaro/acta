@@ -24,17 +24,17 @@ enum CrawlStatus {
 }
 
 model Outlet {
-  id              String   @id @default(uuid())
-  name            String   @unique
-  ideology        Ideology
-  credibilityScore Float   @default(0.5) // 0-1 scale
-  rssFeeds        Json     // Array of RSS feed URLs
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  name             String   @unique
+  ideology         Ideology
+  credibilityScore Float    @default(0.5) // 0-1 scale
+  rssFeeds         Json // Array of RSS feed URLs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  crawlRequests   CrawlRequest[]
-  articles        Article[]
+  crawlRequests CrawlRequest[]
+  articles      Article[]
 
   @@index([ideology])
   @@index([credibilityScore])
@@ -42,18 +42,18 @@ model Outlet {
 }
 
 model CrawlRequest {
-  id           String       @id @default(uuid())
-  url          String       @unique
+  id           String      @id @default(uuid())
+  url          String      @unique
   outletId     String
-  status       CrawlStatus  @default(pending)
-  attempts    Int          @default(0)
-  errorMessage String?      @db.Text
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  status       CrawlStatus @default(pending)
+  attempts     Int         @default(0)
+  errorMessage String?     @db.Text
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   // Relations
-  outlet       Outlet       @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  article      Article?
+  outlet  Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  article Article?
 
   @@index([status])
   @@index([outletId])
@@ -63,25 +63,25 @@ model CrawlRequest {
 }
 
 model Article {
-  id              String    @id @default(uuid())
-  url             String    @unique
-  crawlRequestId  String?   @unique
-  outletId        String
-  title           String    @db.Text
-  textContent     String    @db.Text
-  excerpt         String?   @db.Text
-  publishedDate   DateTime?
-  extractedAt     DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  url            String    @unique
+  crawlRequestId String?   @unique
+  outletId       String
+  title          String    @db.Text
+  textContent    String    @db.Text
+  excerpt        String?   @db.Text
+  publishedDate  DateTime?
+  extractedAt    DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Relations
-  outlet          Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  crawlRequest    CrawlRequest? @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
-  topicArticles   TopicArticle[]
+  outlet                  Outlet                   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  crawlRequest            CrawlRequest?            @relation(fields: [crawlRequestId], references: [id], onDelete: SetNull)
+  topicArticles           TopicArticle[]
   articleAnalysisAttempts ArticleAnalysisAttempt[]
-  evidenceBullets EvidenceBullet[]
-  articleStances ArticleStance[]
+  evidenceBullets         EvidenceBullet[]
+  articleStances          ArticleStance[]
 
   @@index([outletId])
   @@index([publishedDate])
@@ -135,49 +135,59 @@ enum EvidenceType {
 // Removed MatchClassificationStatus - ArticleQuestionMatch only stores successfully classified matches
 
 model Topic {
-  id                  String   @id @default(uuid())
-  name                String   @unique
-  description         String?  @db.Text
-  safetyNoteRequired  Boolean  @default(false)
-  source              TopicSource        @default(seeded)
-  moderationStatus    ModerationStatus   @default(approved)
-  discoveredAt        DateTime?
+  id                     String           @id @default(uuid())
+  name                   String           @unique
+  description            String?          @db.Text
+  safetyNoteRequired     Boolean          @default(false)
+  // Optional admin override for which question is treated as the "main" one for this topic
+  mainQuestionId         String?
+  source                 TopicSource      @default(seeded)
+  moderationStatus       ModerationStatus @default(approved)
+  discoveredAt           DateTime?
   discoveredFromArticles Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 
   // Relations
-  questions           Question[]
-  topicArticles       TopicArticle[]
+  questions      Question[]
+  topicArticles  TopicArticle[]
+  mainQuestion   Question?       @relation("TopicMainQuestion", fields: [mainQuestionId], references: [id])
+  timelineEvents TimelineEvent[]
 
   @@index([moderationStatus])
   @@index([source])
+  @@index([mainQuestionId])
   @@map("topics")
 }
 
 model Question {
-  id                  String                    @id @default(uuid())
-  topicId             String
-  questionText        String                    @db.Text
-  originalQuestionText String?                   @db.Text
-  extractedAt         DateTime                  @default(now())
-  confidence          Float?
-  sourceArticlesCount Int                       @default(0)
-  source              TopicSource               @default(seeded)
-  discoveredAt        DateTime?
+  id                     String                   @id @default(uuid())
+  topicId                String
+  questionText           String                   @db.Text
+  originalQuestionText   String?                  @db.Text
+  // Optional 2–3 sentence LLM-generated context blurb about this question
+  contextBlurb           String?                  @db.Text
+  extractedAt            DateTime                 @default(now())
+  confidence             Float?
+  sourceArticlesCount    Int                      @default(0)
+  source                 TopicSource              @default(seeded)
+  discoveredAt           DateTime?
   discoveredFromArticles Json?
-  validationStatus    QuestionValidationStatus  @default(pending)
-  validationResults   Json?
-  suggestions         String[]                  @default([]) // Bar validation suggestions
-  isActive            Boolean                   @default(false)
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
+  validationStatus       QuestionValidationStatus @default(pending)
+  validationResults      Json?
+  suggestions            String[]                 @default([]) // Bar validation suggestions
+  isActive               Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
 
   // Relations
-  topic               Topic            @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic                   Topic                    @relation(fields: [topicId], references: [id], onDelete: Cascade)
   articleAnalysisAttempts ArticleAnalysisAttempt[]
-  articleStances ArticleStance[]
-  verdicts            Verdict[]        // Multiple verdicts (one per month)
+  articleStances          ArticleStance[]
+  verdicts                Verdict[] // Multiple verdicts (one per month)
+  // Back-reference for optional main question relation
+  mainForTopics           Topic[]                  @relation("TopicMainQuestion")
+  timelineEvents          TimelineEvent[]
 
   @@index([topicId])
   @@index([isActive])
@@ -186,15 +196,15 @@ model Question {
 }
 
 model TopicArticle {
-  id        String   @id @default(uuid())
-  topicId   String
-  articleId String
+  id         String   @id @default(uuid())
+  topicId    String
+  articleId  String
   assignedAt DateTime @default(now())
   confidence Float?
 
   // Relations
-  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  topic   Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@unique([topicId, articleId])
   @@index([topicId])
@@ -203,20 +213,20 @@ model TopicArticle {
 }
 
 model ArticleAnalysisAttempt {
-  id          String   @id @default(uuid())
-  articleId   String
-  questionId  String
-  month       DateTime // Month period (YYYY-MM-01 format, always first day of month)
-  stance      Stance
-  confidence  Float    // 0-1, LLM confidence in classification
-  reasoning   String?  @db.Text // LLM reasoning for stance
-  analyzedAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  articleId  String
+  questionId String
+  month      DateTime // Month period (YYYY-MM-01 format, always first day of month)
+  stance     Stance
+  confidence Float // 0-1, LLM confidence in classification
+  reasoning  String?  @db.Text // LLM reasoning for stance
+  analyzedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  question    Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  article        Article         @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
   articleStances ArticleStance[]
 
   @@unique([articleId, questionId, month]) // One analysis attempt per article-question-month triad
@@ -229,17 +239,17 @@ model ArticleAnalysisAttempt {
 }
 
 model ArticleStance {
-  id                    String   @id @default(uuid())
-  articleId             String
-  questionId            String
+  id                       String   @id @default(uuid())
+  articleId                String
+  questionId               String
   articleAnalysisAttemptId String   @unique // Link to ArticleAnalysisAttempt (required - only successful classifications)
-  matchedAt             DateTime @default(now())
-  
+  matchedAt                DateTime @default(now())
+
   // Relations
-  article               Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  question              Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  article                Article                @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  question               Question               @relation(fields: [questionId], references: [id], onDelete: Cascade)
   articleAnalysisAttempt ArticleAnalysisAttempt @relation(fields: [articleAnalysisAttemptId], references: [id], onDelete: Cascade)
-  
+
   @@unique([articleId, questionId]) // One stance per article-question pair
   @@index([articleId])
   @@index([questionId])
@@ -249,20 +259,23 @@ model ArticleStance {
 }
 
 model Verdict {
-  id           String      @id @default(uuid())
+  id           String       @id @default(uuid())
   questionId   String
-  month        DateTime    // Month period (YYYY-MM-01 format, always first day of month)
+  month        DateTime // Month period (YYYY-MM-01 format, always first day of month)
   verdictLabel VerdictLabel
-  confidence   Float       // 0-100, overall confidence
-  supportShare Float       // 0-1, aggregate support (S)
-  variance     Float       // 0-1, ideological dispersion
-  reasoning    String?     @db.Text // LLM-generated summary of why the verdict is what it is
-  calculatedAt DateTime    @default(now())
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  confidence   Float // 0-100, overall confidence
+  supportShare Float // 0-1, aggregate support (S)
+  variance     Float // 0-1, ideological dispersion
+  reasoning    String?      @db.Text // LLM-generated summary of why the verdict is what it is
+  // LLM-generated debate card data (stored to avoid repeated generation)
+  overviewBullets Json?     // Array of overview bullet strings
+  featuredPerspective Json?  // { text, articleId, articleTitle, outletName }
+  calculatedAt DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   // Relations
-  question     Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
   evidenceBullets EvidenceBullet[]
 
   @@unique([questionId, month]) // One verdict per question per month
@@ -284,10 +297,31 @@ model EvidenceBullet {
   updatedAt DateTime     @updatedAt
 
   // Relations
-  verdict   Verdict      @relation(fields: [verdictId], references: [id], onDelete: Cascade)
-  article   Article?     @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  verdict Verdict  @relation(fields: [verdictId], references: [id], onDelete: Cascade)
+  article Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
 
   @@index([verdictId])
   @@index([type])
   @@map("evidence_bullets")
+}
+
+/// Timeline of key events for a topic/question, used for the context timeline UI.
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  topicId     String?
+  questionId  String?
+  date        DateTime
+  title       String
+  description String   @db.Text
+  order       Int // For manual ordering when dates are equal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topic    Topic?    @relation(fields: [topicId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+
+  @@index([topicId])
+  @@index([questionId])
+  @@index([date])
+  @@map("timeline_events")
 }

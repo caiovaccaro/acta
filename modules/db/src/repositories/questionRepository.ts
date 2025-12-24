@@ -10,6 +10,7 @@ export interface CreateQuestionInput {
   topicId: string;
   questionText: string;
   originalQuestionText?: string | null;
+  contextBlurb?: string | null;
   confidence?: number | null;
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
@@ -24,6 +25,7 @@ export interface CreateQuestionInput {
 export interface UpdateQuestionInput {
   questionText?: string;
   originalQuestionText?: string | null;
+  contextBlurb?: string | null;
   confidence?: number | null;
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
@@ -130,6 +132,7 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       topicId: input.topicId,
       questionText: input.questionText,
       originalQuestionText: input.originalQuestionText ?? null,
+      contextBlurb: input.contextBlurb ?? null,
       confidence: input.confidence ?? null,
       sourceArticlesCount: input.sourceArticlesCount ?? 0,
       validationStatus: input.validationStatus ?? 'pending',
@@ -161,6 +164,7 @@ export async function updateQuestion(
     data: {
       ...input,
       originalQuestionText: input.originalQuestionText ?? undefined,
+      contextBlurb: input.contextBlurb ?? undefined,
       confidence: input.confidence ?? undefined,
       validationResults: (input.validationResults ?? undefined) as any,
       suggestions: input.suggestions ?? undefined,

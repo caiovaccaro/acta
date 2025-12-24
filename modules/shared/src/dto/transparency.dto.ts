@@ -22,3 +22,4 @@ export interface MethodologyDTO {
   updateFrequency: string;
 }
 
+

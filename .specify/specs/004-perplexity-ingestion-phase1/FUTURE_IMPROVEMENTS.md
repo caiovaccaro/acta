@@ -41,3 +41,4 @@ Use an LLM to parse natural language responses into structured JSON:
 2. **Response Format Specification**: Use Perplexity's response format options if available
 3. **Hybrid Approach**: Combine multiple extraction methods (search_results + citations + LLM parsing)
 
+

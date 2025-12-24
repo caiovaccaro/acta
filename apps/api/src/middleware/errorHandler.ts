@@ -27,3 +27,4 @@ export async function errorHandler(
   reply.status(statusCode).send(errorResponse);
 }
 
+
