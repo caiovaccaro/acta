@@ -124,3 +124,4 @@ npm run type-check
 - Monthly verdicts default to current month period
 - CORS is configured to allow requests from the frontend
 
+

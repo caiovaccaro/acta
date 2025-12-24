@@ -76,3 +76,4 @@ The ingestion job returns detailed statistics:
 - Can run alongside existing RSS crawler
 - Easy to extend with new ingestion strategies
 
+

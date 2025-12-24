@@ -28,3 +28,4 @@ export interface StatusResponse {
   lastVerdictCalculation: string | null;
 }
 
+

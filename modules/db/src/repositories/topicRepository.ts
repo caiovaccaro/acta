@@ -14,6 +14,7 @@ export interface CreateTopicInput {
   moderationStatus?: ModerationStatus;
   discoveredAt?: Date | null;
   discoveredFromArticles?: Record<string, unknown> | null;
+  mainQuestionId?: string | null;
 }
 
 export interface UpdateTopicInput {
@@ -24,6 +25,7 @@ export interface UpdateTopicInput {
   moderationStatus?: ModerationStatus;
   discoveredAt?: Date | null;
   discoveredFromArticles?: Record<string, unknown> | null;
+  mainQuestionId?: string | null;
 }
 
 /**
@@ -99,6 +101,7 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
       moderationStatus: input.moderationStatus ?? 'approved',
       discoveredAt: input.discoveredAt ?? null,
       discoveredFromArticles: (input.discoveredFromArticles ?? null) as any,
+      mainQuestionId: input.mainQuestionId ?? null,
     },
   });
 }
@@ -120,6 +123,7 @@ export async function updateTopic(
       description: input.description ?? undefined,
       discoveredAt: input.discoveredAt ?? undefined,
       discoveredFromArticles: (input.discoveredFromArticles ?? undefined) as any,
+      mainQuestionId: input.mainQuestionId ?? undefined,
     },
   });
 }

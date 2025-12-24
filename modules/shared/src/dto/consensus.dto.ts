@@ -29,3 +29,4 @@ export interface OutletStanceDTO {
   weightedContribution: number; // This outlet's contribution to the verdict (weighted by credibility)
 }
 
+

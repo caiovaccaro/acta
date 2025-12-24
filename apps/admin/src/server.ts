@@ -8,6 +8,8 @@ import {
   prisma,
   ModerationStatus,
   QuestionValidationStatus,
+  findQuestionsByTopicId,
+  findArticleStancesByQuestionId,
 } from '@acta/db';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -160,12 +162,50 @@ app.get('/admin/topics/:id/edit', async (req, res) => {
       res.status(404).send('Topic not found');
       return;
     }
+
+    // Fetch all questions for this topic
+    const questions = await findQuestionsByTopicId(topic.id, false);
+    const activeQuestions = questions.filter((q) => q.isActive);
+
+    // Check which questions have articles (real questions)
+    const questionsWithArticleCounts = await Promise.all(
+      activeQuestions.map(async (q) => {
+        const stances = await findArticleStancesByQuestionId(q.id);
+        return {
+          question: q,
+          articleCount: stances.length,
+        };
+      })
+    );
+
+    // Sort by article count (descending) for display
+    const sortedQuestions = questionsWithArticleCounts.sort(
+      (a, b) => b.articleCount - a.articleCount
+    );
+
+    // Build main question dropdown options
+    const mainQuestionOptions = [
+      `<option value="">Auto (highest article count)</option>`,
+      ...sortedQuestions.map(
+        (q) =>
+          `<option value="${q.question.id}" ${(topic as any).mainQuestionId === q.question.id ? 'selected' : ''}>${q.question.questionText.substring(0, 80)}${q.question.questionText.length > 80 ? '...' : ''} (${q.articleCount} articles)</option>`
+      ),
+    ].join('');
+
     const body = `
       <h1>Edit Topic</h1>
       <form method="post" action="/admin/topics/${id}/edit">
         <p><label>Name<br/><input type="text" name="name" value="${topic.name}" required /></label></p>
         <p><label>Description<br/><textarea name="description" rows="3">${topic.description || ''}</textarea></label></p>
         <p><label><input type="checkbox" name="safetyNoteRequired" value="true" ${topic.safetyNoteRequired ? 'checked' : ''}/> Safety note required</label></p>
+        <p>
+          <label>Featured Question (Main Question)
+            <select name="mainQuestionId">
+              ${mainQuestionOptions}
+            </select>
+            <span class="small muted" style="display:block; margin-top:4px;">Choose which question appears as the featured question on the topic card. Leave as "Auto" to use the question with the highest article count.</span>
+          </label>
+        </p>
         <p>
           <label>Status
             <select name="moderationStatus">
@@ -189,7 +229,7 @@ app.get('/admin/topics/:id/edit', async (req, res) => {
 
 app.post('/admin/topics/:id/edit', async (req, res) => {
   const { id } = req.params;
-  const { name, description, safetyNoteRequired, moderationStatus } = req.body;
+  const { name, description, safetyNoteRequired, moderationStatus, mainQuestionId } = req.body;
   try {
     await connectDatabase();
     await prisma.topic.update({
@@ -199,6 +239,7 @@ app.post('/admin/topics/:id/edit', async (req, res) => {
         description: description ?? null,
         safetyNoteRequired: !!safetyNoteRequired,
         moderationStatus: (moderationStatus as ModerationStatus) || 'pending',
+        mainQuestionId: mainQuestionId && mainQuestionId.trim() !== '' ? mainQuestionId : null,
       },
     });
     res.redirect('/admin/topics');

@@ -2,6 +2,10 @@ export interface QuestionSummaryDTO {
   id: string;
   questionText: string;
   isActive: boolean;
+  /**
+   * Optional short context blurb (2–3 sentences) describing the question.
+   */
+  contextBlurb?: string | null;
   verdict?: VerdictSummaryDTO | null;
 }
 
@@ -61,4 +65,5 @@ export interface ScopeNoteDTO {
     end: string;
   };
 }
+
 

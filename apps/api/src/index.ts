@@ -1,6 +1,13 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 import { buildServer } from './server.js';
 import { connectDatabase, disconnectDatabase } from '@acta/db';
+
+// Load environment variables from root .env file
+// When running from apps/api, go up 2 levels to project root
+const projectRoot = resolve(process.cwd(), '../..');
+const envPath = resolve(projectRoot, '.env');
+config({ path: envPath });
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';

@@ -22,6 +22,13 @@ export interface UpdateVerdictInput {
   supportShare?: number;
   variance?: number;
   reasoning?: string | null;
+  overviewBullets?: string[] | null; // Array of overview bullet strings
+  featuredPerspective?: {
+    text: string;
+    articleId: string;
+    articleTitle: string;
+    outletName: string;
+  } | null;
 }
 
 /**
@@ -241,13 +248,19 @@ export async function updateVerdict(
 ): Promise<Verdict> {
   return prisma.verdict.update({
     where: { id },
-    data: input,
+    data: {
+      ...input,
+      reasoning: input.reasoning ?? undefined,
+      overviewBullets: input.overviewBullets ? (input.overviewBullets as any) : undefined,
+      featuredPerspective: input.featuredPerspective ? (input.featuredPerspective as any) : undefined,
+    },
     include: {
       question: {
         include: {
           topic: true,
         },
       },
+      evidenceBullets: true,
     },
   });
 }

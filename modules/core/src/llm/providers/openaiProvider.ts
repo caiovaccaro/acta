@@ -20,6 +20,16 @@ import type {
   VerdictSummaryResult,
   TopicDiscoveryResult,
   QuestionDiscoveryResult,
+  GenerateOverviewBulletsParams,
+  OverviewBulletsResult,
+  ExtractQuotesParams,
+  ExtractQuotesResult,
+  GenerateFeaturedPerspectiveParams,
+  FeaturedPerspectiveResult,
+  GenerateTimelineEventsParams,
+  GenerateTimelineEventsResult,
+  GenerateQuestionContextBlurbParams,
+  QuestionContextBlurbResult,
 } from '../provider.js';
 import {
   LLMProviderError,
@@ -723,6 +733,415 @@ Task:
     return { questions: [] };
   }
 
+  async generateOverviewBullets(
+    params: GenerateOverviewBulletsParams
+  ): Promise<OverviewBulletsResult> {
+    const prompt = this.buildOverviewBulletsPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an impartial analyst who creates comprehensive but not extensive bullet point overviews of complex questions, considering multiple perspectives from different articles.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating overview bullets',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            bullets: Array.isArray(parsed.bullets) ? parsed.bullets : [],
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async extractQuotes(params: ExtractQuotesParams): Promise<ExtractQuotesResult> {
+    const prompt = this.buildExtractQuotesPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an expert at extracting compelling direct quotes from articles that support a specific stance. Return only actual quotes from the article text, not summaries or paraphrases.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when extracting quotes',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            quotes: Array.isArray(parsed.quotes) ? parsed.quotes : [],
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async generateFeaturedPerspective(
+    params: GenerateFeaturedPerspectiveParams
+  ): Promise<FeaturedPerspectiveResult> {
+    const prompt = this.buildFeaturedPerspectivePrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are an editor selecting the most compelling quote from articles that align with the majority verdict. Choose quotes that are insightful, well-articulated, and representative of the consensus position.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.4,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating featured perspective',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            quote: parsed.quote || {
+              text: '',
+              articleId: '',
+              articleTitle: '',
+              outletName: '',
+            },
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async generateTimelineEvents(
+    params: GenerateTimelineEventsParams
+  ): Promise<GenerateTimelineEventsResult> {
+    const prompt = this.buildTimelineEventsPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a historian analyzing articles to extract key chronological events. Extract dates, titles, and descriptions of important events related to the question.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating timeline events',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            events: Array.isArray(parsed.events) ? parsed.events : [],
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  async generateQuestionContextBlurb(
+    params: GenerateQuestionContextBlurbParams
+  ): Promise<QuestionContextBlurbResult> {
+    const prompt = this.buildQuestionContextBlurbPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a journalist writing concise context blurbs. Generate 2-3 sentences that explain what a question is about, based on article content. Focus on the question context, not the topic description.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating context blurb',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            blurb: parsed.blurb || '',
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildOverviewBulletsPrompt(params: GenerateOverviewBulletsParams): string {
+    const { question, verdict, stances } = params;
+
+    const stanceLines = stances
+      .map((s, idx) => {
+        return `${idx + 1}. ${s.outletName}: ${s.stance}\n   Reasoning: ${s.reasoning}`;
+      })
+      .join('\n\n');
+
+    return `Generate a comprehensive but not extensive bullet list that gives an overview of this question, considering points from different articles that contributed to the verdict.
+
+Question: "${question.text}"
+Topic: ${question.topicName}
+
+Verdict: ${verdict.label} (confidence: ${verdict.confidence.toFixed(1)}%)
+
+Contributing article stances and reasoning:
+${stanceLines}
+
+TASK:
+- Generate bullet points that explain the key aspects of this question
+- Consider different perspectives from the articles
+- Be comprehensive but not extensive (aim for 4-8 bullets)
+- Each bullet should be clear and informative
+- Focus on the question context, not just the verdict
+
+Return a JSON object with:
+{
+  "bullets": [
+    "Bullet point 1 explaining key context",
+    "Bullet point 2 explaining another aspect",
+    ...
+  ]
+}`;
+  }
+
+  private buildExtractQuotesPrompt(params: ExtractQuotesParams): string {
+    const { article, question, stance, maxQuotes = 2 } = params;
+    const articleSnippet = article.textContent.substring(0, 8000); // Limit article length
+
+    return `Extract ${maxQuotes} compelling direct quotes from this article that support the stance "${stance}" for the question: "${question.text}".
+
+Article Title: ${article.title}
+Article URL: ${article.url}
+Article Content:
+${articleSnippet}
+
+IMPORTANT:
+- Extract ONLY actual quotes from the article text (use quotation marks if present, or reconstruct from the text)
+- Do NOT create summaries or paraphrases
+- Do NOT start quotes with "the article is" or "the article states"
+- Quotes should be direct statements from the article that support the stance
+- Each quote should be compelling and well-articulated
+
+Return a JSON object with:
+{
+  "quotes": [
+    {
+      "text": "Actual quote text from the article",
+      "confidence": 0.0-1.0
+    },
+    ...
+  ]
+}`;
+  }
+
+  private buildFeaturedPerspectivePrompt(
+    params: GenerateFeaturedPerspectiveParams
+  ): string {
+    const { question, verdict, articles } = params;
+
+    const articleLines = articles
+      .map((a, idx) => {
+        const snippet = a.textContent.substring(0, 1000);
+        return `${idx + 1}. ${a.outletName}: "${a.title}"\n   Stance: ${a.stance}\n   Reasoning: ${a.reasoning}\n   Content snippet: ${snippet}`;
+      })
+      .join('\n\n');
+
+    return `Select the most compelling quote from these articles that align with the verdict "${verdict.label}" for the question: "${question.text}".
+
+Question: "${question.text}"
+Topic: ${question.topicName}
+Verdict: ${verdict.label}
+
+Articles aligned with verdict:
+${articleLines}
+
+TASK:
+- Extract or identify the most compelling quote from one of these articles
+- The quote should be insightful, well-articulated, and representative of the consensus position
+- Prefer quotes from articles with higher confidence
+- The quote should directly address the question
+
+Return a JSON object with:
+{
+  "quote": {
+    "text": "The compelling quote text",
+    "articleId": "article-id",
+    "articleTitle": "Article title",
+    "outletName": "Outlet name"
+  }
+}`;
+  }
+
+  private buildTimelineEventsPrompt(params: GenerateTimelineEventsParams): string {
+    const { question, articles } = params;
+
+    const articleLines = articles
+      .map((a, idx) => {
+        const snippet = a.textContent.substring(0, 500);
+        const date = a.publishedDate ? new Date(a.publishedDate).toISOString().split('T')[0] : 'No date';
+        return `${idx + 1}. [${date}] ${a.outletName}: "${a.title}"\n   ${snippet}`;
+      })
+      .join('\n\n');
+
+    return `Analyze these articles and extract key chronological events related to the question: "${question.text}".
+
+Question: "${question.text}"
+Topic: ${question.topicName}
+
+Articles:
+${articleLines}
+
+TASK:
+- Extract key chronological events from the articles
+- For each event, provide: date (from article or inferred), title, and description
+- Events should be significant and relevant to the question
+- Order events chronologically
+- Aim for 3-8 events
+
+Return a JSON object with:
+{
+  "events": [
+    {
+      "date": "YYYY-MM-DD",
+      "title": "Event title",
+      "description": "Event description"
+    },
+    ...
+  ]
+}`;
+  }
+
+  private buildQuestionContextBlurbPrompt(
+    params: GenerateQuestionContextBlurbParams
+  ): string {
+    const { question, articles } = params;
+
+    const articleSnippets = articles
+      .slice(0, 5) // Limit to first 5 articles
+      .map((a, idx) => {
+        const snippet = a.textContent.substring(0, 500);
+        return `${idx + 1}. "${a.title}": ${snippet}`;
+      })
+      .join('\n\n');
+
+    return `Generate a 2-3 sentence context blurb explaining what this question is about, based on these articles.
+
+Question: "${question.text}"
+Topic: ${question.topicName}
+
+Article excerpts:
+${articleSnippets}
+
+TASK:
+- Write 2-3 sentences that explain what this question is about
+- Focus on the question context, NOT the topic description
+- Base the blurb on the article content
+- Be clear and informative
+
+Return a JSON object with:
+{
+  "blurb": "2-3 sentence context blurb explaining what the question is about"
+}`;
+  }
+
   private truncateText(text: string, maxLength: number): string {
     if (!text) return '';
     if (text.length <= maxLength) return text;
@@ -737,8 +1156,40 @@ Task:
     if (error instanceof OpenAI.APIError) {
       if (error.status === 429) {
         const retryAfter = error.headers?.['retry-after'];
+        const errorBody = (error as any).body || {};
+        const errorMessage = errorBody.error?.message || error.message;
+        
+        // Check if it's a quota exceeded error (not a rate limit)
+        const isQuotaExceeded = errorMessage.toLowerCase().includes('quota') || 
+                                errorMessage.toLowerCase().includes('billing');
+        
+        if (isQuotaExceeded) {
+          // Quota exceeded - not retryable, user needs to add credits
+          console.error('[OpenAI Quota Exceeded]', {
+            status: error.status,
+            message: errorMessage,
+            action: 'Add credits to your OpenAI account',
+            url: 'https://platform.openai.com/account/billing',
+          });
+          
+          return new LLMProviderError(
+            `OpenAI quota exceeded: ${errorMessage}. Please add credits to your account at https://platform.openai.com/account/billing`,
+            error,
+            false // Not retryable
+          );
+        }
+        
+        // Actual rate limit (too many requests per minute)
+        console.error('[OpenAI Rate Limit]', {
+          status: error.status,
+          retryAfter: retryAfter ? `${retryAfter}s` : 'not provided',
+          message: errorMessage,
+          type: errorBody.error?.type,
+          code: errorBody.error?.code,
+        });
+        
         const err = new LLMRateLimitError(
-          'OpenAI rate limit exceeded',
+          `OpenAI rate limit exceeded: ${errorMessage}`,
           error
         );
         if (retryAfter) {

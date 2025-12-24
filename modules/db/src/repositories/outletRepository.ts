@@ -4,8 +4,8 @@
  */
 
 import { prisma } from '../index.js';
-import type { Outlet } from '@prisma/client';
-import { Ideology } from '@prisma/client';
+import type { Outlet, Ideology } from '@prisma/client';
+import Prisma from '@prisma/client';
 
 /**
  * Finds an outlet by name (case-insensitive)
@@ -59,7 +59,7 @@ export async function createOutlet(
  */
 export async function findOrCreateOutlet(
   name: string,
-  ideology: Ideology = Ideology.Center,
+  ideology: Ideology = Prisma.Ideology.Center,
   credibilityScore: number = 0.5,
   rssFeeds: string[] = []
 ): Promise<Outlet> {
