@@ -42,6 +42,11 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
       });
 
       const outlets = Array.from(outletMap.values());
+      
+      // Calculate journalist count and publication count
+      const articleIds = new Set(articleStances.map((s) => s.articleId));
+      const journalistCount = articleIds.size; // Using article count as proxy
+      const publicationCount = outlets.length;
 
       return {
         id: question.id,
@@ -58,6 +63,9 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
             }
           : null,
         outlets,
+        contextBlurb: (question as any).contextBlurb ?? null,
+        journalistCount,
+        publicationCount,
       };
     })
   );

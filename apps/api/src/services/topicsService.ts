@@ -113,6 +113,11 @@ export async function getAllTopics(
         }
         firstQuestionOutlets = Array.from(outletMap.values());
 
+        // Calculate counts for first question
+        const articleIds = new Set(mainQuestionStances.map((s) => s.articleId));
+        const firstQuestionJournalistCount = articleIds.size;
+        const firstQuestionPublicationCount = firstQuestionOutlets.length;
+
         firstQuestionSummary = {
           id: mainQuestion.id,
           questionText: mainQuestion.questionText,
@@ -126,7 +131,9 @@ export async function getAllTopics(
                 month: verdict.month.toISOString(),
               }
             : null,
-        };
+          journalistCount: firstQuestionJournalistCount,
+          publicationCount: firstQuestionPublicationCount,
+        } as QuestionSummaryDTO & { journalistCount?: number; publicationCount?: number };
       }
 
       return {
@@ -232,6 +239,13 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
       }
 
       const outlets = Array.from(outletMap.values());
+      
+      // Calculate journalist count and publication count
+      // Journalist count: count unique article authors/journalists (if available)
+      // For now, we'll use article count as a proxy, or calculate from stances
+      const articleIds = new Set(articleStances.map((s) => s.articleId));
+      const journalistCount = articleIds.size; // Using article count as proxy for now
+      const publicationCount = outlets.length;
 
       return {
         id: question.id,
@@ -248,6 +262,9 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
             }
           : null,
         outlets,
+        contextBlurb: (question as any).contextBlurb ?? null,
+        journalistCount,
+        publicationCount,
       };
     })
   );

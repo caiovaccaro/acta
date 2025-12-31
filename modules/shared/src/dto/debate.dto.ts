@@ -102,6 +102,7 @@ export interface FeaturedPerspectiveDTO {
   outletName: string;
   articleId: string;
   articleTitle: string;
+  articleUrl?: string;
 }
 
 export interface TimelineEventDTO {
@@ -111,5 +112,3 @@ export interface TimelineEventDTO {
   description: string;
   verdictLabel?: string;
 }
-
-

@@ -105,3 +105,5 @@ from wsj.com. Use your search capabilities to find articles from this outlet.
 The optimization strategies are implemented correctly, but the prompt needs refinement to work with Perplexity's API behavior. The system is making progress but hitting API limitations due to prompt phrasing. Once the prompt is adjusted, we expect significantly better results.
 
 
+
+

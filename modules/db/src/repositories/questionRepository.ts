@@ -10,7 +10,6 @@ export interface CreateQuestionInput {
   topicId: string;
   questionText: string;
   originalQuestionText?: string | null;
-  contextBlurb?: string | null;
   confidence?: number | null;
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
@@ -25,7 +24,6 @@ export interface CreateQuestionInput {
 export interface UpdateQuestionInput {
   questionText?: string;
   originalQuestionText?: string | null;
-  contextBlurb?: string | null;
   confidence?: number | null;
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
@@ -45,14 +43,14 @@ export interface UpdateQuestionInput {
 export async function findQuestionById(id: string): Promise<Question | null> {
   return prisma.question.findUnique({
     where: { id },
-      include: {
-        topic: true,
-        articleAnalysisAttempts: true,
-        verdicts: {
-          orderBy: { month: 'desc' },
-          take: 1, // Get latest verdict for backward compatibility
-        },
+    include: {
+      topic: true,
+      articleAnalysisAttempts: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
       },
+    },
   });
 }
 
@@ -132,15 +130,14 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       topicId: input.topicId,
       questionText: input.questionText,
       originalQuestionText: input.originalQuestionText ?? null,
-      contextBlurb: input.contextBlurb ?? null,
       confidence: input.confidence ?? null,
       sourceArticlesCount: input.sourceArticlesCount ?? 0,
       validationStatus: input.validationStatus ?? 'pending',
-      validationResults: (input.validationResults ?? null) as any,
+      validationResults: input.validationResults ?? null,
       suggestions: input.suggestions ?? [],
       source: input.source ?? 'seeded',
       discoveredAt: input.discoveredAt ?? null,
-      discoveredFromArticles: (input.discoveredFromArticles ?? null) as any,
+      discoveredFromArticles: input.discoveredFromArticles ?? null,
       isActive: input.isActive ?? false,
     },
     include: {
@@ -164,13 +161,12 @@ export async function updateQuestion(
     data: {
       ...input,
       originalQuestionText: input.originalQuestionText ?? undefined,
-      contextBlurb: input.contextBlurb ?? undefined,
       confidence: input.confidence ?? undefined,
-      validationResults: (input.validationResults ?? undefined) as any,
+      validationResults: input.validationResults ?? undefined,
       suggestions: input.suggestions ?? undefined,
       source: input.source ?? undefined,
       discoveredAt: input.discoveredAt ?? undefined,
-      discoveredFromArticles: (input.discoveredFromArticles ?? undefined) as any,
+      discoveredFromArticles: input.discoveredFromArticles ?? undefined,
     },
     include: {
       topic: true,

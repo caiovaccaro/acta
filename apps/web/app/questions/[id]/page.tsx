@@ -98,15 +98,18 @@ export default function QuestionDetail() {
               {question.topicName}
             </Link>
             
-            <h1 className="text-3xl font-black leading-tight tracking-tight md:text-4xl text-text-main">
-              {question.questionText}
-            </h1>
-            <p className={`mt-2 text-3xl font-bold md:text-4xl ${getAccentColor(verdictLabel)}`}>
-              {getVerdictText(verdictLabel)}
-            </p>
+            {/* Question Title and Verdict */}
+            <div className="mb-6">
+              <h1 className="text-3xl font-black leading-tight tracking-tight md:text-4xl text-text-main">
+                {question.questionText}
+              </h1>
+              <p className={`mt-2 text-3xl font-bold md:text-4xl ${getAccentColor(verdictLabel)}`}>
+                {getVerdictText(verdictLabel)}
+              </p>
+            </div>
 
-            {/* Metadata & Action Row */}
-            <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            {/* Metadata and Action Button Row */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
               {/* Left: Perspective Info & Logos */}
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-text-muted">
@@ -131,17 +134,17 @@ export default function QuestionDetail() {
                   </div>
                 </div>
               </div>
-
-              {/* Right: Action Button (Desktop Only) */}
-              {/* <Link 
+              
+              {/* Right: How to Act Button */}
+              <Link 
                 href={`/questions/${questionId}/act`}
-                className="hidden md:flex flex-shrink-0 items-center justify-center rounded-lg bg-primary text-white px-6 py-3 font-bold hover:bg-primary/90 transition-colors shadow-sm w-auto text-center"
+                className="flex-shrink-0 items-center justify-center rounded-lg bg-primary text-white px-8 py-4 font-bold hover:opacity-90 transition-opacity shadow-sm text-center whitespace-nowrap"
               >
-                 How to act
-              </Link> */}
+                How to act
+              </Link>
             </div>
 
-            {/* Alignment Bar */}
+            {/* Alignment Bar and Action Button Row */}
             {alignmentPercentage !== undefined && (
               <div className="mt-8">
                 <div className="h-2 w-full rounded-full bg-gray-200">
@@ -208,7 +211,18 @@ export default function QuestionDetail() {
                         alt={quote.outletName} 
                         className="size-5 rounded-full bg-white object-cover ring-1 ring-border-light" 
                       />
-                      <span className="text-xs font-bold text-text-main">{quote.outletName}</span>
+                      {quote.articleUrl ? (
+                        <Link 
+                          href={quote.articleUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
+                        >
+                          {quote.outletName}
+                        </Link>
+                      ) : (
+                        <span className="text-xs font-bold text-text-main">{quote.outletName}</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -226,13 +240,36 @@ export default function QuestionDetail() {
                 <h3 className="text-lg font-bold text-text-main">Some points for debate</h3>
               </div>
               <div className="space-y-6">
-                {debateCard.pointsForDebate.map((point, i) => (
-                  <div key={i} className="flex flex-col gap-3">
-                    <p className="text-base text-text-muted leading-relaxed">
-                      {point.text}
-                    </p>
-                  </div>
-                ))}
+                {debateCard.pointsForDebate
+                  .filter((point) => point.text && point.text.trim().length > 0) // Only show non-empty quotes
+                  .map((point, i) => (
+                    <div key={i} className="flex flex-col gap-3">
+                      <blockquote className="text-base text-text-muted italic leading-relaxed border-l-2 border-verdict-split/30 pl-3">
+                        "{point.text}"
+                      </blockquote>
+                      {point.outletName && (
+                        <div className="flex items-center gap-2 pl-3">
+                          <img 
+                            src={getOutletLogoUrl(point.outletName)} 
+                            alt={point.outletName} 
+                            className="size-5 rounded-full bg-white object-cover ring-1 ring-border-light" 
+                          />
+                          {point.articleUrl ? (
+                            <Link 
+                              href={point.articleUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
+                            >
+                              {point.outletName}
+                            </Link>
+                          ) : (
+                            <span className="text-xs font-bold text-text-main">{point.outletName}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
               </div>
             </div>
           ) : (
@@ -258,22 +295,35 @@ export default function QuestionDetail() {
           )}
 
           {/* Featured Perspective */}
-          {debateCard?.featuredPerspective && (
+          {debateCard?.featuredPerspective && debateCard.featuredPerspective.articleUrl && (
             <div className="border-t border-border-light pt-8">
               <div className="rounded-xl border border-border-light bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-text-main mb-4">Featured Perspective</h3>
-                <blockquote className="text-base text-text-muted italic leading-relaxed mb-4">
-                  "{debateCard.featuredPerspective.text}"
-                </blockquote>
-                <div className="flex items-center gap-2">
+                <h3 className="text-xl font-black text-text-main mb-6">Featured Perspective</h3>
+                <Link 
+                  href={debateCard.featuredPerspective.articleUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <blockquote className="text-xl font-medium text-text-main italic leading-relaxed mb-6 relative hover:text-primary-blue transition-colors cursor-pointer">
+                    <span className="absolute -left-4 top-0 text-4xl text-primary-blue/20 leading-none">"</span>
+                    <span className="relative z-10">{debateCard.featuredPerspective.text}</span>
+                  </blockquote>
+                </Link>
+                <div className="border-t border-background-lighter pt-6 flex items-center gap-3">
                   <img
                     src={getOutletLogoUrl(debateCard.featuredPerspective.outletName)}
                     alt={debateCard.featuredPerspective.outletName}
-                    className="size-8 rounded-full bg-white object-cover"
+                    className="size-12 rounded-xl bg-white object-cover ring-1 ring-border-light"
                   />
-                  <span className="text-sm font-bold text-text-main">
+                  <Link 
+                    href={debateCard.featuredPerspective.articleUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm font-bold text-text-main hover:text-primary-blue transition-colors"
+                  >
                     {debateCard.featuredPerspective.outletName}
-                  </span>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -282,18 +332,35 @@ export default function QuestionDetail() {
           {/* Timeline */}
           {(debateCard?.timelineEvents?.length || debateCard?.timeline?.length) && (
             <div className="border-t border-border-light pt-8">
-              <div className="rounded-xl border border-border-light bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-text-main mb-4">Key Context Timeline</h3>
-                <div className="space-y-6">
-                  {(debateCard.timelineEvents ?? debateCard.timeline ?? []).map((event) => (
-                    <div key={event.id} className="flex flex-col gap-1">
-                      <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
-                        {new Date(event.date).toLocaleDateString()}
-                      </p>
-                      <h4 className="text-base font-bold text-text-main">{event.title}</h4>
-                      <p className="text-sm text-text-muted leading-relaxed">{event.description}</p>
-                    </div>
-                  ))}
+              <div className="rounded-xl border border-border-light bg-white p-10 shadow-sm">
+                <h3 className="text-xl font-black text-text-main mb-12">Key Context Timeline</h3>
+                <div className="relative">
+                  {/* Continuous vertical line */}
+                  <div className="absolute left-[8px] top-0 bottom-0 w-[1px] bg-border-light"></div>
+                  
+                  {/* Timeline events */}
+                  <div className="space-y-12">
+                    {(debateCard.timelineEvents ?? debateCard.timeline ?? []).map((event, index) => {
+                      // Alternating colors: primary-blue, verdict-split, or based on index
+                      const bulletColor = index % 2 === 0 ? 'bg-primary-blue' : 'bg-verdict-split';
+                      
+                      return (
+                        <div key={event.id} className="relative pl-10">
+                          {/* Small colored bullet */}
+                          <div className={`absolute left-[3px] top-[6px] size-3 rounded-full ${bulletColor}`}></div>
+                          
+                          {/* Event content */}
+                          <div className="flex flex-col gap-1">
+                            <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+                              {new Date(event.date).toLocaleDateString()}
+                            </p>
+                            <h4 className="text-xl font-black text-text-main">{event.title}</h4>
+                            <p className="text-lg text-text-muted leading-relaxed">{event.description}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

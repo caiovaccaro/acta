@@ -6,6 +6,9 @@
  * Usage:
  *   npm run db:generate:context-blurbs
  *   npm run db:generate:context-blurbs -- --question-id=<question-id>
+ *   npm run db:generate:context-blurbs -- --topic-name="Gaza"
+ *   npm run db:generate:context-blurbs -- --topic-id=<topic-id>
+ *   npm run db:generate:context-blurbs -- --force  # Regenerate even if blurb exists
  */
 
 import { config } from 'dotenv';
@@ -16,6 +19,9 @@ import {
   disconnectDatabase,
   findActiveQuestions,
   findQuestionById,
+  findQuestionsByTopicId,
+  findTopicByName,
+  findTopicById,
   findArticleStancesByQuestionId,
   updateQuestion,
 } from '@acta/db';
@@ -28,6 +34,8 @@ config({ path: envPath });
 
 interface ScriptArgs {
   questionId?: string;
+  topicId?: string;
+  topicName?: string;
   force?: boolean; // Regenerate even if blurb exists
 }
 
@@ -35,12 +43,16 @@ function parseScriptArgs(): ScriptArgs {
   const { values } = parseArgs({
     options: {
       'question-id': { type: 'string' },
+      'topic-id': { type: 'string' },
+      'topic-name': { type: 'string' },
       force: { type: 'boolean' },
     },
   });
 
   return {
     questionId: values['question-id'],
+    topicId: values['topic-id'],
+    topicName: values['topic-name'],
     force: values.force || false,
   };
 }
@@ -49,6 +61,9 @@ async function main() {
   const args = parseScriptArgs();
 
   console.log('🚀 Starting Question Context Blurb Generation...\n');
+  if (args.force) {
+    console.log('⚠️  --force mode: Will regenerate blurbs even if they already exist\n');
+  }
 
   try {
     // Connect to database
@@ -65,23 +80,63 @@ async function main() {
     if (args.questionId) {
       const question = await findQuestionById(args.questionId);
       questions = question ? [question] : [];
+    } else if (args.topicId) {
+      // Filter by topic ID
+      questions = await findQuestionsByTopicId(args.topicId, false);
+      // Filter to questions without blurbs (unless force)
+      // Check for null/undefined/empty string - only process if truly missing
+      if (!args.force) {
+        questions = questions.filter((q) => {
+          const blurb = (q as any).contextBlurb;
+          return !blurb || (typeof blurb === 'string' && blurb.trim().length === 0);
+        });
+      }
+    } else if (args.topicName) {
+      // Filter by topic name
+      const topic = await findTopicByName(args.topicName);
+      if (!topic) {
+        console.error(`❌ Topic not found: "${args.topicName}"`);
+        console.log('💡 Available topics can be found in the database.');
+        return;
+      }
+      questions = await findQuestionsByTopicId(topic.id, false);
+      // Filter to questions without blurbs (unless force)
+      // Check for null/undefined/empty string - only process if truly missing
+      if (!args.force) {
+        questions = questions.filter((q) => {
+          const blurb = (q as any).contextBlurb;
+          return !blurb || (typeof blurb === 'string' && blurb.trim().length === 0);
+        });
+      }
     } else {
       questions = await findActiveQuestions();
       // Filter to questions without blurbs (unless force)
+      // Check for null/undefined/empty string - only process if truly missing
       if (!args.force) {
-        questions = questions.filter((q) => !(q as any).contextBlurb);
+        questions = questions.filter((q) => {
+          const blurb = (q as any).contextBlurb;
+          return !blurb || (typeof blurb === 'string' && blurb.trim().length === 0);
+        });
       }
-      // Ensure questions have topic relation loaded
-      questions = questions.map((q) => {
-        if (!(q as any).topic) {
-          // Topic should be included by findActiveQuestions, but ensure it's there
-          return q;
-        }
-        return q;
-      });
     }
 
-    console.log(`📋 Found ${questions.length} question(s) to process\n`);
+    // Log topic breakdown
+    const topicMap = new Map<string, number>();
+    questions.forEach((q) => {
+      const topicName = (q as any).topic?.name || 'Unknown';
+      topicMap.set(topicName, (topicMap.get(topicName) || 0) + 1);
+    });
+
+    console.log(`📋 Found ${questions.length} question(s) to process`);
+    if (topicMap.size > 0) {
+      console.log('   By topic:');
+      Array.from(topicMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([topic, count]) => {
+          console.log(`      - ${topic}: ${count}`);
+        });
+    }
+    console.log();
 
     if (questions.length === 0) {
       console.log('✅ No questions need context blurbs generated.');
@@ -91,24 +146,15 @@ async function main() {
     let successCount = 0;
     let errorCount = 0;
 
-    // Helper to delay between requests
-    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
     // Process each question
     for (let i = 0; i < questions.length; i++) {
       const question = questions[i];
+      const topicName = (question as any).topic?.name || 'Unknown';
       console.log(`\n[${i + 1}/${questions.length}] Processing: "${question.questionText.substring(0, 60)}..."`);
-      
-      // Add delay between requests (OpenAI free tier: 3 req/min, paid: varies)
-      // Using 20 seconds to be well under any limit
-      if (i > 0) {
-        const delayMs = 20000; // 20 seconds between requests
-        console.log(`   ⏸️  Waiting ${delayMs / 1000}s before next request...`);
-        await delay(delayMs);
-      }
+      console.log(`   📂 Topic: ${topicName}`);
 
       try {
-        // Get articles for this question
+        // Get articles for this question (only analyzed stances)
         const stances = await findArticleStancesByQuestionId(question.id);
         const articles = stances
           .slice(0, 10) // Limit to first 10 articles
@@ -116,7 +162,8 @@ async function main() {
           .filter((a) => a && a.textContent);
 
         if (articles.length === 0) {
-          console.log(`   ⚠️  No articles found for this question, skipping...\n`);
+          console.log(`   ⚠️  No analyzed articles found for this question, skipping...`);
+          console.log(`   💡 This question needs articles to be analyzed and matched first.`);
           continue;
         }
 
@@ -124,7 +171,7 @@ async function main() {
 
         // Get topic name
         const topic = (question as any).topic;
-        const topicName = topic?.name || 'Unknown';
+        const topicNameForLLM = topic?.name || 'Unknown';
 
         // Generate context blurb
         // Note: withRetry in the provider already handles retries with exponential backoff
@@ -134,7 +181,7 @@ async function main() {
         const result = await llmProvider.generateQuestionContextBlurb({
           question: {
             text: question.questionText,
-            topicName,
+            topicName: topicNameForLLM,
           },
           articles: articles.map((a) => ({
             id: a.id,

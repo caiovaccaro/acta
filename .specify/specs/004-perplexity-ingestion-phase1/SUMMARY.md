@@ -77,3 +77,5 @@ The ingestion job returns detailed statistics:
 - Easy to extend with new ingestion strategies
 
 
+
+

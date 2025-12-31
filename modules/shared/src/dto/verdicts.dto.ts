@@ -7,6 +7,14 @@ export interface QuestionSummaryDTO {
    */
   contextBlurb?: string | null;
   verdict?: VerdictSummaryDTO | null;
+  /**
+   * Optional journalist count (number of journalists/articles contributing).
+   */
+  journalistCount?: number;
+  /**
+   * Optional publication count (number of unique publications).
+   */
+  publicationCount?: number;
 }
 
 export interface VerdictSummaryDTO {
@@ -49,21 +57,17 @@ export interface VerdictCardDTO extends VerdictDTO {
 export interface EvidenceBulletDTO {
   id: string;
   text: string;
-  type: 'Why' | 'Dissent' | 'Unknowns';
   articleId: string | null;
-  articleTitle: string | null;
-  articleUrl: string | null;
-  outletName: string | null;
-  order: number;
+  type: EvidenceType;
 }
+
+export type EvidenceType = 'Why' | 'Dissent' | 'Unknown';
 
 export interface ScopeNoteDTO {
   articleCount: number;
   outletCount: number;
   dateRange: {
-    start: string;
-    end: string;
+    start: string; // ISO date
+    end: string; // ISO date
   };
 }
-
-

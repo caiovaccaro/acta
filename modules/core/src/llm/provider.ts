@@ -20,18 +20,6 @@ import type {
   VerdictSummaryParams,
   VerdictSummaryResult,
 } from './types.verdictSummary.js';
-import type {
-  GenerateOverviewBulletsParams,
-  OverviewBulletsResult,
-  ExtractQuotesParams,
-  ExtractQuotesResult,
-  GenerateFeaturedPerspectiveParams,
-  FeaturedPerspectiveResult,
-  GenerateTimelineEventsParams,
-  GenerateTimelineEventsResult,
-  GenerateQuestionContextBlurbParams,
-  QuestionContextBlurbResult,
-} from './types.debateGeneration.js';
 
 // Re-export types for convenience
 export type {
@@ -49,18 +37,6 @@ export type {
   QuestionDiscoveryResult,
 } from './types.js';
 export type { VerdictSummaryParams, VerdictSummaryResult } from './types.verdictSummary.js';
-export type {
-  GenerateOverviewBulletsParams,
-  OverviewBulletsResult,
-  ExtractQuotesParams,
-  ExtractQuotesResult,
-  GenerateFeaturedPerspectiveParams,
-  FeaturedPerspectiveResult,
-  GenerateTimelineEventsParams,
-  GenerateTimelineEventsResult,
-  GenerateQuestionContextBlurbParams,
-  QuestionContextBlurbResult,
-} from './types.debateGeneration.js';
 
 /**
  * LLM Provider Interface
@@ -116,6 +92,78 @@ export interface LLMProvider {
   summarizeVerdict(params: VerdictSummaryParams): Promise<VerdictSummaryResult>;
 
   /**
+   * Generate a context blurb for a question based on articles.
+   * Returns a 2-3 sentence context blurb explaining what the question is about.
+   */
+  generateQuestionContextBlurb(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{ id: string; title: string; textContent: string }>;
+  }): Promise<{ blurb: string }>;
+
+  /**
+   * Generate timeline events from articles for a question or topic.
+   * Returns a chronological list of key events.
+   */
+  generateTimelineEvents(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>;
+  }): Promise<{ events: Array<{ date: string; title: string; description: string }> }>;
+
+  /**
+   * Generate overview bullets - a bullet list explaining the debate.
+   */
+  generateOverviewBullets(params: {
+    question: { id: string; text: string; topicName?: string };
+    verdict: { label: string; confidence: number };
+    stances: Array<{
+      articleTitle: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+    }>;
+  }): Promise<{ bullets: string[] }>;
+
+  /**
+   * Extract quotes from an article that support a specific stance.
+   */
+  extractQuotes(params: {
+    article: { id: string; title: string; textContent: string; url: string };
+    question: { text: string; topicName?: string };
+    stance: string;
+    maxQuotes?: number;
+  }): Promise<{ quotes: Array<{ text: string }> }>;
+
+  /**
+   * Generate a featured perspective - a longer quote from a supporting article.
+   */
+  generateFeaturedPerspective(params: {
+    question: { text: string; topicName?: string };
+    verdict: { label: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+      confidence: number;
+    }>;
+  }): Promise<{
+    quote: {
+      text: string;
+      articleId: string;
+      articleTitle: string;
+      outletName: string;
+    };
+  }>;
+
+  /**
    * Discover topics from a set of articles (reactive discovery).
    */
   discoverTopicsFromArticles(
@@ -131,44 +179,6 @@ export interface LLMProvider {
       articles: Array<{ id: string; title: string; textContent: string; excerpt?: string | null }>;
     }
   ): Promise<QuestionDiscoveryResult>;
-
-  /**
-   * Generate comprehensive overview bullets for a question/verdict.
-   * Returns bullet points that give an overview considering different article perspectives.
-   */
-  generateOverviewBullets(
-    params: GenerateOverviewBulletsParams
-  ): Promise<OverviewBulletsResult>;
-
-  /**
-   * Extract actual quotes from an article that support a given stance.
-   * Returns direct quotes from the article text, not summaries.
-   */
-  extractQuotes(params: ExtractQuotesParams): Promise<ExtractQuotesResult>;
-
-  /**
-   * Generate a featured perspective (highlighted quote) for a question.
-   * Selects the most compelling quote from majority-aligned articles.
-   */
-  generateFeaturedPerspective(
-    params: GenerateFeaturedPerspectiveParams
-  ): Promise<FeaturedPerspectiveResult>;
-
-  /**
-   * Generate timeline events from articles for a question/topic.
-   * Extracts key chronological events with dates, titles, and descriptions.
-   */
-  generateTimelineEvents(
-    params: GenerateTimelineEventsParams
-  ): Promise<GenerateTimelineEventsResult>;
-
-  /**
-   * Generate a 2-3 sentence context blurb for a question.
-   * Explains what the question is about based on article content.
-   */
-  generateQuestionContextBlurb(
-    params: GenerateQuestionContextBlurbParams
-  ): Promise<QuestionContextBlurbResult>;
 
   /**
    * Get provider name

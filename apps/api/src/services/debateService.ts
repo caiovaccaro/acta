@@ -371,13 +371,34 @@ export async function getDebateCard(
   let featuredPerspective: FeaturedPerspectiveDTO | null = null;
   if (verdict.featuredPerspective && typeof verdict.featuredPerspective === 'object') {
     const stored = verdict.featuredPerspective as any;
-    featuredPerspective = {
-      id: `featured-${stored.articleId}`,
-      text: stored.text,
-      outletName: stored.outletName,
-      articleId: stored.articleId,
-      articleTitle: stored.articleTitle,
-    };
+    // Find article URL from sources or monthStances - ensure we always have it
+    let articleUrl = stored.articleUrl;
+    if (!articleUrl) {
+      const source = sources.find((s) => s.articleId === stored.articleId);
+      articleUrl = source?.articleUrl;
+    }
+    if (!articleUrl) {
+      // Try to find it in monthStances
+      const stanceWithArticle = monthStances.find((s) => {
+        const article = (s as any).article;
+        return article?.id === stored.articleId && article?.url;
+      });
+      if (stanceWithArticle) {
+        articleUrl = (stanceWithArticle as any).article?.url;
+      }
+    }
+    
+    // Only return featured perspective if we have an article URL
+    if (articleUrl) {
+      featuredPerspective = {
+        id: `featured-${stored.articleId}`,
+        text: stored.text,
+        outletName: stored.outletName,
+        articleId: stored.articleId,
+        articleTitle: stored.articleTitle,
+        articleUrl: articleUrl,
+      };
+    }
   } else if (monthStances.length > 0 && topQuotesFor.length > 0) {
     // Generate and store featured perspective
     try {
@@ -423,53 +444,82 @@ export async function getDebateCard(
           articles: articlesForLLM,
         });
 
-        featuredPerspective = {
-          id: `featured-${result.quote.articleId}`,
-          text: result.quote.text,
-          outletName: result.quote.outletName,
-          articleId: result.quote.articleId,
-          articleTitle: result.quote.articleTitle,
-        };
+        // Find the article to get the URL - ensure we always have it
+        const featuredArticle = alignedStances.find((s) => {
+          const article = (s as any).article;
+          return article?.id === result.quote.articleId && article?.url; // Only use articles with URLs
+        });
+        const article = featuredArticle ? (featuredArticle as any).article : null;
 
-        // Store in verdict
-        await updateVerdict(verdict.id, {
-          featuredPerspective: {
+        // If no article with URL found, try to find it in sources
+        let articleUrl = article?.url;
+        if (!articleUrl) {
+          const source = sources.find((s) => s.articleId === result.quote.articleId);
+          articleUrl = source?.articleUrl;
+        }
+
+        // Only create featured perspective if we have an article URL
+        if (articleUrl) {
+          featuredPerspective = {
+            id: `featured-${result.quote.articleId}`,
             text: result.quote.text,
+            outletName: result.quote.outletName,
             articleId: result.quote.articleId,
             articleTitle: result.quote.articleTitle,
-            outletName: result.quote.outletName,
-          },
-        });
+            articleUrl: articleUrl,
+          };
+
+          // Store in verdict
+          await updateVerdict(verdict.id, {
+            featuredPerspective: {
+              text: result.quote.text,
+              articleId: result.quote.articleId,
+              articleTitle: result.quote.articleTitle,
+              outletName: result.quote.outletName,
+              articleUrl: articleUrl,
+            },
+          });
+        }
       }
     } catch (error) {
       console.warn('LLM not available for featured perspective, using fallback:', error);
-      if (topQuotesFor.length > 0) {
-        const fq = topQuotesFor[0];
+      // Only use fallback if quote has articleUrl
+      const fqWithUrl = topQuotesFor.find((q) => q.articleUrl);
+      if (fqWithUrl) {
         featuredPerspective = {
-          id: fq.id,
-          text: fq.text,
-          outletName: fq.outletName,
-          articleId: fq.articleId,
-          articleTitle: fq.articleTitle,
+          id: fqWithUrl.id,
+          text: fqWithUrl.text,
+          outletName: fqWithUrl.outletName,
+          articleId: fqWithUrl.articleId,
+          articleTitle: fqWithUrl.articleTitle,
+          articleUrl: fqWithUrl.articleUrl!,
         };
       }
     }
   }
 
   // Get points for debate from stored EvidenceBullet (Unknown type) or generate from opposing arguments
+  // Points for debate should ALWAYS be quotes from opposing articles, not summaries
   let pointsForDebate: PointForDebateDTO[] = [];
   const storedPointsForDebate = evidenceBullets.filter((eb) => eb.type === 'Unknown');
 
   if (storedPointsForDebate.length > 0) {
-    pointsForDebate = storedPointsForDebate.map((eb) => ({
-      id: eb.id,
-      text: eb.text,
-      articleId: eb.articleId,
-      articleTitle: (eb as any).article?.title || null,
-      articleUrl: (eb as any).article?.url || null,
-      outletName: (eb as any).article?.outlet?.name || null,
-    }));
-  } else {
+    // Only use stored points if they have articleId (meaning they're quotes, not summaries)
+    // And only include those that have articleUrl (required for linking)
+    pointsForDebate = storedPointsForDebate
+      .filter((eb) => eb.articleId && (eb as any).article?.url) // Only include quotes with article links
+      .map((eb) => ({
+        id: eb.id,
+        text: eb.text,
+        articleId: eb.articleId!,
+        articleTitle: (eb as any).article?.title || null,
+        articleUrl: (eb as any).article?.url || null, // Always required
+        outletName: (eb as any).article?.outlet?.name || null,
+      }));
+  }
+  
+  // If no stored quotes or not enough, generate new quotes from opposing articles
+  if (pointsForDebate.length === 0) {
     // Generate points for debate from opposing arguments
     const opposingStances = monthStances.filter((stance) => {
       const attempt = (stance as any).articleAnalysisAttempt;
@@ -485,19 +535,49 @@ export async function getDebateCard(
       return false;
     });
 
-    pointsForDebate = opposingStances.slice(0, 3).map((stance, idx) => {
+    // Generate points for debate using extractQuotes from opposing articles
+    for (const stance of opposingStances.slice(0, 5)) {
       const attempt = (stance as any).articleAnalysisAttempt;
       const article = (stance as any).article;
       const outlet = article?.outlet;
-      return {
-        id: `debate-${idx}`,
-        text: attempt?.reasoning || 'Opposing view',
-        articleId: article?.id || null,
-        articleTitle: article?.title || null,
-        articleUrl: article?.url || null,
-        outletName: outlet?.name || null,
-      };
-    });
+
+      if (!attempt || !article || !outlet) continue;
+
+      try {
+        const quoteResult = await llmProvider.extractQuotes({
+          article: {
+            id: article.id,
+            title: article.title,
+            textContent: article.textContent,
+            url: article.url,
+          },
+          question: {
+            text: question.questionText,
+            topicName,
+          },
+          stance: attempt.stance,
+          maxQuotes: 1,
+        });
+
+        if (quoteResult.quotes.length > 0) {
+          const quote = quoteResult.quotes[0];
+          // Only add if we have a valid quote and article URL
+          if (quote.text && quote.text.trim().length > 0 && article.url) {
+            pointsForDebate.push({
+              id: `debate-${article.id}`,
+              text: quote.text,
+              articleId: article.id,
+              articleTitle: article.title,
+              articleUrl: article.url, // Always include article URL
+              outletName: outlet.name,
+            });
+          }
+        }
+      } catch (error) {
+        // Skip this article if quote extraction fails
+        console.warn(`Failed to extract quote for debate point from article ${article.id}:`, error);
+      }
+    }
 
     // Store points for debate
     if (pointsForDebate.length > 0) {
