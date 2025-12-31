@@ -13,5 +13,7 @@ export interface QuestionCardDTO {
   topicName: string;
   verdict?: QuestionSummaryDTO['verdict'] | null;
   outlets: OutletInfo[]; // Unique outlets/publications that have articles for this question
+  contextBlurb?: string | null;
+  journalistCount?: number;
+  publicationCount?: number;
 }
-

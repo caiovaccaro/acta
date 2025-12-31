@@ -23,6 +23,8 @@
     "db:reject:topic": "tsx src/scripts/rejectTopic.ts",
     "db:generate:context-blurbs": "tsx src/scripts/generateContextBlurbs.ts",
     "db:generate:timeline-events": "tsx src/scripts/generateTimelineEvents.ts",
+    "db:generate:debate-content": "tsx src/scripts/generateDebateCardContent.ts",
+    "db:generate:featured-perspectives": "tsx src/scripts/generateFeaturedPerspectives.ts",
     "db:reset": "bash scripts/load-env-and-run.sh npx prisma migrate reset",
     "db:health": "tsx src/scripts/healthCheck.ts",
     "test": "jest",

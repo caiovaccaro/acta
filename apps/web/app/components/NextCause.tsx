@@ -14,9 +14,8 @@ export default function NextCause({ currentTopicId, currentQuestionId }: NextCau
   const { data: topics } = useTopics(false);
   const { data: questions } = useQuestions();
 
-  // If we're on a question page, try to find next question in same topic first
+  // Always find the next question, never link to topic pages
   let nextQuestion: { id: string; questionText: string } | undefined;
-  let nextTopic: { id: string; name: string; firstQuestion?: { questionText: string } | null } | undefined;
 
   if (currentQuestionId && questions && questions.length > 0) {
     // Find current question to get its topic
@@ -35,17 +34,20 @@ export default function NextCause({ currentTopicId, currentQuestionId }: NextCau
           nextQuestion = { id: nextQ.id, questionText: nextQ.questionText };
         }
       } else {
-        // No more questions in this topic, find next topic
+        // No more questions in this topic, find first question of next topic
         if (topics && topics.length > 0) {
           const topicIdx = topics.findIndex((t) => t.id === questionTopicId);
-          const nextTopicIdx = topicIdx >= 0 ? (topicIdx + 1) % topics.length : 0;
-          const nextT = topics[nextTopicIdx];
-          if (nextT) {
-            nextTopic = { 
-              id: nextT.id, 
-              name: nextT.name,
-              firstQuestion: nextT.firstQuestion 
-            };
+          // Try next topics until we find one with a question
+          for (let i = 1; i <= topics.length; i++) {
+            const nextTopicIdx = (topicIdx + i) % topics.length;
+            const nextT = topics[nextTopicIdx];
+            if (nextT?.firstQuestion) {
+              nextQuestion = { 
+                id: nextT.firstQuestion.id, 
+                questionText: nextT.firstQuestion.questionText 
+              };
+              break;
+            }
           }
         }
       }
@@ -59,36 +61,41 @@ export default function NextCause({ currentTopicId, currentQuestionId }: NextCau
       }
     }
   } else if (currentTopicId && topics && topics.length > 0) {
-    // On topic page, find next topic
-    const idx = topics.findIndex((t) => t.id === currentTopicId);
-    const nextIdx = idx >= 0 ? (idx + 1) % topics.length : 0;
-    const nextT = topics[nextIdx];
-    if (nextT) {
-      nextTopic = { 
-        id: nextT.id, 
-        name: nextT.name,
-        firstQuestion: nextT.firstQuestion 
+    // On topic page, find first question of next topic (or current topic if it has questions)
+    const currentTopic = topics.find((t) => t.id === currentTopicId);
+    if (currentTopic?.firstQuestion) {
+      // Current topic has a question, use that
+      nextQuestion = { 
+        id: currentTopic.firstQuestion.id, 
+        questionText: currentTopic.firstQuestion.questionText 
       };
+    } else {
+      // Find next topic with a question
+      const idx = topics.findIndex((t) => t.id === currentTopicId);
+      for (let i = 1; i <= topics.length; i++) {
+        const nextTopicIdx = (idx + i) % topics.length;
+        const nextT = topics[nextTopicIdx];
+        if (nextT?.firstQuestion) {
+          nextQuestion = { 
+            id: nextT.firstQuestion.id, 
+            questionText: nextT.firstQuestion.questionText 
+          };
+          break;
+        }
+      }
     }
   }
 
-  // Determine link and title
-  const link = nextQuestion 
-    ? `/questions/${nextQuestion.id}`
-    : nextTopic 
-    ? `/topics/${nextTopic.id}`
-    : null;
-
-  const title = nextQuestion
-    ? nextQuestion.questionText
-    : nextTopic?.firstQuestion?.questionText || nextTopic?.name || null;
+  // Always link to a question, never to a topic
+  const link = nextQuestion ? `/questions/${nextQuestion.id}` : null;
+  const title = nextQuestion?.questionText || null;
 
   if (!link || !title) return null;
 
   return (
     <section className="bg-white rounded-2xl border border-border-light p-10 md:p-14 shadow-sm mt-16 text-center">
       <p className="text-sm uppercase tracking-wider text-text-muted mb-3">
-        Next Cause
+        Next Debate
       </p>
       <h3 className="text-2xl font-black text-text-main group-hover:text-primary-blue transition-colors mb-5">
         {title}

@@ -7,7 +7,6 @@ import { consensusRoutes } from './consensus.js';
 import { debateRoutes } from './debate.js';
 import { transparencyRoutes } from './transparency.js';
 import { feedbackRoutes } from './feedback.js';
-import { timelineRoutes } from './timeline.js';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all route modules
@@ -19,6 +18,5 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(debateRoutes, { prefix: '/api' });
   await fastify.register(transparencyRoutes, { prefix: '/api' });
   await fastify.register(feedbackRoutes, { prefix: '/api' });
-  await fastify.register(timelineRoutes, { prefix: '/api' });
 }
 

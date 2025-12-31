@@ -29,7 +29,7 @@ export default function ActionPicker() {
   };
 
   return (
-    <main className="flex w-full flex-1 items-center justify-center py-10 px-4 bg-background-lighter">
+    <main className="flex w-full flex-1 items-center justify-center py-10 px-4 bg-background-lighter min-h-screen">
       <div className="w-full max-w-xl rounded-xl border border-border-light bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-bold text-text-main mb-2">
           What type of action interests you most?
@@ -50,7 +50,7 @@ export default function ActionPicker() {
                 value={option.id}
                 checked={selectedOption === option.id}
                 onChange={() => setSelectedOption(option.id)}
-                className="h-5 w-5 border-gray-300 text-text-main focus:ring-text-main focus:ring-2 focus:ring-offset-2 transition duration-150 ease-in-out"
+                className="h-5 w-5 border-gray-300 text-primary focus:ring-primary focus:ring-2 focus:ring-offset-2 transition duration-150 ease-in-out"
               />
               <span className="text-base text-text-main group-hover:text-primary transition-colors">
                 {option.label}
@@ -76,5 +76,7 @@ export default function ActionPicker() {
     </main>
   );
 }
+
+
 
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { useTopics } from '../lib/hooks/useTopics';
-import TopicCard from './components/TopicCard';
+import QuestionCard from './components/QuestionCard';
 import { HERO_LOGO_URLS } from '../lib/utils/outletLogos';
+import type { QuestionCardDTO } from '@acta/shared';
 
 export default function Home() {
   const { data: topics, isLoading, error } = useTopics(false);
@@ -62,7 +63,7 @@ export default function Home() {
           </div>
           {isLoading && (
             <div className="text-center py-12">
-              <p className="text-text-muted">Loading topics...</p>
+              <p className="text-text-muted">Loading questions...</p>
             </div>
           )}
           {error && (
@@ -70,16 +71,48 @@ export default function Home() {
               <p className="text-red-600">Error loading questions. Please try again later.</p>
             </div>
           )}
-          {topics && topics.length > 0 && (
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {topics.map((topic) => (
-                <TopicCard key={topic.id} topic={topic} />
-              ))}
-            </div>
-          )}
+          {topics && topics.length > 0 && (() => {
+            // Map topics to QuestionCardDTO format - extract firstQuestion from each topic
+            const questionCards: QuestionCardDTO[] = topics
+              .filter((topic) => topic.firstQuestion) // Only topics with a main question
+              .map((topic) => {
+                const firstQuestion = topic.firstQuestion!;
+                const topicWithOutlets = topic as any;
+                const outlets = topicWithOutlets.firstQuestionOutlets || [];
+                
+                return {
+                  id: firstQuestion.id,
+                  questionText: firstQuestion.questionText,
+                  isActive: firstQuestion.isActive,
+                  topicId: topic.id,
+                  topicName: topic.name,
+                  verdict: firstQuestion.verdict,
+                  outlets,
+                  contextBlurb: firstQuestion.contextBlurb || null,
+                  journalistCount: (firstQuestion as any).journalistCount,
+                  publicationCount: (firstQuestion as any).publicationCount,
+                } as QuestionCardDTO;
+              });
+
+            if (questionCards.length === 0) {
+              return (
+                <div className="text-center py-12">
+                  <p className="text-text-muted">No questions available yet.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {questionCards.map((question) => (
+                  <QuestionCard key={question.id} question={question} />
+                ))}
+              </div>
+            );
+          })()}
           {topics && topics.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-text-muted">No topics available yet.</p>
+              <p className="text-text-muted">No questions available yet.</p>
             </div>
           )}
         </section>

@@ -5,14 +5,8 @@
     "description": "Acta Platform - Data-driven consensus verdicts on complex topics",
     "private": true,
     "workspaces": [
-        "apps/admin",
-        "apps/api",
-        "apps/crawler",
-        "apps/web",
-        "modules/config",
-        "modules/core",
-        "modules/db",
-        "modules/shared"
+        "apps/*",
+        "modules/*"
     ],
     "scripts": {
         "crawler:start": "cd apps/crawler && npm start",
@@ -40,15 +34,13 @@
         "db:discover:questions": "cd modules/db && npm run db:discover:questions",
         "db:approve:topic": "cd modules/db && npm run db:approve:topic",
         "db:reject:topic": "cd modules/db && npm run db:reject:topic",
-        "db:generate:context-blurbs": "cd modules/db && npm run db:generate:context-blurbs",
-        "db:generate:timeline-events": "cd modules/db && npm run db:generate:timeline-events",
-        "admin:start": "npm run --workspace @acta/admin start",
-        "api:start": "cd apps/api && npm run start",
-        "api:dev": "cd apps/api && npm run dev",
-        "api:test": "cd apps/api && npm run test:integration",
+        "db:generate:context-blurbs": "cd modules/db && npm run db:generate:context-blurbs --",
+        "db:generate:timeline-events": "cd modules/db && npm run db:generate:timeline-events --",
+        "db:generate:debate-content": "cd modules/db && npm run db:generate:debate-content --",
+        "db:generate:featured-perspectives": "cd modules/db && npm run db:generate:featured-perspectives --",
         "web:dev": "cd apps/web && npm run dev",
-        "web:build": "cd apps/web && npm run build",
-        "web:start": "cd apps/web && npm run start"
+        "api:dev": "cd apps/api && npm run dev",
+        "admin:start": "npm run --workspace @acta/admin start"
     },
     "author": "Caio Vaccaro",
     "license": "ISC"

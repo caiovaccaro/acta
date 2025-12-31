@@ -1,16 +1,15 @@
 import {
-  findTimelineEventsByTopicOrQuestion,
-  createTimelineEvents,
   findQuestionById,
   findTopicById,
   findArticleStancesByQuestionId,
   findTopicArticlesByTopicId,
+  findTimelineEventsByTopicOrQuestion,
 } from '@acta/db';
 import { getLLMProvider } from '../utils/llmProvider.js';
 import type { TimelineEventDTO } from '@acta/shared';
 
 /**
- * Fetch timeline events; if none exist, return empty (LLM generation can be added later).
+ * Fetch timeline events from database
  */
 export async function getTimelineEvents(
   topicId?: string,
@@ -102,20 +101,7 @@ export async function generateTimelineEvents(
       })),
     });
 
-    // Store generated events in database
-    if (result.events.length > 0 && questionId) {
-      // Only store if we have a questionId (schema requirement)
-      const eventsToCreate = result.events.map((e, idx) => ({
-        questionId: questionId,
-        date: new Date(e.date),
-        title: e.title,
-        description: e.description,
-        order: idx,
-      }));
-
-      await createTimelineEvents(eventsToCreate);
-    }
-
+    // Convert to TimelineEventDTO format
     return result.events.map((e, idx) => ({
       id: `generated-${idx}`,
       date: e.date,
