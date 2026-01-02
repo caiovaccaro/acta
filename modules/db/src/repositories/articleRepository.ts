@@ -255,7 +255,7 @@ export async function findArticlesByQuestion(
 ): Promise<Article[]> {
   return prisma.article.findMany({
     where: {
-      articleAnalyses: {
+      articleAnalysisAttempts: {
         some: {
           questionId,
         },
@@ -266,7 +266,7 @@ export async function findArticlesByQuestion(
     skip: offset,
     include: {
       outlet: true,
-      articleAnalyses: {
+      articleAnalysisAttempts: {
         where: { questionId },
       },
     },
@@ -302,7 +302,7 @@ export async function findArticleWithAnalyses(articleId: string): Promise<Articl
     where: { id: articleId },
     include: {
       outlet: true,
-      articleAnalyses: {
+      articleAnalysisAttempts: {
         include: {
           question: {
             include: {

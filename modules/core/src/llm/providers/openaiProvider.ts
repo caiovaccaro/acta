@@ -136,6 +136,508 @@ export class OpenAIProvider implements LLMProvider {
     );
   }
 
+  async generateQuestionContextBlurb(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{ id: string; title: string; textContent: string }>;
+  }): Promise<{ blurb: string }> {
+    const prompt = this.buildContextBlurbPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a neutral journalist writing context blurbs for debate questions. Write 2-3 sentences that explain what the question is about in a clear, neutral way.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating context blurb',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          return {
+            blurb: parsed.blurb || '',
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildContextBlurbPrompt(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{ id: string; title: string; textContent: string }>;
+  }): string {
+    const topicContext = params.question.topicName
+      ? `Topic: ${params.question.topicName}\n`
+      : '';
+    const articleSnippets = params.articles
+      .slice(0, 10)
+      .map((a) => {
+        const snippet = a.textContent.substring(0, 500);
+        return `- ${a.title}\n  ${snippet}...`;
+      })
+      .join('\n\n');
+
+    return `${topicContext}Question: ${params.question.text}
+
+Articles discussing this question:
+${articleSnippets}
+
+Generate a 2-3 sentence context blurb that explains what this question is about in a clear, neutral way. Focus on what the debate is about, not taking sides.
+
+Return JSON:
+{
+  "blurb": "Your 2-3 sentence context blurb here"
+}`;
+  }
+
+  async generateTimelineEvents(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>;
+  }): Promise<{ events: Array<{ date: string; title: string; description: string }> }> {
+    const prompt = this.buildTimelineEventsPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a journalist creating a chronological timeline of key events. Extract the most important events from the articles, focusing on factual developments, not opinions. Order events chronologically.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating timeline events',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          const events = Array.isArray(parsed.events) ? parsed.events : [];
+          return {
+            events: events.map((e: any) => ({
+              date: e.date || new Date().toISOString(),
+              title: e.title || '',
+              description: e.description || '',
+            })),
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildTimelineEventsPrompt(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>;
+  }): string {
+    const topicContext = params.question.topicName
+      ? `Topic: ${params.question.topicName}\n`
+      : '';
+    
+    // Sort articles by published date
+    const sortedArticles = [...params.articles]
+      .filter((a) => a.publishedDate)
+      .sort((a, b) => {
+        const dateA = new Date(a.publishedDate!).getTime();
+        const dateB = new Date(b.publishedDate!).getTime();
+        return dateA - dateB;
+      })
+      .slice(0, 20);
+
+    const articleList = sortedArticles
+      .map((a) => {
+        const date = a.publishedDate ? new Date(a.publishedDate).toLocaleDateString() : 'Unknown date';
+        const snippet = a.textContent.substring(0, 400);
+        return `[${date}] ${a.title} (${a.outletName})\n${snippet}...`;
+      })
+      .join('\n\n');
+
+    return `${topicContext}Question: ${params.question.text}
+
+Articles (chronologically ordered):
+${articleList}
+
+Extract the key events from these articles and create a chronological timeline. Focus on:
+- Factual developments and milestones
+- Important dates and occurrences
+- Significant changes or decisions
+- Major turning points
+
+Return JSON with a chronological list of events:
+{
+  "events": [
+    {
+      "date": "YYYY-MM-DD",
+      "title": "Brief event title",
+      "description": "1-2 sentence description of what happened"
+    }
+  ]
+}
+
+Generate 5-10 key events, ordered chronologically.`;
+  }
+
+  async generateOverviewBullets(params: {
+    question: { id: string; text: string; topicName?: string };
+    verdict: { label: string; confidence: number };
+    stances: Array<{
+      articleTitle: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+    }>;
+  }): Promise<{ bullets: string[] }> {
+    const prompt = this.buildOverviewBulletsPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are a journalist creating a bullet-point overview of a debate. Write clear, neutral bullet points that help readers understand the key aspects of the debate.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating overview bullets',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          const bullets = Array.isArray(parsed.bullets) ? parsed.bullets : [];
+          return { bullets: bullets.filter((b: any) => b && typeof b === 'string' && b.trim().length > 0) };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildOverviewBulletsPrompt(params: {
+    question: { id: string; text: string; topicName?: string };
+    verdict: { label: string; confidence: number };
+    stances: Array<{
+      articleTitle: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+    }>;
+  }): string {
+    const topicContext = params.question.topicName
+      ? `Topic: ${params.question.topicName}\n`
+      : '';
+    
+    const stanceSummary = params.stances
+      .slice(0, 10)
+      .map((s) => `- ${s.articleTitle} (${s.outletName}): ${s.stance}\n  ${s.reasoning.substring(0, 200)}...`)
+      .join('\n\n');
+
+    return `${topicContext}Question: ${params.question.text}
+
+Verdict: ${params.verdict.label} (${params.verdict.confidence}% confidence)
+
+Article stances and reasoning:
+${stanceSummary}
+
+Generate 5-8 bullet points that help readers understand this debate. Each bullet should:
+- Be a complete sentence
+- Explain a key aspect of the debate
+- Be neutral and factual
+- Cover different perspectives
+
+Return JSON:
+{
+  "bullets": [
+    "First bullet point...",
+    "Second bullet point...",
+    ...
+  ]
+}`;
+  }
+
+  async extractQuotes(params: {
+    article: { id: string; title: string; textContent: string; url: string };
+    question: { text: string; topicName?: string };
+    stance: string;
+    maxQuotes?: number;
+  }): Promise<{ quotes: Array<{ text: string }> }> {
+    const prompt = this.buildExtractQuotesPrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are extracting direct quotes from articles that support a specific stance on a question. Extract verbatim quotes that are relevant and impactful.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when extracting quotes',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          const quotes = Array.isArray(parsed.quotes) ? parsed.quotes : [];
+          return {
+            quotes: quotes
+              .filter((q: any) => q && q.text && typeof q.text === 'string' && q.text.trim().length > 0)
+              .slice(0, params.maxQuotes || 5)
+              .map((q: any) => ({ text: q.text.trim() })),
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildExtractQuotesPrompt(params: {
+    article: { id: string; title: string; textContent: string; url: string };
+    question: { text: string; topicName?: string };
+    stance: string;
+    maxQuotes?: number;
+  }): string {
+    const topicContext = params.question.topicName
+      ? `Topic: ${params.question.topicName}\n`
+      : '';
+    
+    const maxQuotes = params.maxQuotes || 1;
+    const articleSnippet = params.article.textContent.substring(0, 3000);
+
+    return `${topicContext}Question: ${params.question.text}
+Stance: ${params.stance}
+
+Article: ${params.article.title}
+${articleSnippet}...
+
+Extract ${maxQuotes} direct quote(s) from this article that support the ${params.stance} stance on the question. Quotes should be:
+- Verbatim from the article (use exact wording)
+- Relevant to the question
+- Impactful and representative of the article's position
+- Complete sentences or meaningful phrases
+
+Return JSON:
+{
+  "quotes": [
+    {
+      "text": "Exact quote from the article..."
+    }
+  ]
+}`;
+  }
+
+  async generateFeaturedPerspective(params: {
+    question: { text: string; topicName?: string };
+    verdict: { label: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+      confidence: number;
+    }>;
+  }): Promise<{
+    quote: {
+      text: string;
+      articleId: string;
+      articleTitle: string;
+      outletName: string;
+    };
+  }> {
+    const prompt = this.buildFeaturedPerspectivePrompt(params);
+
+    return withRetry(
+      async () => {
+        try {
+          const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+              {
+                role: 'system',
+                content:
+                  'You are selecting a featured perspective quote from articles. Choose a longer, impactful quote that best represents the majority stance on this question.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.3,
+          });
+
+          const content = response.choices[0]?.message?.content;
+          if (!content) {
+            throw new LLMProviderError(
+              'Empty response from OpenAI when generating featured perspective',
+              undefined,
+              false
+            );
+          }
+
+          const parsed = JSON.parse(content);
+          if (!parsed.quote || !parsed.quote.text || !parsed.quote.articleId) {
+            throw new LLMProviderError(
+              'Invalid response format from OpenAI for featured perspective',
+              undefined,
+              false
+            );
+          }
+
+          return {
+            quote: {
+              text: parsed.quote.text.trim(),
+              articleId: parsed.quote.articleId,
+              articleTitle: parsed.quote.articleTitle || '',
+              outletName: parsed.quote.outletName || '',
+            },
+          };
+        } catch (error) {
+          throw this.handleError(error);
+        }
+      },
+      { maxRetries: this.maxRetries }
+    );
+  }
+
+  private buildFeaturedPerspectivePrompt(params: {
+    question: { text: string; topicName?: string };
+    verdict: { label: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+      confidence: number;
+    }>;
+  }): string {
+    const topicContext = params.question.topicName
+      ? `Topic: ${params.question.topicName}\n`
+      : '';
+    
+    const articlesList = params.articles
+      .map((a) => {
+        const snippet = a.textContent.substring(0, 800);
+        return `Article ID: ${a.id}
+Title: ${a.title}
+Outlet: ${a.outletName}
+Stance: ${a.stance}
+Reasoning: ${a.reasoning}
+Content: ${snippet}...`;
+      })
+      .join('\n\n---\n\n');
+
+    return `${topicContext}Question: ${params.question.text}
+Verdict: ${params.verdict.label}
+
+Articles supporting the verdict:
+${articlesList}
+
+Select the best quote from one of these articles to feature. The quote should:
+- Be a longer, more substantial quote (2-4 sentences)
+- Best represent the ${params.verdict.label} perspective
+- Be impactful and well-written
+- Come from the article with the strongest reasoning
+
+IMPORTANT: You MUST use the exact "Article ID" value shown above for the articleId field. Do NOT use an index number or make up an ID.
+
+Return JSON:
+{
+  "quote": {
+    "text": "The selected quote from the article...",
+    "articleId": "exact-article-id-from-above",
+    "articleTitle": "Exact article title from above",
+    "outletName": "Exact outlet name from above"
+  }
+}`;
+  }
+
   getName(): string {
     return 'openai';
   }
@@ -255,7 +757,7 @@ Article URL: ${article.url}
 Article Content: ${article.textContent.substring(0, 5000)}...
 Analysis Period: ${monthStr}
 
-IMPORTANT: First determine if this article is actually relevant to the question. If the article does not address, discuss, or relate to the question in any meaningful way, return "Unclear" with low confidence (< 0.3) and explain why it's not relevant.
+IMPORTANT: First determine if this article is actually relevant to the question. If the article does not address, discuss, or relate to the question in any meaningful way, return "Unclear" with low confidence (< 0.2) and explain why it's not relevant.
 
 If the article IS relevant, then classify the article's stance on the question. Consider:
 - What position does the article take on this question?
@@ -589,8 +1091,7 @@ Return a JSON object with:
           response_format: { type: 'json_object' },
           temperature: 0,
         }),
-      this.maxRetries,
-      this.timeout
+      { maxRetries: this.maxRetries }
     );
 
     const content = response.choices[0]?.message?.content ?? '{}';
@@ -613,8 +1114,7 @@ Return a JSON object with:
           response_format: { type: 'json_object' },
           temperature: 0,
         }),
-      this.maxRetries,
-      this.timeout
+      { maxRetries: this.maxRetries }
     );
 
     const content = response.choices[0]?.message?.content ?? '{}';

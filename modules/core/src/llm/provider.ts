@@ -92,6 +92,78 @@ export interface LLMProvider {
   summarizeVerdict(params: VerdictSummaryParams): Promise<VerdictSummaryResult>;
 
   /**
+   * Generate a context blurb for a question based on articles.
+   * Returns a 2-3 sentence context blurb explaining what the question is about.
+   */
+  generateQuestionContextBlurb(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{ id: string; title: string; textContent: string }>;
+  }): Promise<{ blurb: string }>;
+
+  /**
+   * Generate timeline events from articles for a question or topic.
+   * Returns a chronological list of key events.
+   */
+  generateTimelineEvents(params: {
+    question: { text: string; topicName?: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>;
+  }): Promise<{ events: Array<{ date: string; title: string; description: string }> }>;
+
+  /**
+   * Generate overview bullets - a bullet list explaining the debate.
+   */
+  generateOverviewBullets(params: {
+    question: { id: string; text: string; topicName?: string };
+    verdict: { label: string; confidence: number };
+    stances: Array<{
+      articleTitle: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+    }>;
+  }): Promise<{ bullets: string[] }>;
+
+  /**
+   * Extract quotes from an article that support a specific stance.
+   */
+  extractQuotes(params: {
+    article: { id: string; title: string; textContent: string; url: string };
+    question: { text: string; topicName?: string };
+    stance: string;
+    maxQuotes?: number;
+  }): Promise<{ quotes: Array<{ text: string }> }>;
+
+  /**
+   * Generate a featured perspective - a longer quote from a supporting article.
+   */
+  generateFeaturedPerspective(params: {
+    question: { text: string; topicName?: string };
+    verdict: { label: string };
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      outletName: string;
+      stance: string;
+      reasoning: string;
+      confidence: number;
+    }>;
+  }): Promise<{
+    quote: {
+      text: string;
+      articleId: string;
+      articleTitle: string;
+      outletName: string;
+    };
+  }>;
+
+  /**
    * Discover topics from a set of articles (reactive discovery).
    */
   discoverTopicsFromArticles(

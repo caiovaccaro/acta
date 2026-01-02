@@ -213,7 +213,7 @@ export async function createOrUpdateArticleAnalysisAttempt(
  */
 export async function updateArticleAnalysisAttempt(
   id: string,
-  input: UpdateArticleAnalysisInput
+  input: UpdateArticleAnalysisAttemptInput
 ): Promise<ArticleAnalysisAttempt> {
   return prisma.articleAnalysisAttempt.update({
     where: { id },

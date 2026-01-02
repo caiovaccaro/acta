@@ -149,6 +149,7 @@ model Topic {
   // Relations
   questions           Question[]
   topicArticles       TopicArticle[]
+  timelineEvents      TimelineEvent[]
 
   @@index([moderationStatus])
   @@index([source])
@@ -160,6 +161,8 @@ model Question {
   topicId             String
   questionText        String                    @db.Text
   originalQuestionText String?                   @db.Text
+  // Optional 2–3 sentence LLM-generated context blurb about this question
+  contextBlurb       String?                   @db.Text
   extractedAt         DateTime                  @default(now())
   confidence          Float?
   sourceArticlesCount Int                       @default(0)
@@ -178,6 +181,7 @@ model Question {
   articleAnalysisAttempts ArticleAnalysisAttempt[]
   articleStances ArticleStance[]
   verdicts            Verdict[]        // Multiple verdicts (one per month)
+  timelineEvents      TimelineEvent[]
 
   @@index([topicId])
   @@index([isActive])
@@ -257,6 +261,9 @@ model Verdict {
   supportShare Float       // 0-1, aggregate support (S)
   variance     Float       // 0-1, ideological dispersion
   reasoning    String?     @db.Text // LLM-generated summary of why the verdict is what it is
+  // LLM-generated debate card data (stored to avoid repeated generation)
+  overviewBullets Json?     // Array of overview bullet strings
+  featuredPerspective Json?  // { text, articleId, articleTitle, outletName, articleUrl? }
   calculatedAt DateTime    @default(now())
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -290,4 +297,24 @@ model EvidenceBullet {
   @@index([verdictId])
   @@index([type])
   @@map("evidence_bullets")
+}
+
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  topicId     String?
+  questionId  String?
+  date        DateTime
+  title       String
+  description String   @db.Text
+  order       Int // For manual ordering when dates are equal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topic    Topic?    @relation(fields: [topicId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+
+  @@index([topicId])
+  @@index([questionId])
+  @@index([date])
+  @@map("timeline_events")
 }
