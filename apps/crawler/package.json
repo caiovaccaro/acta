@@ -10,6 +10,8 @@
         "export:articles": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/exportArticles.js",
         "migrate:storage": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/migrateFromFileStorage.js",
         "analyze:articles": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/runAnalysisPipeline.js",
+        "match:topics": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/matchArticlesToTopics.js",
+        "classify:stances": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/classifyStances.js",
         "test": "jest",
         "test:watch": "jest --watch",
         "health": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/healthCheck.js",

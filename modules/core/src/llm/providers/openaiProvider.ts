@@ -757,7 +757,7 @@ Article URL: ${article.url}
 Article Content: ${article.textContent.substring(0, 5000)}...
 Analysis Period: ${monthStr}
 
-IMPORTANT: First determine if this article is actually relevant to the question. If the article does not address, discuss, or relate to the question in any meaningful way, return "Unclear" with low confidence (< 0.3) and explain why it's not relevant.
+IMPORTANT: First determine if this article is actually relevant to the question. If the article does not address, discuss, or relate to the question in any meaningful way, return "Unclear" with low confidence (< 0.2) and explain why it's not relevant.
 
 If the article IS relevant, then classify the article's stance on the question. Consider:
 - What position does the article take on this question?

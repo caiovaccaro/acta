@@ -79,6 +79,7 @@ export * from './repositories/timelineRepository.js';
 
 // Re-export countArticles for convenience
 export { countArticles } from './repositories/articleRepository.js';
+export { countArticlesByTopic } from './repositories/topicArticleRepository.js';
 
 // Re-export findCrawlRequestById and resetStuckInProgressRequests for convenience
 export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository.js';

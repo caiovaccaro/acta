@@ -16,6 +16,13 @@ import {
 } from '@acta/db';
 import { getCurrentMonthPeriod } from '../utils/monthPeriod.js';
 
+/**
+ * Minimum confidence threshold for "not relevant" classifications
+ * Articles with "Unclear" stance and confidence below this threshold are rejected
+ * Lower values allow more articles through (default: 0.2 = 20%)
+ */
+const RELEVANCE_THRESHOLD = 0.2;
+
 export interface StanceClassificationResult {
   articleId: string;
   questionId: string;
@@ -102,7 +109,7 @@ export async function classifyStance(
   
   // Only create ArticleStance for successfully classified matches
   // (not for Unclear with low confidence - those are stored in ArticleAnalysisAttempt but not linked)
-  if (!(stance === 'Unclear' && classification.confidence < 0.3)) {
+  if (!(stance === 'Unclear' && classification.confidence < RELEVANCE_THRESHOLD)) {
     // Check if stance already exists (avoid duplicates)
     const existingStance = await findArticleStanceByArticleAndQuestion(
       article.id,
@@ -192,7 +199,7 @@ export async function classifyStances(
     
     // Only create ArticleStance for successfully classified matches
     // (not for Unclear with low confidence - those are stored in ArticleAnalysisAttempt but not linked)
-    if (!(stance === 'Unclear' && classification.confidence < 0.3)) {
+    if (!(stance === 'Unclear' && classification.confidence < RELEVANCE_THRESHOLD)) {
       // Check if stance already exists (avoid duplicates)
       const existingStance = await findArticleStanceByArticleAndQuestion(
         item.article.id,

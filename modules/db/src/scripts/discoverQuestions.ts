@@ -1,9 +1,11 @@
 /**
  * Discover Questions Script (Reactive)
- * Discovers questions for approved topics from recent articles and stores them as pending validation.
+ * Discovers questions for approved topics from articles and stores them as pending validation.
+ * Processes all articles for each topic in batches.
  *
  * Usage:
  *   npm run db:discover:questions
+ *   npm run db:discover:questions -- --batch-size=200
  */
 
 import { config } from 'dotenv';
@@ -23,13 +25,18 @@ import {
   findQuestionsByTopicId,
   createQuestion,
   findArticlesByTopic,
+  prisma,
 } from '../index.js';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { discoverQuestionsForTopic } from '@acta/core/analysis';
 
+// Parse command line arguments
+const BATCH_SIZE = parseInt(process.argv.find(arg => arg.startsWith('--batch-size='))?.split('=')[1] || '200');
+
 async function main() {
   try {
     console.log('🔎 Discovering questions from articles (approved topics)...');
+    console.log(`📦 Batch size: ${BATCH_SIZE} articles per batch\n`);
     await connectDatabase();
 
     const llmConfig = createLLMConfigFromEnv();
@@ -41,43 +48,92 @@ async function main() {
       return;
     }
 
+    let totalQuestionsDiscovered = 0;
+    let totalArticlesProcessed = 0;
+
     for (const topic of topics) {
       console.log(`\n🧭 Topic: ${topic.name}`);
-      const articles = await findArticlesByTopic(topic.id, 200);
-      console.log(`   📰 Articles: ${articles.length}`);
+      
+      // Get total article count for this topic
+      const totalArticlesForTopic = await prisma.article.count({
+        where: {
+          topicArticles: {
+            some: {
+              topicId: topic.id,
+            },
+          },
+        },
+      });
 
-      if (articles.length === 0) {
-        console.log('   ⚠️  Skipping (no articles)');
+      if (totalArticlesForTopic === 0) {
+        console.log(`   ⚠️  Skipping (no articles)`);
         continue;
       }
+
+      console.log(`   📊 Total articles for this topic: ${totalArticlesForTopic}`);
 
       const existingQuestions = await findQuestionsByTopicId(topic.id, true);
-      const articlePayload = articles.map((a) => ({
-        id: a.id,
-        title: a.title,
-        textContent: a.textContent,
-        excerpt: a.excerpt,
-      }));
+      let offset = 0;
+      let batchNumber = 0;
+      const allDiscoveredQuestions = new Map<string, any>(); // Deduplicate by question text
 
-      const discovered = await discoverQuestionsForTopic(
-        topic,
-        articlePayload,
-        existingQuestions,
-        llmProvider,
-        {
-          maxQuestionsPerTopic: 10,
-          confidenceThreshold: 0.7,
+      // Process articles in batches
+      while (offset < totalArticlesForTopic) {
+        batchNumber++;
+        const remaining = totalArticlesForTopic - offset;
+        const currentBatchSize = Math.min(BATCH_SIZE, remaining);
+        
+        console.log(`   📦 Batch ${batchNumber} (${offset + 1}-${offset + currentBatchSize} of ${totalArticlesForTopic})`);
+        
+        const articles = await findArticlesByTopic(topic.id, currentBatchSize, offset);
+        console.log(`      📰 Loaded ${articles.length} articles`);
+
+        const articlePayload = articles.map((a) => ({
+          id: a.id,
+          title: a.title,
+          textContent: a.textContent,
+          excerpt: a.excerpt,
+        }));
+
+        const discovered = await discoverQuestionsForTopic(
+          topic,
+          articlePayload,
+          existingQuestions,
+          llmProvider,
+          {
+            maxQuestionsPerTopic: 10,
+            confidenceThreshold: 0.7,
+          }
+        );
+
+        // Merge discovered questions (deduplicate by question text, keep highest confidence)
+        for (const question of discovered) {
+          const existing = allDiscoveredQuestions.get(question.questionText);
+          if (!existing || question.confidence > existing.confidence) {
+            allDiscoveredQuestions.set(question.questionText, question);
+          }
         }
-      );
 
-      if (discovered.length === 0) {
-        console.log('   ℹ️  No new questions discovered.');
+        if (discovered.length > 0) {
+          console.log(`      ✅ Discovered ${discovered.length} new question(s) in this batch`);
+        } else {
+          console.log(`      ℹ️  No new questions discovered in this batch`);
+        }
+
+        offset += currentBatchSize;
+        totalArticlesProcessed += articles.length;
+        console.log(`      📈 Progress: ${((offset / totalArticlesForTopic) * 100).toFixed(1)}% (${offset}/${totalArticlesForTopic})`);
+      }
+
+      // Create all discovered questions for this topic
+      if (allDiscoveredQuestions.size === 0) {
+        console.log(`   ℹ️  No new questions discovered for this topic.`);
         continue;
       }
 
-      console.log(`   ✅ Discovered ${discovered.length} question(s):`);
-      for (const question of discovered) {
-        console.log(`    - ${question.questionText} (conf: ${(question.confidence * 100).toFixed(1)}%)`);
+      console.log(`   📝 Creating ${allDiscoveredQuestions.size} unique question(s)...`);
+      for (const [questionText, question] of allDiscoveredQuestions.entries()) {
+        console.log(`    - ${questionText} (conf: ${(question.confidence * 100).toFixed(1)}%)`);
 
         await createQuestion({
           topicId: topic.id,
@@ -90,10 +146,15 @@ async function main() {
           discoveredAt: new Date(),
           discoveredFromArticles: question.articleIds || [],
         });
+        totalQuestionsDiscovered++;
       }
+
+      console.log(`   ✅ Completed topic: ${totalArticlesForTopic} articles processed, ${allDiscoveredQuestions.size} questions discovered`);
     }
 
-    console.log('\n🎉 Question discovery complete (pending validation/moderation).');
+    console.log(`\n🎉 Question discovery complete!`);
+    console.log(`   ✅ Processed ${totalArticlesProcessed} articles across ${topics.length} topic(s)`);
+    console.log(`   ✅ Discovered ${totalQuestionsDiscovered} new question(s) (pending validation/moderation)`);
   } catch (error) {
     console.error('❌ Error discovering questions:', error);
     process.exitCode = 1;
@@ -103,7 +164,3 @@ async function main() {
 }
 
 main();
-
-
-
-

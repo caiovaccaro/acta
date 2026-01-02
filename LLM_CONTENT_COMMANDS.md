@@ -19,9 +19,6 @@ Main crawler job that:
 
 ---
 
-## 2. Topics & Questions Setup
-
-**⚠️ Important:** Topics and questions must exist before analyzing articles, as analysis classifies articles against questions.
 
 ### Option A: Manual Seeding (Initial Setup from PRD)
 ```bash
@@ -38,13 +35,6 @@ npm run db:discover:topics       # Discover new topics from recent articles (cre
 # Approve discovered topics
 npm run db:approve:topic -- --topicId=<id>  # Approve each discovered topic
 
-# Discover questions for approved topics
-npm run db:discover:questions   # Discover new questions for approved topics (creates in "pending" status)
-```
-**Use when:** Automatically finding new topics/questions from crawled articles. Discovered items require approval/validation before use.
-
----
-
 ## 3. Article Analysis
 
 ### Analyze Articles
@@ -54,13 +44,22 @@ npm run crawler:analyze
 npm run analyze:articles
 ```
 Analyzes articles and:
-- Classifies stances for article-question pairs
-- Creates article-question relationships
+- Classifies stances for article-topic pairs
+- Creates article-topic relationships
 - Generates article analysis attempts
 
 **Note:** Both `crawler:analyze` and `analyze:articles` are aliases for the same command.
 
-**⚠️ Prerequisites:** Topics and questions must exist before running analysis.
+**⚠️ Prerequisites:** Topics must exist before running analysis.
+
+## Questions Setup
+
+# Discover questions for approved topics
+npm run db:discover:questions   # Discover new questions for approved topics (creates in "pending" status)
+```
+**Use when:** Automatically finding new topics/questions from crawled articles. Discovered items require approval/validation before use.
+
+---
 
 ### Export Utilities (Optional)
 ```bash
@@ -179,12 +178,17 @@ npm run db:seed:questions
 # Option B: LLM discovery (from articles)
 npm run db:discover:topics
 npm run db:approve:topic -- --topicId=<id>  # Repeat for each topic
-npm run db:discover:questions
 
 # 3. Analyze articles (classify stances, create relationships)
-# ⚠️ Topics and questions must exist before this step
-npm run crawler:analyze
+# ⚠️ Topics must exist before this step
+npm run crawler:match-topics
 # or: npm run analyze:articles
+
+npm run db:discover:questions
+
+npm run db:validate:bar-questions
+
+npm run crawler:classify-stances
 
 # 4. Calculate verdicts
 npm run db:calculate:verdicts
@@ -193,10 +197,10 @@ npm run db:calculate:verdicts
 npm run db:summarize:verdicts
 
 # 6. Generate all LLM content
-npm run db:generate:context-blurbs -- --force
-npm run db:generate:timeline-events -- --force
-npm run db:generate:featured-perspectives -- --force
-npm run db:generate:debate-content -- --force
+npm run db:generate:context-blurbs 
+npm run db:generate:timeline-events 
+npm run db:generate:featured-perspectives 
+npm run db:generate:debate-content 
 ```
 
 ### Regenerate Only LLM Content (if articles/verdicts already exist)
