@@ -22,7 +22,7 @@ function getVerdictColor(verdict: string | undefined) {
     case 'Unclear':
       return 'text-verdict-unclear';
     default:
-      return 'text-text-main';
+      return 'text-verdict-unclear'; // Default to unclear color instead of black
   }
 }
 
@@ -65,7 +65,7 @@ export default function FeaturedQuestionCard({ topic, questionId }: FeaturedQues
       </h3>
       
       {/* Verdict / Stance */}
-      <p className={`text-base font-bold ${getVerdictColor(verdictLabel || 'UNCLEAR')} mb-3`}>
+      <p className={`text-base font-bold ${getVerdictColor(verdictLabel)} mb-3`}>
         {verdictText}
       </p>
 
@@ -108,7 +108,7 @@ export default function FeaturedQuestionCard({ topic, questionId }: FeaturedQues
           </div>
 
           <div className="inline-flex items-center text-sm font-semibold text-primary-blue group-hover:translate-x-1 transition-transform">
-            Read
+            {firstQuestion?.verdict ? 'View Answer' : 'Read More'}
             <ArrowRight className="ml-1 size-4" />
           </div>
         </div>
