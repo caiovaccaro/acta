@@ -43,14 +43,14 @@ export interface UpdateQuestionInput {
 export async function findQuestionById(id: string): Promise<Question | null> {
   return prisma.question.findUnique({
     where: { id },
-      include: {
-        topic: true,
-        articleAnalyses: true,
-        verdicts: {
-          orderBy: { month: 'desc' },
-          take: 1, // Get latest verdict for backward compatibility
-        },
+    include: {
+      topic: true,
+      articleAnalysisAttempts: true,
+      verdicts: {
+        orderBy: { month: 'desc' },
+        take: 1, // Get latest verdict for backward compatibility
       },
+    },
   });
 }
 
