@@ -27,6 +27,7 @@
     "db:generate:featured-perspectives": "tsx src/scripts/generateFeaturedPerspectives.ts",
     "db:retry:failed-crawls": "tsx src/scripts/retryFailedCrawls.ts",
     "db:inspect:crawl-requests": "tsx src/scripts/inspectCrawlRequests.ts",
+    "db:analyze:funnel": "tsx src/scripts/analyzePipelineFunnel.ts",
     "db:reset": "bash scripts/load-env-and-run.sh npx prisma migrate reset",
     "db:health": "tsx src/scripts/healthCheck.ts",
     "test": "jest",

@@ -17,6 +17,9 @@
     "react-dom": "^18.3.0",
     "@tanstack/react-query": "^5.0.0",
     "@acta/shared": "file:../../modules/shared",
+    "@acta/db": "file:../../modules/db",
+    "@prisma/client": "^6.19.0",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.554.0"
   },
   "devDependencies": {

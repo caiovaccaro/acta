@@ -46,7 +46,7 @@ export default function TopicDetail() {
   // Use questionCards if available (includes outlets), otherwise fall back to questions
   const topicWithCards = topic as any;
   const allQuestionCards: QuestionCardDTO[] = topicWithCards.questionCards || [];
-  
+
   // If we have questionCards, use them; otherwise convert questions to QuestionCardDTO
   const questionCardsToUse = allQuestionCards.length > 0 
     ? allQuestionCards
@@ -82,8 +82,8 @@ export default function TopicDetail() {
         
         <header className="mb-12">
           <h1 className="text-4xl md:text-6xl font-black text-text-main mb-6 leading-[1.1]">
-            {topic.name}
-          </h1>
+              {topic.name}
+            </h1>
           <p className="text-xl text-text-muted max-w-3xl leading-relaxed">
             {topic.description || 'Explore questions and debates on this topic.'}
           </p>
@@ -105,7 +105,7 @@ export default function TopicDetail() {
               />
             </div>
           </section>
-        )}
+          )}
 
         {/* Other Questions Section */}
         {otherQuestionCards.length > 0 && (
@@ -116,7 +116,7 @@ export default function TopicDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {otherQuestionCards.map((questionCard) => (
                 <QuestionCard key={questionCard.id} question={questionCard} />
-              ))}
+                ))}
             </div>
           </section>
         )}

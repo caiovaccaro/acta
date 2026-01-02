@@ -203,7 +203,7 @@ export default function QuestionDetail() {
                 {debateCard.quotesFor.map((quote, i) => (
                   <div key={i} className="flex flex-col gap-3">
                     <blockquote className="text-base text-text-muted italic leading-relaxed border-l-2 border-primary-blue/30 pl-3">
-                      "{quote.text}"
+                      &ldquo;{quote.text}&rdquo;
                     </blockquote>
                     <div className="flex items-center gap-2 pl-3">
                       <img 
@@ -245,7 +245,7 @@ export default function QuestionDetail() {
                   .map((point, i) => (
                     <div key={i} className="flex flex-col gap-3">
                       <blockquote className="text-base text-text-muted italic leading-relaxed border-l-2 border-verdict-split/30 pl-3">
-                        "{point.text}"
+                        &ldquo;{point.text}&rdquo;
                       </blockquote>
                       {point.outletName && (
                         <div className="flex items-center gap-2 pl-3">
@@ -306,7 +306,7 @@ export default function QuestionDetail() {
                   className="block"
                 >
                   <blockquote className="text-xl font-medium text-text-main italic leading-relaxed mb-6 relative hover:text-primary-blue transition-colors cursor-pointer">
-                    <span className="absolute -left-4 top-0 text-4xl text-primary-blue/20 leading-none">"</span>
+                    <span className="absolute -left-4 top-0 text-4xl text-primary-blue/20 leading-none">&ldquo;</span>
                     <span className="relative z-10">{debateCard.featuredPerspective.text}</span>
                   </blockquote>
                 </Link>
