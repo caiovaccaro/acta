@@ -92,3 +92,6 @@ coverage/
 
 # Yarn Integrity file
 .yarn-integrity
+
+_prototype/
+_prototype2/

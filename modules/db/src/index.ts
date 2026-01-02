@@ -25,6 +25,7 @@ export * from './repositories/verdictRepository.js';
 export * from './repositories/topicArticleRepository.js';
 export * from './repositories/evidenceBulletRepository.js';
 export * from './repositories/articleStanceRepository.js';
+export * from './repositories/timelineRepository.js';
 
 // Database connection utilities
 export async function connectDatabase() {
@@ -74,9 +75,11 @@ export * from './repositories/verdictRepository.js';
 export * from './repositories/topicArticleRepository.js';
 export * from './repositories/evidenceBulletRepository.js';
 export * from './repositories/articleStanceRepository.js';
+export * from './repositories/timelineRepository.js';
 
 // Re-export countArticles for convenience
 export { countArticles } from './repositories/articleRepository.js';
+export { countArticlesByTopic } from './repositories/topicArticleRepository.js';
 
 // Re-export findCrawlRequestById and resetStuckInProgressRequests for convenience
 export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository.js';
