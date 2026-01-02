@@ -30,7 +30,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col items-start gap-6">
               <p className="text-lg text-text-muted leading-relaxed">
-                Understand the debate, based on the perspectives of <span className="font-bold text-text-main">8438</span> journalists, from <span className="font-bold text-text-main">8</span> credible publications across the world.
+                Understand the debate, based on the perspectives from credible publications across the political spectrum.
               </p>
               <div className="flex items-center -space-x-3">
                 {publicationLogos.map((url, i) => (
