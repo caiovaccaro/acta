@@ -32,6 +32,8 @@ import {
   findArticlesByQuestion,
   findAllArticles,
   findQuestionsByTopicId,
+  countArticles,
+  countArticlesByTopic,
 } from '@acta/db';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { createDefaultValidationFramework } from '@acta/core/validation';
@@ -86,50 +88,142 @@ async function main() {
       return;
     }
 
-    // Step 2: Load articles (filtered by args if provided)
-    let articles = [];
-    const offset = args.offset || 0;
+    // Step 2: Load and process articles in batches (filtered by args if provided)
+    const batchSize = args.limit || 1000; // Use limit as batch size, or default to 1000
+    let totalArticles = 0;
+    let allMatchedArticles = [];
+    let allArticleTopicMap = new Map();
+    let totalProcessed = 0;
+    let totalMatched = 0;
+    let totalAssignments = 0;
+    const allMatchesByTopic = {};
+
     if (args.topicId) {
-      console.log(`📰 Loading articles for topic: ${args.topicId}`);
-      articles = await findArticlesByTopic(args.topicId, args.limit || 1000, offset);
+      totalArticles = await countArticlesByTopic(args.topicId);
+      console.log(`📰 Processing articles for topic: ${args.topicId}`);
+      console.log(`📊 Total articles: ${totalArticles}`);
+      
+      if (totalArticles === 0) {
+        console.log('⚠️  No articles found to process');
+        return;
+      }
+
+      let offset = args.offset || 0;
+      let batchNumber = 1;
+      const totalBatches = Math.ceil(totalArticles / batchSize);
+
+      while (offset < totalArticles) {
+        const batch = await findArticlesByTopic(args.topicId, batchSize, offset);
+        if (batch.length === 0) break;
+
+        const rangeEnd = Math.min(offset + batchSize, totalArticles);
+        const percentage = ((offset + batch.length) / totalArticles * 100).toFixed(1);
+        console.log(`\n📦 Batch ${batchNumber}/${totalBatches} (articles ${offset + 1}-${rangeEnd} of ${totalArticles}, ${percentage}%)`);
+
+        // Process this batch
+        const topicMatchStats = await processArticlesForTopics(batch, topics, {
+          minConfidence: 0.5,
+        });
+
+        totalMatched += topicMatchStats.matchedArticles;
+        totalAssignments += topicMatchStats.totalAssignments;
+        for (const [topicName, count] of Object.entries(topicMatchStats.matchesByTopic)) {
+          allMatchesByTopic[topicName] = (allMatchesByTopic[topicName] || 0) + count;
+        }
+
+        allMatchedArticles.push(...topicMatchStats.matchedArticlesList);
+        // Merge article-topic maps
+        for (const [articleId, topicIds] of topicMatchStats.articleTopicMap.entries()) {
+          allArticleTopicMap.set(articleId, topicIds);
+        }
+        totalProcessed += batch.length;
+        offset += batchSize;
+        batchNumber++;
+      }
     } else if (args.questionId) {
       console.log(`📰 Loading articles for question: ${args.questionId}`);
-      articles = await findArticlesByQuestion(args.questionId, args.limit || 1000);
+      const articles = await findArticlesByQuestion(args.questionId, args.limit || 1000);
+      totalArticles = articles.length;
+      totalProcessed = articles.length;
+      
+      if (articles.length === 0) {
+        console.log('⚠️  No articles found to process');
+        return;
+      }
+
+      // Process all articles at once for question-specific case
+      const topicMatchStats = await processArticlesForTopics(articles, topics, {
+        minConfidence: 0.5,
+      });
+      totalMatched = topicMatchStats.matchedArticles;
+      totalAssignments = topicMatchStats.totalAssignments;
+      for (const [topicName, count] of Object.entries(topicMatchStats.matchesByTopic)) {
+        allMatchesByTopic[topicName] = count;
+      }
+      allMatchedArticles = topicMatchStats.matchedArticlesList;
+      allArticleTopicMap = topicMatchStats.articleTopicMap;
     } else {
-      const limit = args.limit || 1000;
-      console.log(`📰 Loading all articles${limit ? ` (limit: ${limit})` : ''}${offset ? ` (offset: ${offset})` : ''}`);
-      articles = await findAllArticles(limit, offset);
-    }
-    
-    console.log(`📰 Found ${articles.length} articles to process\n`);
+      totalArticles = await countArticles();
+      console.log(`📰 Processing all articles`);
+      console.log(`📊 Total articles: ${totalArticles}`);
+      
+      if (totalArticles === 0) {
+        console.log('⚠️  No articles found to process');
+        return;
+      }
 
-    if (articles.length === 0) {
-      console.log('⚠️  No articles found to process');
-      return;
+      let offset = args.offset || 0;
+      let batchNumber = 1;
+      const totalBatches = Math.ceil(totalArticles / batchSize);
+
+      while (offset < totalArticles) {
+        const batch = await findAllArticles(batchSize, offset);
+        if (batch.length === 0) break;
+
+        const rangeEnd = Math.min(offset + batchSize, totalArticles);
+        const percentage = ((offset + batch.length) / totalArticles * 100).toFixed(1);
+        console.log(`\n📦 Batch ${batchNumber}/${totalBatches} (articles ${offset + 1}-${rangeEnd} of ${totalArticles}, ${percentage}%)`);
+
+        // Process this batch
+        const topicMatchStats = await processArticlesForTopics(batch, topics, {
+          minConfidence: 0.5,
+        });
+
+        totalMatched += topicMatchStats.matchedArticles;
+        totalAssignments += topicMatchStats.totalAssignments;
+        for (const [topicName, count] of Object.entries(topicMatchStats.matchesByTopic)) {
+          allMatchesByTopic[topicName] = (allMatchesByTopic[topicName] || 0) + count;
+        }
+
+        allMatchedArticles.push(...topicMatchStats.matchedArticlesList);
+        // Merge article-topic maps
+        for (const [articleId, topicIds] of topicMatchStats.articleTopicMap.entries()) {
+          allArticleTopicMap.set(articleId, topicIds);
+        }
+        totalProcessed += batch.length;
+        offset += batchSize;
+        batchNumber++;
+      }
     }
 
-    // Step 3: Topic Matching
-    console.log('🔍 Step 1: Topic Matching...');
-    const topicMatchStats = await processArticlesForTopics(articles, topics, {
-      minConfidence: 0.5, // Increased threshold for better precision
-    });
-    console.log(`   ✅ Matched ${topicMatchStats.matchedArticles} articles to topics`);
-    console.log(`   📊 Total assignments: ${topicMatchStats.totalAssignments}`);
-    for (const [topicName, count] of Object.entries(topicMatchStats.matchesByTopic)) {
+    console.log(`\n🔍 Step 1: Topic Matching Summary`);
+    console.log(`   ✅ Processed ${totalProcessed} articles`);
+    console.log(`   ✅ Matched ${totalMatched} articles to topics`);
+    console.log(`   📊 Total assignments: ${totalAssignments}`);
+    for (const [topicName, count] of Object.entries(allMatchesByTopic)) {
       console.log(`      - ${topicName}: ${count} articles`);
     }
     console.log('');
 
-    // Step 4: Stance Classification using matched articles from current run
+    // Step 3: Stance Classification using matched articles from current run
     console.log('🎯 Step 2: Stance Classification...');
     const monthPeriod = getCurrentMonthPeriod();
     console.log(`   📅 Month period: ${monthPeriod.toISOString().slice(0, 7)}`);
     
-    // Use the matched articles from the current run (not querying database)
-    const matchedArticles = topicMatchStats.matchedArticlesList;
-    const articleTopicMap = topicMatchStats.articleTopicMap;
+    const matchedArticles = allMatchedArticles;
+    const articleTopicMap = allArticleTopicMap;
     
-    console.log(`   📰 Processing ${matchedArticles.length} articles that matched topics (out of ${articles.length} total)`);
+    console.log(`   📰 Processing ${matchedArticles.length} articles that matched topics (out of ${totalProcessed} total)`);
     console.log('');
     
     let totalClassifications = 0;
@@ -142,10 +236,12 @@ async function main() {
     let errorCount = 0;
 
     // Process matched articles in batches
-    const batchSize = 10;
-    for (let i = 0; i < matchedArticles.length; i += batchSize) {
-      const batch = matchedArticles.slice(i, i + batchSize);
-      console.log(`   Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(matchedArticles.length / batchSize)} (${batch.length} articles)...`);
+    const classificationBatchSize = 10;
+    for (let i = 0; i < matchedArticles.length; i += classificationBatchSize) {
+      const batch = matchedArticles.slice(i, i + classificationBatchSize);
+      const batchNum = Math.floor(i / classificationBatchSize) + 1;
+      const totalBatches = Math.ceil(matchedArticles.length / classificationBatchSize);
+      console.log(`   Processing classification batch ${batchNum}/${totalBatches} (${batch.length} articles)...`);
       
       for (const article of batch) {
         try {
@@ -187,7 +283,7 @@ async function main() {
           
           // Filter out classifications that were rejected (Unclear with low confidence)
           const storedClassifications = classifications.filter(c => 
-            !(c.stance === 'Unclear' && c.confidence < 0.3)
+            !(c.stance === 'Unclear' && c.confidence < 0.2)
           );
           
           const rejectedClassifications = classifications.length - storedClassifications.length;
@@ -278,8 +374,8 @@ async function main() {
     console.log('📊 Pipeline Summary:');
     console.log(`   Topics: ${topics.length}`);
     console.log(`   Active Questions: ${questions.length}`);
-    console.log(`   Articles Processed: ${articles.length}`);
-    console.log(`   Topic Matches: ${topicMatchStats.matchedArticles}`);
+    console.log(`   Articles Processed: ${totalProcessed}`);
+    console.log(`   Topic Matches: ${totalMatched}`);
     console.log(`   Articles Matched to Questions: ${articlesMatchedToQuestions}`);
     console.log(`   Stance Classifications Stored: ${totalClassifications}`);
     console.log(`   Stance Classifications Attempted: ${totalClassificationsAttempted}`);

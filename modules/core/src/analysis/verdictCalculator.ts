@@ -16,7 +16,7 @@
  * aggregation formula.
  */
 
-import type { Stance, VerdictLabel } from '@prisma/client';
+import type { Stance, VerdictLabel, Ideology } from '@prisma/client';
 import { getMonthPeriod } from '../utils/monthPeriod.js';
 
 /**
@@ -34,8 +34,9 @@ const STANCE_SCORES: Record<Stance, number> = {
 /**
  * Minimum number of articles required for a valid verdict
  * If fewer articles, verdict is set to "Unclear" with low confidence
+ * Lower values allow more verdicts to be calculated (default: 4)
  */
-const MIN_ARTICLES_FOR_VERDICT = 6;
+const MIN_ARTICLES_FOR_VERDICT = 4;
 
 /**
  * Verdict calculation result
