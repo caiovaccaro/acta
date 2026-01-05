@@ -45,6 +45,8 @@
         "db:retry:failed-crawls": "cd modules/db && npm run db:retry:failed-crawls --",
         "db:inspect:crawl-requests": "cd modules/db && npm run db:inspect:crawl-requests --",
         "db:analyze:funnel": "cd modules/db && npm run db:analyze:funnel --",
+        "db:sync:production": "cd modules/db && npm run db:sync:production --",
+        "db:sync:schema-only": "cd modules/db && npm run db:sync:schema-only --",
         "db:analyze:funnel": "cd modules/db && npm run db:analyze:funnel --",
         "web:dev": "cd apps/web && npm run dev",
         "api:dev": "cd apps/api && npm run dev",

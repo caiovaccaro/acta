@@ -3,7 +3,7 @@
  * Handles Verdict model operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { Verdict, VerdictLabel } from '@prisma/client';
 
 export interface CreateVerdictInput {

@@ -25,7 +25,7 @@ import {
   createTopic,
   findAllArticles,
   countArticles,
-} from '../index.js';
+} from '../index';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { discoverTopics } from '@acta/core/analysis';
 

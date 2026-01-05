@@ -3,8 +3,8 @@
  * Handles Article model operations
  */
 
-import { prisma } from '../index.js';
-import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer.js';
+import { prisma } from '../index';
+import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer';
 import type { Article, CrawlRequest } from '@prisma/client';
 
 export interface CreateArticleInput {

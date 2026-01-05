@@ -3,8 +3,8 @@
  * Handles CrawlRequest model operations with URL normalization and deduplication
  */
 
-import { prisma } from '../index.js';
-import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer.js';
+import { prisma } from '../index';
+import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer';
 import type { CrawlRequest } from '@prisma/client';
 import { CrawlStatus } from '@prisma/client';
 

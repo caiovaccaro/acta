@@ -7,7 +7,7 @@ import {
   LLMProviderError,
   LLMRateLimitError,
   LLMTimeoutError,
-} from '../errors.js';
+} from '../errors';
 
 export interface RetryOptions {
   maxRetries?: number;

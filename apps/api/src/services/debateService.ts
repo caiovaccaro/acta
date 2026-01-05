@@ -8,7 +8,8 @@ import {
   updateVerdict,
 } from '@acta/db';
 import { getCurrentMonthPeriod, parseMonthPeriod } from '@acta/core';
-import { getLLMProvider } from '../utils/llmProvider.js';
+import { getLLMProvider } from '../utils/llmProvider';
+import { getTimelineEvents } from './timelineService';
 import type {
   DebateCardDTO,
   ArgumentDTO,
@@ -640,7 +641,6 @@ export async function getDebateCard(
   }));
 
   // Get timeline events
-  const { getTimelineEvents } = await import('./timelineService.js');
   const timelineEvents = await getTimelineEvents(undefined, questionId);
   const timeline: TimelineEventDTO[] = timelineEvents.map((e) => ({
     id: e.id,
