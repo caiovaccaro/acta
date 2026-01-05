@@ -12,8 +12,10 @@ const nextConfig = {
     // your project has ESLint errors. Only use this if you know what you're doing.
     ignoreDuringBuilds: false,
   },
-  // Output mode: standalone for Vercel deployment
-  output: 'standalone',
+  // Skip static optimization for admin routes (they're all dynamic)
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
 }
 
 module.exports = nextConfig

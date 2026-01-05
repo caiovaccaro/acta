@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getTopicVerdict } from '@acta/api/services/topicsService';
 
 export async function GET(
