@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getDebateCard } from '@acta/api/services/debateService';
 
 export async function GET(
