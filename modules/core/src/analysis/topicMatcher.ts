@@ -83,7 +83,7 @@ function extractTopicKeywords(topic: Topic): string[] {
     keywords.push(...TOPIC_SYNONYMS[nameKey]);
   }
   
-  return [...new Set(keywords)]; // Remove duplicates
+  return Array.from(new Set(keywords)); // Remove duplicates
 }
 
 /**
