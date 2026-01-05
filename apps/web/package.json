@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cd ../../modules/db && npm run db:generate && cd ../../apps/web && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "postinstall": "cd ../../modules/db && npm run db:generate"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -18,6 +19,7 @@
     "@tanstack/react-query": "^5.0.0",
     "@acta/shared": "file:../../modules/shared",
     "@acta/db": "file:../../modules/db",
+    "@acta/api": "file:../../apps/api",
     "@prisma/client": "^6.19.0",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.554.0"

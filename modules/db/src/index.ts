@@ -5,6 +5,25 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Load environment variables if not already loaded (for Next.js compatibility)
+// In Next.js, env vars are loaded automatically, but we need this for other contexts
+if (!process.env.DATABASE_URL && typeof window === 'undefined') {
+  try {
+    // Try to find .env file in project root (go up from modules/db to root)
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const projectRoot = resolve(__dirname, '../../../');
+    const envPath = resolve(projectRoot, '.env');
+    config({ path: envPath });
+  } catch (error) {
+    // Silently fail - environment variables may be set elsewhere (e.g., Vercel)
+  }
+}
 
 // Singleton Prisma client instance
 export const prisma = new PrismaClient({
@@ -15,17 +34,17 @@ export const prisma = new PrismaClient({
 export * from '@prisma/client';
 
 // Export repositories
-export * from './repositories/articleRepository.js';
-export * from './repositories/outletRepository.js';
-export * from './repositories/crawlRequestRepository.js';
-export * from './repositories/topicRepository.js';
-export * from './repositories/questionRepository.js';
-export * from './repositories/articleAnalysisAttemptRepository.js';
-export * from './repositories/verdictRepository.js';
-export * from './repositories/topicArticleRepository.js';
-export * from './repositories/evidenceBulletRepository.js';
-export * from './repositories/articleStanceRepository.js';
-export * from './repositories/timelineRepository.js';
+export * from './repositories/articleRepository';
+export * from './repositories/outletRepository';
+export * from './repositories/crawlRequestRepository';
+export * from './repositories/topicRepository';
+export * from './repositories/questionRepository';
+export * from './repositories/articleAnalysisAttemptRepository';
+export * from './repositories/verdictRepository';
+export * from './repositories/topicArticleRepository';
+export * from './repositories/evidenceBulletRepository';
+export * from './repositories/articleStanceRepository';
+export * from './repositories/timelineRepository';
 
 // Database connection utilities
 export async function connectDatabase() {
@@ -61,32 +80,32 @@ export async function checkDatabaseHealth(): Promise<boolean> {
 
 // Re-export health check utilities (detailed checks)
 // Note: healthCheck.js may not exist in all branches - commented out for now
-// export { performHealthCheck, quickHealthCheck } from './healthCheck.js';
-// export type { HealthCheckResult } from './healthCheck.js';
+// export { performHealthCheck, quickHealthCheck } from './healthCheck';
+// export type { HealthCheckResult } from './healthCheck';
 
 // Re-export repositories
-export * from './repositories/outletRepository.js';
-export * from './repositories/crawlRequestRepository.js';
-export * from './repositories/articleRepository.js';
-export * from './repositories/topicRepository.js';
-export * from './repositories/questionRepository.js';
-export * from './repositories/articleAnalysisAttemptRepository.js';
-export * from './repositories/verdictRepository.js';
-export * from './repositories/topicArticleRepository.js';
-export * from './repositories/evidenceBulletRepository.js';
-export * from './repositories/articleStanceRepository.js';
-export * from './repositories/timelineRepository.js';
+export * from './repositories/outletRepository';
+export * from './repositories/crawlRequestRepository';
+export * from './repositories/articleRepository';
+export * from './repositories/topicRepository';
+export * from './repositories/questionRepository';
+export * from './repositories/articleAnalysisAttemptRepository';
+export * from './repositories/verdictRepository';
+export * from './repositories/topicArticleRepository';
+export * from './repositories/evidenceBulletRepository';
+export * from './repositories/articleStanceRepository';
+export * from './repositories/timelineRepository';
 
 // Re-export countArticles for convenience
-export { countArticles } from './repositories/articleRepository.js';
-export { countArticlesByTopic } from './repositories/topicArticleRepository.js';
+export { countArticles } from './repositories/articleRepository';
+export { countArticlesByTopic } from './repositories/topicArticleRepository';
 
 // Re-export findCrawlRequestById and resetStuckInProgressRequests for convenience
-export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository.js';
+export { findCrawlRequestById, resetStuckInProgressRequests } from './repositories/crawlRequestRepository';
 
 // Re-export retry limit constants for convenience
-export { MAX_RETRY_ATTEMPTS, hasExceededRetryLimit } from './repositories/crawlRequestRepository.js';
+export { MAX_RETRY_ATTEMPTS, hasExceededRetryLimit } from './repositories/crawlRequestRepository';
 
 // Re-export utilities
-export * from './utils/urlNormalizer.js';
+export * from './utils/urlNormalizer';
 

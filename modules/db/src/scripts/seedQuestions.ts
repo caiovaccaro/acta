@@ -12,7 +12,7 @@ import { fileURLToPath } from 'url';
 import {
   connectDatabase,
   disconnectDatabase,
-} from '../index.js';
+} from '../index';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,14 +20,14 @@ const __dirname = dirname(__filename);
 // Load environment variables from .env file at project root
 config({ path: resolve(__dirname, '../../../../.env') });
 
-import { findAllTopics } from '../repositories/topicRepository.js';
+import { findAllTopics } from '../repositories/topicRepository';
 import {
   createQuestion,
   findQuestionsByTopicId,
   findQuestionsByValidationStatus,
   updateQuestion,
   deleteQuestion,
-} from '../repositories/questionRepository.js';
+} from '../repositories/questionRepository';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { createDefaultValidationFramework } from '@acta/core/validation';
 import {

@@ -3,8 +3,8 @@
  * Factory functions for creating validation frameworks with LLM providers
  */
 
-import { ValidationFramework } from './framework.js';
-import type { LLMProvider } from '../llm/provider.js';
+import { ValidationFramework } from './framework';
+import type { LLMProvider } from '../llm/provider';
 
 /**
  * Creates a validation framework that uses LLM provider

@@ -13,7 +13,7 @@
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { prisma, connectDatabase, disconnectDatabase } from '../index.js';
+import { prisma, connectDatabase, disconnectDatabase } from '../index';
 import { getCurrentMonthPeriod } from '@acta/core';
 
 const __filename = fileURLToPath(import.meta.url);

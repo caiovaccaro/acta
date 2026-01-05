@@ -15,11 +15,11 @@ import type {
   BarQuestionValidation,
   TopicDiscoveryResult,
   QuestionDiscoveryResult,
-} from './types.js';
+} from './types';
 import type {
   VerdictSummaryParams,
   VerdictSummaryResult,
-} from './types.verdictSummary.js';
+} from './types.verdictSummary';
 
 // Re-export types for convenience
 export type {
@@ -35,8 +35,8 @@ export type {
   Stance,
   TopicDiscoveryResult,
   QuestionDiscoveryResult,
-} from './types.js';
-export type { VerdictSummaryParams, VerdictSummaryResult } from './types.verdictSummary.js';
+} from './types';
+export type { VerdictSummaryParams, VerdictSummaryResult } from './types.verdictSummary';
 
 /**
  * LLM Provider Interface

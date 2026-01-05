@@ -3,8 +3,8 @@
  * Configuration system for LLM provider selection and setup
  */
 
-import type { LLMProvider } from './provider.js';
-import { OpenAIProvider, type OpenAIProviderConfig } from './providers/openaiProvider.js';
+import type { LLMProvider } from './provider';
+import { OpenAIProvider, type OpenAIProviderConfig } from './providers/openaiProvider';
 
 export interface LLMConfig {
   provider: 'openai' | 'anthropic' | 'local';

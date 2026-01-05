@@ -1,1 +1,14 @@
-{}
+{
+  "/api/topics/route": "app/api/topics/route.js",
+  "/questions/[id]/page": "app/questions/[id]/page.js",
+  "/api/questions/[id]/route": "app/api/questions/[id]/route.js",
+  "/api/debate/[questionId]/route": "app/api/debate/[questionId]/route.js",
+  "/page": "app/page.js",
+  "/api/verdicts/[questionId]/current/route": "app/api/verdicts/[questionId]/current/route.js",
+  "/api/questions/route": "app/api/questions/route.js",
+  "/api/consensus/[questionId]/thermometer/route": "app/api/consensus/[questionId]/thermometer/route.js",
+  "/topics/[id]/page": "app/topics/[id]/page.js",
+  "/api/topics/[id]/route": "app/api/topics/[id]/route.js",
+  "/admin/page": "app/admin/page.js",
+  "/admin/api/stats/route": "app/admin/api/stats/route.js"
+}

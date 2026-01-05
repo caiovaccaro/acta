@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { getConsensusThermometer } from '../services/consensusService.js';
+import { getConsensusThermometer } from '../services/consensusService';
 
 export async function consensusRoutes(fastify: FastifyInstance) {
   // Get consensus thermometer

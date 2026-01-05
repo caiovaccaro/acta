@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   getTimelineEvents,
   generateTimelineEvents,
-} from '../services/timelineService.js';
+} from '../services/timelineService';
 
 export async function timelineRoutes(fastify: FastifyInstance) {
   // Get timeline events for a topic or question

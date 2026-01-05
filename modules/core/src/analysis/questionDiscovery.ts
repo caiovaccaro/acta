@@ -1,6 +1,6 @@
 import type { Topic, Question } from '@prisma/client';
-import type { LLMProvider } from '../llm/provider.js';
-import type { DiscoveredQuestion, QuestionDiscoveryResult } from '../llm/types.js';
+import type { LLMProvider } from '../llm/provider';
+import type { DiscoveredQuestion, QuestionDiscoveryResult } from '../llm/types';
 
 export interface QuestionDiscoveryConfig {
   maxQuestionsPerTopic?: number;

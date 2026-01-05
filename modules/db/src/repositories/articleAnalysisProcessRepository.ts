@@ -3,7 +3,7 @@
  * Handles ArticleAnalysisAttempt model operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { ArticleAnalysisAttempt, Stance } from '@prisma/client';
 
 export interface CreateArticleAnalysisAttemptInput {

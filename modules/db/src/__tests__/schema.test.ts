@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { prisma, connectDatabase, disconnectDatabase } from '../index.js';
-import { performHealthCheck } from '../healthCheck.js';
+import { prisma, connectDatabase, disconnectDatabase } from '../index';
+import { performHealthCheck } from '../healthCheck';
 import type { Outlet, CrawlRequest, Article, Ideology, CrawlStatus } from '@prisma/client';
 
 describe('Database Schema Tests', () => {

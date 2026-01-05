@@ -3,7 +3,7 @@
  * Handles Question model operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { Question, QuestionValidationStatus, TopicSource } from '@prisma/client';
 
 export interface CreateQuestionInput {

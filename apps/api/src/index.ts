@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { buildServer } from './server.js';
+import { buildServer } from './server';
 import { connectDatabase, disconnectDatabase } from '@acta/db';
 
 // Load environment variables from root .env file

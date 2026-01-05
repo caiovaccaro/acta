@@ -3,8 +3,8 @@
  * Main entry point for validation framework
  */
 
-export * from './framework.js';
-export * from './types.js';
-export * from './config.js';
-export * from './barQuestionValidator.js';
+export * from './framework';
+export * from './types';
+export * from './config';
+export * from './barQuestionValidator';
 

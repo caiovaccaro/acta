@@ -13,7 +13,7 @@ const __dirname = dirname(__filename);
 
 config({ path: resolve(__dirname, '../../../../.env') });
 
-import { connectDatabase, disconnectDatabase, rejectTopic, findTopicById } from '../index.js';
+import { connectDatabase, disconnectDatabase, rejectTopic, findTopicById } from '../index';
 
 async function main() {
   const topicId = process.argv.find((arg) => arg.startsWith('--topicId='))?.split('=')[1];

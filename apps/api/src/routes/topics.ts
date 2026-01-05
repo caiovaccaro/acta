@@ -3,7 +3,7 @@ import {
   getAllTopics,
   getTopicById,
   getTopicVerdict,
-} from '../services/topicsService.js';
+} from '../services/topicsService';
 
 export async function topicsRoutes(fastify: FastifyInstance) {
   // Get all topics

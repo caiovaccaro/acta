@@ -9,14 +9,14 @@
 import { config } from 'dotenv';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { connectDatabase, disconnectDatabase, prisma } from '../index.js';
+import { connectDatabase, disconnectDatabase, prisma } from '../index';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables from .env file at project root
 config({ path: resolve(__dirname, '../../../../.env') });
-import { findOrCreateTopic } from '../repositories/topicRepository.js';
+import { findOrCreateTopic } from '../repositories/topicRepository';
 
 const INITIAL_TOPICS = [
   {
