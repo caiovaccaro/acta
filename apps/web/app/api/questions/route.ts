@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getAllQuestions } from '@acta/api/services/questionsService';
 
 export async function GET() {

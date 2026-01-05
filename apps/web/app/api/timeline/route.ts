@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getTimelineEvents, generateTimelineEvents } from '@acta/api/services/timelineService';
 
 export async function GET(request: Request) {

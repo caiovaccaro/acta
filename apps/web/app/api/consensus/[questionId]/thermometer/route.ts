@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getConsensusThermometer } from '@acta/api/services/consensusService';
 
 export async function GET(
