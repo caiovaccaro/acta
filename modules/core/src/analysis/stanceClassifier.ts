@@ -5,7 +5,7 @@
  * Classifies article stance on questions per article-question-month triad
  */
 
-import type { LLMProvider } from '../llm/provider.js';
+import type { LLMProvider } from '../llm/provider';
 import type { Article, Question } from '@acta/db';
 import type { Stance } from '@prisma/client';
 import {
@@ -14,7 +14,7 @@ import {
   createArticleStance,
   findArticleStanceByArticleAndQuestion,
 } from '@acta/db';
-import { getCurrentMonthPeriod } from '../utils/monthPeriod.js';
+import { getCurrentMonthPeriod } from '../utils/monthPeriod';
 
 /**
  * Minimum confidence threshold for "not relevant" classifications
@@ -247,7 +247,7 @@ export async function classifyArticleStances(
   config: StanceClassifierConfig = {}
 ): Promise<StanceClassificationResult[]> {
   // Import question matcher dynamically to avoid circular dependencies
-  const { filterMatchingQuestions } = await import('./questionMatcher.js');
+  const { filterMatchingQuestions } = await import('./questionMatcher');
   
   // Filter to only matching questions
   const matchingQuestions = await filterMatchingQuestions(

@@ -17,7 +17,7 @@
  */
 
 import type { Stance, VerdictLabel, Ideology } from '@prisma/client';
-import { getMonthPeriod } from '../utils/monthPeriod.js';
+import { getMonthPeriod } from '../utils/monthPeriod';
 
 /**
  * Stance to numeric score mapping

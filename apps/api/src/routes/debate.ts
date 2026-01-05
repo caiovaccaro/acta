@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { getDebateCard } from '../services/debateService.js';
+import { getDebateCard } from '../services/debateService';
 
 export async function debateRoutes(fastify: FastifyInstance) {
   // Get debate card

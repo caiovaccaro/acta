@@ -6,7 +6,7 @@
  * Rejected/unclear classifications are stored in ArticleAnalysisAttempt but not linked here.
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { ArticleStance } from '@prisma/client';
 
 export interface CreateArticleStanceInput {

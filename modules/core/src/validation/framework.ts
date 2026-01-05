@@ -6,8 +6,8 @@
 import type {
   ValidationResult,
   ValidationFrameworkConfig,
-} from './types.js';
-import type { LLMProvider } from '../llm/provider.js';
+} from './types';
+import type { LLMProvider } from '../llm/provider';
 
 export class ValidationFramework {
   private config: ValidationFrameworkConfig;

@@ -6,6 +6,7 @@ import {
 } from '@acta/db';
 import { findVerdictByQuestionAndMonth } from '@acta/db';
 import { getCurrentMonthPeriod } from '@acta/core';
+import { getVerdictCard } from './verdictsService';
 import type {
   TopicDTO,
   TopicDetailDTO,
@@ -353,7 +354,6 @@ export async function getTopicVerdict(
   if (!activeQuestion) return null;
 
   // Use verdictsService to get the verdict card
-  const { getVerdictCard } = await import('./verdictsService.js');
   return getVerdictCard(activeQuestion.id);
 }
 

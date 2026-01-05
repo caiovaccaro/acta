@@ -3,7 +3,7 @@
  * Validates if questions are simple and conversational enough to be asked in a bar conversation
  */
 
-import type { LLMProvider } from '../llm/provider.js';
+import type { LLMProvider } from '../llm/provider';
 import type { Question } from '@acta/db';
 import { updateQuestion } from '@acta/db';
 

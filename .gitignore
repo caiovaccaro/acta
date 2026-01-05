@@ -94,7 +94,7 @@ coverage/
 .yarn-integrity
 
 
-web/.next/
+apps/web/.next/
 
 _prototype/
 _prototype2/

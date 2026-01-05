@@ -26,7 +26,7 @@ import {
   createQuestion,
   findArticlesByTopic,
   prisma,
-} from '../index.js';
+} from '../index';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 import { discoverQuestionsForTopic } from '@acta/core/analysis';
 

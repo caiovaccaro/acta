@@ -5,7 +5,7 @@ import {
   findTopicArticlesByTopicId,
   findTimelineEventsByTopicOrQuestion,
 } from '@acta/db';
-import { getLLMProvider } from '../utils/llmProvider.js';
+import { getLLMProvider } from '../utils/llmProvider';
 import type { TimelineEventDTO } from '@acta/shared';
 
 /**

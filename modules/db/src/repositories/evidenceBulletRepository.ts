@@ -3,7 +3,7 @@
  * Handles EvidenceBullet model operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { EvidenceBullet, EvidenceType } from '@prisma/client';
 
 export interface CreateEvidenceBulletInput {

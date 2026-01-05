@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { healthRoutes } from './health.js';
-import { topicsRoutes } from './topics.js';
-import { questionsRoutes } from './questions.js';
-import { verdictsRoutes } from './verdicts.js';
-import { consensusRoutes } from './consensus.js';
-import { debateRoutes } from './debate.js';
-import { transparencyRoutes } from './transparency.js';
-import { feedbackRoutes } from './feedback.js';
+import { healthRoutes } from './health';
+import { topicsRoutes } from './topics';
+import { questionsRoutes } from './questions';
+import { verdictsRoutes } from './verdicts';
+import { consensusRoutes } from './consensus';
+import { debateRoutes } from './debate';
+import { transparencyRoutes } from './transparency';
+import { feedbackRoutes } from './feedback';
 
 export async function registerRoutes(fastify: FastifyInstance) {
   // Register all route modules

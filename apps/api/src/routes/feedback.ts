@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createFeedback } from '../services/feedbackService.js';
+import { createFeedback } from '../services/feedbackService';
 import type { FeedbackCreateDTO } from '@acta/shared';
 
 export async function feedbackRoutes(fastify: FastifyInstance) {

@@ -18,8 +18,8 @@ import {
   createOrUpdateVerdict,
   findVerdictByQuestionId,
 } from '@acta/db';
-import { calculateVerdict } from './verdictCalculator.js';
-import { getMonthPeriod, getCurrentMonthPeriod } from '../utils/monthPeriod.js';
+import { calculateVerdict } from './verdictCalculator';
+import { getMonthPeriod, getCurrentMonthPeriod } from '../utils/monthPeriod';
 import type { Stance, VerdictLabel, Ideology } from '@prisma/client';
 
 /**
