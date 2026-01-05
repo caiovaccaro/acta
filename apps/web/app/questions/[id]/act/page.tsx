@@ -35,7 +35,7 @@ export default function ActionPicker() {
           What type of action interests you most?
         </h1>
         <p className="text-text-muted mb-8 text-base">
-          Choose the way you'd prefer to contribute
+          Choose the way you would prefer to contribute
         </p>
 
         <div className="space-y-4 mb-8">
