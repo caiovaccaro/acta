@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { errorHandler } from './middleware/errorHandler.js';
-import { logger } from './middleware/logger.js';
-import { registerRoutes } from './routes/index.js';
+import { errorHandler } from './middleware/errorHandler';
+import { logger } from './middleware/logger';
+import { registerRoutes } from './routes/index';
 
 export async function buildServer() {
   const server = Fastify({

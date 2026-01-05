@@ -20,15 +20,15 @@ import type {
   VerdictSummaryResult,
   TopicDiscoveryResult,
   QuestionDiscoveryResult,
-} from '../provider.js';
+} from '../provider';
 import {
   LLMProviderError,
   LLMRateLimitError,
   LLMInvalidKeyError,
   LLMTimeoutError,
   LLMNetworkError,
-} from '../errors.js';
-import { withRetry } from '../utils/retry.js';
+} from '../errors';
+import { withRetry } from '../utils/retry';
 
 export interface OpenAIProviderConfig {
   apiKey: string;

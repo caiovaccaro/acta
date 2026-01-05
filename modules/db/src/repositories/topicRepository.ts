@@ -3,7 +3,7 @@
  * Handles Topic model operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { Topic, ModerationStatus, TopicSource } from '@prisma/client';
 
 export interface CreateTopicInput {

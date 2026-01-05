@@ -4,7 +4,7 @@
  * Validates database structure, connectivity, and schema integrity
  */
 
-import { prisma } from './index.js';
+import { prisma } from './index';
 import type { Prisma } from '@prisma/client';
 
 export interface HealthCheckResult {

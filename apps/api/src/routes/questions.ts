@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { getAllQuestions, getQuestionById } from '../services/questionsService.js';
+import { getAllQuestions, getQuestionById } from '../services/questionsService';
 
 export async function questionsRoutes(fastify: FastifyInstance) {
   // Get all active questions with topics and verdicts

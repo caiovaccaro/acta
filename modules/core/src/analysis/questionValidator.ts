@@ -4,8 +4,8 @@
  * Supports reformulation when validation fails
  */
 
-import type { LLMProvider } from '../llm/provider.js';
-import type { ValidationFramework } from '../validation/framework.js';
+import type { LLMProvider } from '../llm/provider';
+import type { ValidationFramework } from '../validation/framework';
 import type { Question } from '@acta/db';
 import {
   updateQuestion,

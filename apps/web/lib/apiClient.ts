@@ -1,9 +1,11 @@
 /**
  * API Client
  * Handles all HTTP requests to the backend API
+ * In production (Vercel), uses relative paths (same origin)
+ * In development, can use external API URL if needed
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export class ApiError extends Error {
   constructor(
@@ -41,13 +43,29 @@ class ApiClient {
   async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
     // Ensure endpoint starts with /api
     const apiEndpoint = endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`;
-    const url = new URL(`${API_BASE_URL}${apiEndpoint}`);
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
-      });
+    
+    // Build URL - use relative path if API_BASE_URL is empty (production/Vercel)
+    let url: string;
+    if (API_BASE_URL) {
+      const urlObj = new URL(`${API_BASE_URL}${apiEndpoint}`);
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          urlObj.searchParams.append(key, value);
+        });
+      }
+      url = urlObj.pathname + urlObj.search;
+    } else {
+      // Relative URL for same-origin requests
+      const searchParams = new URLSearchParams();
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          searchParams.append(key, value);
+        });
+      }
+      url = apiEndpoint + (searchParams.toString() ? `?${searchParams.toString()}` : '');
     }
-    return this.request<T>(url.pathname + url.search, {
+    
+    return this.request<T>(url, {
       method: 'GET',
     });
   }

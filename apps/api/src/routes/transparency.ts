@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { getTransparencyData } from '../services/transparencyService.js';
+import { getTransparencyData } from '../services/transparencyService';
 
 export async function transparencyRoutes(fastify: FastifyInstance) {
   // Get transparency data (outlets and methodology)

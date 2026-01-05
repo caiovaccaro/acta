@@ -1,14 +1,12 @@
 {
-  "buildCommand": "cd apps/web && npm run build",
+  "buildCommand": "cd modules/db && npm run db:generate && cd ../../apps/web && npm run build",
   "outputDirectory": "apps/web/.next",
   "framework": "nextjs",
   "installCommand": "npm install",
   "devCommand": "cd apps/web && npm run dev",
-  "rewrites": [
-    {
-      "source": "/admin/:path*",
-      "destination": "/admin/:path*"
-    }
-  ]
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "OPENAI_API_KEY": "@openai_api_key"
+  }
 }
 

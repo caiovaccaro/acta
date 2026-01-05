@@ -6,8 +6,8 @@
  * Usage: npx tsx src/scripts/healthCheck.ts
  */
 
-import { performHealthCheck, quickHealthCheck } from '../healthCheck.js';
-import { connectDatabase, disconnectDatabase } from '../index.js';
+import { performHealthCheck, quickHealthCheck } from '../healthCheck';
+import { connectDatabase, disconnectDatabase } from '../index';
 
 async function main() {
   console.log('🔍 Starting database health check...\n');

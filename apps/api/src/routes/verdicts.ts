@@ -3,7 +3,7 @@ import {
   getVerdictCard,
   getVerdictHistory,
   getCurrentVerdict,
-} from '../services/verdictsService.js';
+} from '../services/verdictsService';
 
 export async function verdictsRoutes(fastify: FastifyInstance) {
   // Get verdict history for a question

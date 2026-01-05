@@ -3,7 +3,7 @@
  * Handles TopicArticle (join table) operations
  */
 
-import { prisma } from '../index.js';
+import { prisma } from '../index';
 import type { TopicArticle } from '@prisma/client';
 
 export interface CreateTopicArticleInput {
