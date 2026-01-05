@@ -3,10 +3,6 @@
   "outputDirectory": "apps/web/.next",
   "framework": "nextjs",
   "installCommand": "npm install",
-  "devCommand": "cd apps/web && npm run dev",
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "OPENAI_API_KEY": "@openai_api_key"
-  }
+  "devCommand": "cd apps/web && npm run dev"
 }
 
