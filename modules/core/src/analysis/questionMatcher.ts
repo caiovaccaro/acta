@@ -39,7 +39,7 @@ function extractQuestionTerms(question: Question): string[] {
   // Also include the full question text as a phrase to match
   terms.push(questionText);
   
-  return [...new Set(terms)]; // Remove duplicates
+  return Array.from(new Set(terms)); // Remove duplicates
 }
 
 /**

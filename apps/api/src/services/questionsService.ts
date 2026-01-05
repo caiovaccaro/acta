@@ -29,7 +29,7 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
       
       const outletMap = new Map<string, { id: string; name: string }>();
       
-      articleStances.forEach((stance) => {
+      articleStances.forEach((stance: any) => {
         if (stance.article?.outlet) {
           const outlet = stance.article.outlet;
           if (!outletMap.has(outlet.id)) {
@@ -53,7 +53,7 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
         questionText: question.questionText,
         isActive: question.isActive,
         topicId: question.topicId,
-        topicName: question.topic?.name || 'Unknown',
+        topicName: (question as any).topic?.name || 'Unknown',
         verdict: verdict
           ? {
               id: verdict.id,
@@ -71,7 +71,7 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
   );
 
   // Filter out null values (questions with no articles)
-  return questionsWithData.filter((q): q is QuestionCardDTO => q !== null);
+  return questionsWithData.filter((q) => q !== null) as QuestionCardDTO[];
 }
 
 /**
@@ -88,7 +88,7 @@ export async function getQuestionById(id: string): Promise<QuestionCardDTO | nul
   const articleStances = await findArticleStancesByQuestionId(question.id);
   const outletMap = new Map<string, { id: string; name: string }>();
   
-  articleStances.forEach((stance) => {
+  articleStances.forEach((stance: any) => {
     if (stance.article?.outlet) {
       const outlet = stance.article.outlet;
       if (!outletMap.has(outlet.id)) {
@@ -107,7 +107,7 @@ export async function getQuestionById(id: string): Promise<QuestionCardDTO | nul
     questionText: question.questionText,
     isActive: question.isActive,
     topicId: question.topicId,
-    topicName: question.topic?.name || 'Unknown',
+    topicName: (question as any).topic?.name || 'Unknown',
     verdict: verdict
       ? {
           id: verdict.id,
