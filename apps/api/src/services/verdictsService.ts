@@ -77,7 +77,7 @@ export async function getVerdictCard(
     evidenceBullets: evidenceBullets.map((eb) => ({
       id: eb.id,
       text: eb.text,
-      type: eb.type as 'Why' | 'Dissent' | 'Unknowns',
+      type: eb.type as 'Why' | 'Dissent' | 'Unknown',
       articleId: eb.articleId,
       articleTitle: (eb as any).article?.title || null,
       articleUrl: (eb as any).article?.url || null,

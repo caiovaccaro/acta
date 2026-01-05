@@ -537,6 +537,7 @@ export async function getDebateCard(
     });
 
     // Generate points for debate using extractQuotes from opposing articles
+    const llmProvider = getLLMProvider();
     for (const stance of opposingStances.slice(0, 5)) {
       const attempt = (stance as any).articleAnalysisAttempt;
       const article = (stance as any).article;

@@ -22,6 +22,8 @@ export interface UpdateVerdictInput {
   supportShare?: number;
   variance?: number;
   reasoning?: string | null;
+  overviewBullets?: any; // Json? in Prisma schema
+  featuredPerspective?: any; // Json? in Prisma schema
 }
 
 /**
