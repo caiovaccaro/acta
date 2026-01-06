@@ -1,5 +1,5 @@
 import { findActiveQuestions, findQuestionById } from '@acta/db';
-import { findVerdictByQuestionAndMonth } from '@acta/db';
+import { findVerdictByQuestionAndMonth, findLatestVerdictByQuestion } from '@acta/db';
 import { findArticleStancesByQuestionId } from '@acta/db';
 import { getCurrentMonthPeriod } from '@acta/core';
 import type { QuestionCardDTO } from '@acta/shared';
@@ -14,10 +14,14 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
 
   const questionsWithData = await Promise.all(
     questions.map(async (question) => {
-      const verdict = await findVerdictByQuestionAndMonth(
+      let verdict = await findVerdictByQuestionAndMonth(
         question.id,
         currentMonth
       );
+      // Fall back to latest verdict if current month doesn't have one
+      if (!verdict) {
+        verdict = await findLatestVerdictByQuestion(question.id);
+      }
 
       // Get unique outlets from article stances
       const articleStances = await findArticleStancesByQuestionId(question.id);
@@ -82,7 +86,11 @@ export async function getQuestionById(id: string): Promise<QuestionCardDTO | nul
   if (!question) return null;
 
   const currentMonth = getCurrentMonthPeriod();
-  const verdict = await findVerdictByQuestionAndMonth(question.id, currentMonth);
+  let verdict = await findVerdictByQuestionAndMonth(question.id, currentMonth);
+  // Fall back to latest verdict if current month doesn't have one
+  if (!verdict) {
+    verdict = await findLatestVerdictByQuestion(question.id);
+  }
 
   // Get unique outlets from article stances
   const articleStances = await findArticleStancesByQuestionId(question.id);
