@@ -25,6 +25,15 @@ if (!process.env.DATABASE_URL && typeof window === 'undefined') {
   }
 }
 
+// Validate DATABASE_URL is present
+if (!process.env.DATABASE_URL) {
+  console.error('[@acta/db] ERROR: DATABASE_URL environment variable is not set!');
+  console.error('[@acta/db] This will cause database connection failures.');
+} else {
+  // Log that DATABASE_URL is present (but don't log the actual URL for security)
+  console.log('[@acta/db] DATABASE_URL is set, Prisma client initializing...');
+}
+
 // Singleton Prisma client instance
 export const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],

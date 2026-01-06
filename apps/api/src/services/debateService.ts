@@ -29,18 +29,35 @@ export async function getDebateCard(
   questionId: string,
   month?: string
 ): Promise<DebateCardDTO | null> {
-  const question = await findQuestionById(questionId);
-  if (!question) return null;
+  let question, verdict, monthDate;
+  
+  try {
+    console.log(`[getDebateCard] Fetching debate card - questionId: ${questionId}, month: ${month || 'current'}`);
+    
+    question = await findQuestionById(questionId);
+    if (!question) {
+      console.warn(`[getDebateCard] Question not found: ${questionId}`);
+      return null;
+    }
 
-  const monthDate = month
-    ? parseMonthPeriod(month)
-    : getCurrentMonthPeriod();
+    monthDate = month
+      ? parseMonthPeriod(month)
+      : getCurrentMonthPeriod();
 
-  // Get verdict (contains stored overviewBullets and featuredPerspective)
-  const verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
-  if (!verdict) {
-    // No verdict means no data yet
-    return null;
+    console.log(`[getDebateCard] Looking for verdict - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
+
+    // Get verdict (contains stored overviewBullets and featuredPerspective)
+    verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
+    if (!verdict) {
+      console.warn(`[getDebateCard] Verdict not found - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
+      // No verdict means no data yet
+      return null;
+    }
+
+    console.log(`[getDebateCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
+  } catch (error) {
+    console.error(`[getDebateCard] Error fetching debate card:`, error);
+    throw error;
   }
 
   const topic = (question as any).topic;

@@ -15,15 +15,32 @@ export async function getVerdictCard(
   questionId: string,
   month?: string
 ): Promise<VerdictCardDTO | null> {
-  const question = await findQuestionById(questionId);
-  if (!question) return null;
+  let question, verdict, monthDate;
+  
+  try {
+    question = await findQuestionById(questionId);
+    if (!question) {
+      console.warn(`[getVerdictCard] Question not found: ${questionId}`);
+      return null;
+    }
 
-  const monthDate = month
-    ? parseMonthPeriod(month)
-    : getCurrentMonthPeriod();
+    monthDate = month
+      ? parseMonthPeriod(month)
+      : getCurrentMonthPeriod();
 
-  const verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
-  if (!verdict) return null;
+    console.log(`[getVerdictCard] Looking for verdict - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
+
+    verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
+    if (!verdict) {
+      console.warn(`[getVerdictCard] Verdict not found - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
+      return null;
+    }
+
+    console.log(`[getVerdictCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
+  } catch (error) {
+    console.error(`[getVerdictCard] Error fetching verdict:`, error);
+    throw error;
+  }
 
   // Get evidence bullets
   const evidenceBullets = await findEvidenceBulletsByVerdictId(verdict.id);
