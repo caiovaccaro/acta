@@ -1,10 +1,9 @@
 'use client';
 
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 
 async function fetchQuestions(topicId?: string | null) {
   const url = topicId ? `/admin/api/questions?topicId=${topicId}` : '/admin/api/questions';
@@ -40,7 +39,7 @@ function getBarScore(validationResults: any): number | null {
   return null;
 }
 
-export default function AdminQuestions() {
+function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId');
   const [selectedTopicId, setSelectedTopicId] = useState(topicId || '');
@@ -238,5 +237,13 @@ export default function AdminQuestions() {
         <div className="text-text-muted">No questions found</div>
       )}
     </div>
+  );
+}
+
+export default function AdminQuestions() {
+  return (
+    <Suspense fallback={<div className="text-text-muted">Loading...</div>}>
+      <AdminQuestionsContent />
+    </Suspense>
   );
 }
