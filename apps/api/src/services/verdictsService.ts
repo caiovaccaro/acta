@@ -1,6 +1,7 @@
 import {
   findVerdictByQuestionAndMonth,
   findVerdictsByQuestion,
+  findLatestVerdictByQuestion,
   findQuestionById,
   findEvidenceBulletsByVerdictId,
   findArticleStancesByQuestionId,
@@ -32,11 +33,19 @@ export async function getVerdictCard(
 
     verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
     if (!verdict) {
-      console.warn(`[getVerdictCard] Verdict not found - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
-      return null;
+      console.warn(`[getVerdictCard] Verdict not found for month ${monthDate.toISOString()}, falling back to latest verdict`);
+      // Fall back to the most recent verdict if current month doesn't have one
+      verdict = await findLatestVerdictByQuestion(questionId);
+      if (!verdict) {
+        console.warn(`[getVerdictCard] No verdicts found for questionId: ${questionId}`);
+        return null;
+      }
+      console.log(`[getVerdictCard] Using latest verdict: ${verdict.id} (month: ${verdict.month.toISOString()}) for questionId: ${questionId}`);
+      // Update monthDate to match the verdict we found
+      monthDate = verdict.month;
+    } else {
+      console.log(`[getVerdictCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
     }
-
-    console.log(`[getVerdictCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
   } catch (error) {
     console.error(`[getVerdictCard] Error fetching verdict:`, error);
     throw error;

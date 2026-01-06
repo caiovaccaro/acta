@@ -2,6 +2,7 @@ import {
   findQuestionById,
   findArticleStancesByQuestionId,
   findVerdictByQuestionAndMonth,
+  findLatestVerdictByQuestion,
   findEvidenceBulletsByVerdictId,
   createEvidenceBullets,
   deleteEvidenceBulletsByVerdictId,
@@ -49,12 +50,20 @@ export async function getDebateCard(
     // Get verdict (contains stored overviewBullets and featuredPerspective)
     verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
     if (!verdict) {
-      console.warn(`[getDebateCard] Verdict not found - questionId: ${questionId}, month: ${monthDate.toISOString()}`);
-      // No verdict means no data yet
-      return null;
+      console.warn(`[getDebateCard] Verdict not found for month ${monthDate.toISOString()}, falling back to latest verdict`);
+      // Fall back to the most recent verdict if current month doesn't have one
+      verdict = await findLatestVerdictByQuestion(questionId);
+      if (!verdict) {
+        console.warn(`[getDebateCard] No verdicts found for questionId: ${questionId}`);
+        // No verdict means no data yet
+        return null;
+      }
+      console.log(`[getDebateCard] Using latest verdict: ${verdict.id} (month: ${verdict.month.toISOString()}) for questionId: ${questionId}`);
+      // Update monthDate to match the verdict we found
+      monthDate = verdict.month;
+    } else {
+      console.log(`[getDebateCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
     }
-
-    console.log(`[getDebateCard] Found verdict: ${verdict.id} for questionId: ${questionId}`);
   } catch (error) {
     console.error(`[getDebateCard] Error fetching debate card:`, error);
     throw error;
