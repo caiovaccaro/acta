@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cd ../../modules/db && npm run db:generate && cd ../../apps/web && next build",
+    "build": "cd ../../modules/db && npm run db:generate && cd ../../apps/web && next build && mkdir -p ../../.next && cp .next/routes-manifest.json ../../.next/routes-manifest.json",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
