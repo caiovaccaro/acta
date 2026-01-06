@@ -12,10 +12,8 @@ const nextConfig = {
     // your project has ESLint errors. Only use this if you know what you're doing.
     ignoreDuringBuilds: false,
   },
-  // Skip static optimization for admin routes (they're all dynamic)
-  generateBuildId: async () => {
-    return 'build-' + Date.now();
-  },
+  // Output to root .next for Vercel monorepo compatibility
+  distDir: '../../.next',
 }
 
 module.exports = nextConfig
