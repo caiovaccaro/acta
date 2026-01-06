@@ -4,7 +4,7 @@ import {
   findQuestionsByTopicId,
   findArticleStancesByQuestionId,
 } from '@acta/db';
-import { findVerdictByQuestionAndMonth } from '@acta/db';
+import { findVerdictByQuestionAndMonth, findLatestVerdictByQuestion } from '@acta/db';
 import { getCurrentMonthPeriod } from '@acta/core';
 import { getVerdictCard } from './verdictsService';
 import type {
@@ -92,10 +92,14 @@ export async function getAllTopics(
 
       if (mainQuestion) {
         const currentMonth = getCurrentMonthPeriod();
-        const verdict = await findVerdictByQuestionAndMonth(
+        let verdict = await findVerdictByQuestionAndMonth(
           mainQuestion.id,
           currentMonth
         );
+        // Fall back to latest verdict if current month doesn't have one
+        if (!verdict) {
+          verdict = await findLatestVerdictByQuestion(mainQuestion.id);
+        }
 
         // Get unique outlets from article stances for the main question
         const mainQuestionStances = await findArticleStancesByQuestionId(mainQuestion.id);
@@ -216,10 +220,14 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
   const questionCards: QuestionCardDTO[] = await Promise.all(
     realQuestions.map(async (question) => {
       const currentMonth = getCurrentMonthPeriod();
-      const verdict = await findVerdictByQuestionAndMonth(
+      let verdict = await findVerdictByQuestionAndMonth(
         question.id,
         currentMonth
       );
+      // Fall back to latest verdict if current month doesn't have one
+      if (!verdict) {
+        verdict = await findLatestVerdictByQuestion(question.id);
+      }
 
       // Get unique outlets from article stances
       // findArticleStancesByQuestionId includes article with outlet
@@ -276,10 +284,14 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
   
   if (mainQuestion) {
     const currentMonth = getCurrentMonthPeriod();
-    const verdict = await findVerdictByQuestionAndMonth(
+    let verdict = await findVerdictByQuestionAndMonth(
       mainQuestion.id,
       currentMonth
     );
+    // Fall back to latest verdict if current month doesn't have one
+    if (!verdict) {
+      verdict = await findLatestVerdictByQuestion(mainQuestion.id);
+    }
 
     // Get unique outlets from article stances for the main question
     const mainQuestionStances = await findArticleStancesByQuestionId(mainQuestion.id);
