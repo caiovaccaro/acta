@@ -194,7 +194,9 @@ export async function getDebateCard(
       outletName: (eb as any).article?.outlet?.name || '',
     }));
   } else if (monthStances.length > 0) {
-    // Generate quotes and store them
+    // Generate quotes and store them (fallback - should be pre-generated)
+    // NOTE: Quotes should be pre-generated during pipeline via db:generate:debate-content
+    console.warn(`[debateService] Quotes not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
     const isYesVerdict = verdict.verdictLabel === 'YesItSeemsSo' || verdict.verdictLabel === 'ProbablyYes';
     const isNoVerdict = verdict.verdictLabel === 'NoItDoesntSeemSo' || verdict.verdictLabel === 'ProbablyNot';
 
@@ -468,7 +470,9 @@ export async function getDebateCard(
       };
     }
   } else if (monthStances.length > 0 && topQuotesFor.length > 0) {
-    // Generate and store featured perspective
+    // Generate and store featured perspective (fallback - should be pre-generated)
+    // NOTE: Featured perspective should be pre-generated during pipeline via db:generate:debate-content
+    console.warn(`[debateService] Featured perspective not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
     try {
       const llmProvider = getLLMProvider();
       const alignedStances = monthStances.filter((stance) => {
@@ -586,8 +590,10 @@ export async function getDebateCard(
       }));
   }
   
-  // If no stored quotes or not enough, generate new quotes from opposing articles
+  // If no stored points for debate, generate them (fallback - should be pre-generated)
+  // NOTE: Points for debate should be pre-generated during pipeline via db:generate:debate-content
   if (pointsForDebate.length === 0) {
+    console.warn(`[debateService] Points for debate not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
     // Generate points for debate from opposing arguments
     const opposingStances = monthStances.filter((stance) => {
       const attempt = (stance as any).articleAnalysisAttempt;
