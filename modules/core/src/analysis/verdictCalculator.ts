@@ -187,13 +187,19 @@ function calculateConfidence(
   supportShare: number,
   variance: number
 ): number {
+  // Clamp inputs to valid ranges to prevent calculation errors
+  const clampedSupportShare = Math.max(0, Math.min(1, supportShare));
+  const clampedVariance = Math.max(0, Math.min(1, variance));
+  
   // Distance from neutral (0.5)
-  const distance = Math.abs(supportShare - 0.5);
+  // Maximum distance is 0.5 (when supportShare is 0 or 1)
+  const distance = Math.abs(clampedSupportShare - 0.5);
   
   // Confidence = distance × (1 - variance) × 100
-  const confidence = distance * (1 - variance) * 100;
+  // Maximum: 0.5 × 1 × 100 = 50, but we'll clamp anyway for safety
+  const confidence = distance * (1 - clampedVariance) * 100;
   
-  // Clamp to 0-100
+  // Clamp to 0-100 to ensure it never exceeds 100
   return Math.max(0, Math.min(100, confidence));
 }
 
