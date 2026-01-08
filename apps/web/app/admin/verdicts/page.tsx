@@ -66,7 +66,7 @@ export default function AdminVerdicts() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-text-muted">
-                    {(verdict.confidence * 100).toFixed(1)}%
+                    {Math.min(100, Math.max(0, verdict.confidence || 0)).toFixed(1)}%
                   </td>
                   <td className="px-6 py-4 text-text-muted">
                     {verdict._count?.articles || 0}

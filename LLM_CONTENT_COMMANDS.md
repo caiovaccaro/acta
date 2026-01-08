@@ -91,6 +91,10 @@ Generates reasoning summaries for calculated verdicts.
 
 ## 5. LLM Content Generation
 
+**⚠️ IMPORTANT: All LLM content MUST be pre-generated during the pipeline.**
+The API services will NOT generate content on-demand (except for 2% edge cases when `ENABLE_ON_DEMAND_LLM_GENERATION=true`).
+Content must exist in the database before the frontend requests it.
+
 ### Generate Context Blurbs
 ```bash
 # Generate for all questions
@@ -197,10 +201,7 @@ npm run db:calculate:verdicts
 npm run db:summarize:verdicts
 
 # 6. Generate all LLM content
-npm run db:generate:context-blurbs 
-npm run db:generate:timeline-events 
-npm run db:generate:featured-perspectives 
-npm run db:generate:debate-content 
+npm run db:generate:context-blurbs && npm run db:generate:timeline-events && npm run db:generate:featured-perspectives && npm run db:generate:debate-content 
 ```
 
 ### Regenerate Only LLM Content (if articles/verdicts already exist)

@@ -9,12 +9,14 @@ export async function GET(request: Request) {
     const questionId = searchParams.get('questionId') || undefined;
     const generate = searchParams.get('generate') === 'true';
 
-    if (generate) {
-      const events = await generateTimelineEvents(topicId, questionId);
-      return NextResponse.json(events);
+    // Try to get stored events first
+    let events = await getTimelineEvents(topicId, questionId);
+    
+    // If no events found and generate=true, generate on-demand (fallback)
+    if (events.length === 0 && generate) {
+      events = await generateTimelineEvents(topicId, questionId);
     }
-
-    const events = await getTimelineEvents(topicId, questionId);
+    
     return NextResponse.json(events);
   } catch (error) {
     console.error('Error fetching timeline:', error);
