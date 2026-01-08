@@ -153,12 +153,15 @@ export async function findAllVerdicts(): Promise<Verdict[]> {
  * @returns Created Verdict
  */
 export async function createVerdict(input: CreateVerdictInput): Promise<Verdict> {
+  // Clamp confidence to 0-100 to prevent values exceeding 100
+  const clampedConfidence = Math.max(0, Math.min(100, input.confidence));
+  
   return prisma.verdict.create({
     data: {
       questionId: input.questionId,
       month: input.month,
       verdictLabel: input.verdictLabel,
-      confidence: input.confidence,
+      confidence: clampedConfidence,
       supportShare: input.supportShare,
       variance: input.variance,
       reasoning: input.reasoning ?? null,
@@ -183,6 +186,9 @@ export async function createVerdict(input: CreateVerdictInput): Promise<Verdict>
 export async function createOrUpdateVerdict(
   input: CreateVerdictInput
 ): Promise<Verdict> {
+  // Clamp confidence to 0-100 to prevent values exceeding 100
+  const clampedConfidence = Math.max(0, Math.min(100, input.confidence));
+  
   // Use raw SQL to handle upsert with the composite unique constraint
   // Use the constraint name explicitly to avoid ambiguity
   const result = await prisma.$queryRaw<Array<{
@@ -199,7 +205,7 @@ export async function createOrUpdateVerdict(
     updatedAt: Date;
   }>>`
     INSERT INTO "verdicts" ("id", "questionId", "month", "verdictLabel", "confidence", "supportShare", "variance", "reasoning", "calculatedAt", "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${input.questionId}::text, ${input.month}::timestamp, ${input.verdictLabel}::"VerdictLabel", ${input.confidence}::float, ${input.supportShare}::float, ${input.variance}::float, ${input.reasoning ?? null}::text, NOW(), NOW(), NOW())
+    VALUES (gen_random_uuid(), ${input.questionId}::text, ${input.month}::timestamp, ${input.verdictLabel}::"VerdictLabel", ${clampedConfidence}::float, ${input.supportShare}::float, ${input.variance}::float, ${input.reasoning ?? null}::text, NOW(), NOW(), NOW())
     ON CONFLICT ON CONSTRAINT "verdicts_questionId_month_key"
     DO UPDATE SET
       "verdictLabel" = EXCLUDED."verdictLabel"::"VerdictLabel",
@@ -241,9 +247,15 @@ export async function updateVerdict(
   id: string,
   input: UpdateVerdictInput
 ): Promise<Verdict> {
+  // Clamp confidence to 0-100 if provided
+  const updateData = { ...input };
+  if (updateData.confidence !== undefined) {
+    updateData.confidence = Math.max(0, Math.min(100, updateData.confidence));
+  }
+  
   return prisma.verdict.update({
     where: { id },
-    data: input,
+    data: updateData,
     include: {
       question: {
         include: {

@@ -76,7 +76,7 @@ export default function VerdictDetail() {
             <div>
               <span className="text-sm font-semibold text-text-muted">Confidence:</span>
               <span className="ml-2 text-text-main">
-                {(verdict.confidence * 100).toFixed(1)}%
+                {Math.min(100, Math.max(0, verdict.confidence || 0)).toFixed(1)}%
               </span>
             </div>
             <div>
