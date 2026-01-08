@@ -459,11 +459,38 @@ Return JSON:
 
           const parsed = JSON.parse(content);
           const quotes = Array.isArray(parsed.quotes) ? parsed.quotes : [];
+          
+          // Filter out incomplete or invalid quotes
+          const validQuotes = quotes
+            .filter((q: any) => {
+              if (!q || !q.text || typeof q.text !== 'string') return false;
+              
+              const trimmed = q.text.trim();
+              
+              // Must be at least 20 characters
+              if (trimmed.length < 20) return false;
+              
+              // Must not end with incomplete punctuation (just a quote mark, escape sequence, etc.)
+              if (trimmed.endsWith('\\"')) return false; // Incomplete escaped quote
+              if (trimmed.endsWith('"') && trimmed.length < 50) {
+                // Ends with quote - check if it has sentence-ending punctuation before the quote
+                const beforeQuote = trimmed.slice(0, -1);
+                if (!beforeQuote.match(/[.!?]$/)) {
+                  return false; // Ends with quote but no sentence-ending punctuation
+                }
+              }
+              
+              // Must contain at least one complete word (not just fragments)
+              const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+              if (words.length < 3) return false; // At least 3 words
+              
+              return true;
+            })
+            .slice(0, params.maxQuotes || 5)
+            .map((q: any) => ({ text: q.text.trim() }));
+          
           return {
-            quotes: quotes
-              .filter((q: any) => q && q.text && typeof q.text === 'string' && q.text.trim().length > 0)
-              .slice(0, params.maxQuotes || 5)
-              .map((q: any) => ({ text: q.text.trim() })),
+            quotes: validQuotes,
           };
         } catch (error) {
           throw this.handleError(error);

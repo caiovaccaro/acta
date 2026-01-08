@@ -248,21 +248,29 @@ export async function getDebateCard(
 
           if (quoteResult.quotes.length > 0) {
             const quote = quoteResult.quotes[0];
-            quotesToStore.push({
-              verdictId: verdict.id,
-              text: quote.text,
-              articleId: article.id,
-              type: 'Why',
-              order: quoteOrder++,
-            });
-            quotesFor.push({
-              id: `temp-${article.id}`,
-              text: quote.text,
-              articleId: article.id,
-              articleTitle: article.title,
-              articleUrl: article.url,
-              outletName: outlet.name,
-            });
+            const trimmedText = quote.text?.trim() || '';
+            // Additional validation: quote must be substantial and complete
+            if (
+              trimmedText.length >= 20 && // At least 20 characters
+              !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
+              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
+            ) {
+              quotesToStore.push({
+                verdictId: verdict.id,
+                text: quote.text,
+                articleId: article.id,
+                type: 'Why',
+                order: quoteOrder++,
+              });
+              quotesFor.push({
+                id: `temp-${article.id}`,
+                text: quote.text,
+                articleId: article.id,
+                articleTitle: article.title,
+                articleUrl: article.url,
+                outletName: outlet.name,
+              });
+            }
           }
         } catch (error) {
           // Skip this article if quote extraction fails
@@ -308,21 +316,29 @@ export async function getDebateCard(
 
           if (quoteResult.quotes.length > 0) {
             const quote = quoteResult.quotes[0];
-            quotesToStore.push({
-              verdictId: verdict.id,
-              text: quote.text,
-              articleId: article.id,
-              type: 'Dissent',
-              order: quoteOrder++,
-            });
-            quotesAgainst.push({
-              id: `temp-${article.id}`,
-              text: quote.text,
-              articleId: article.id,
-              articleTitle: article.title,
-              articleUrl: article.url,
-              outletName: outlet.name,
-            });
+            const trimmedText = quote.text?.trim() || '';
+            // Additional validation: quote must be substantial and complete
+            if (
+              trimmedText.length >= 20 && // At least 20 characters
+              !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
+              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
+            ) {
+              quotesToStore.push({
+                verdictId: verdict.id,
+                text: quote.text,
+                articleId: article.id,
+                type: 'Dissent',
+                order: quoteOrder++,
+              });
+              quotesAgainst.push({
+                id: `temp-${article.id}`,
+                text: quote.text,
+                articleId: article.id,
+                articleTitle: article.title,
+                articleUrl: article.url,
+                outletName: outlet.name,
+              });
+            }
           }
         } catch (error) {
           console.warn(`Failed to extract quote from article ${article.id}:`, error);
@@ -391,8 +407,33 @@ export async function getDebateCard(
   }
 
   // Limit quotes
-  const topQuotesFor = quotesFor.slice(0, 5);
-  const topQuotesAgainst = quotesAgainst.slice(0, 3);
+  // Deduplicate quotes by text (normalized) before selecting top quotes
+  const normalizeText = (text: string) => text.trim().toLowerCase().replace(/\s+/g, ' ');
+  
+  const deduplicatedQuotesFor: QuoteDTO[] = [];
+  const seenTextsFor = new Set<string>();
+  
+  for (const quote of quotesFor) {
+    const normalized = normalizeText(quote.text);
+    if (!seenTextsFor.has(normalized)) {
+      seenTextsFor.add(normalized);
+      deduplicatedQuotesFor.push(quote);
+    }
+  }
+  
+  const deduplicatedQuotesAgainst: QuoteDTO[] = [];
+  const seenTextsAgainst = new Set<string>();
+  
+  for (const quote of quotesAgainst) {
+    const normalized = normalizeText(quote.text);
+    if (!seenTextsAgainst.has(normalized)) {
+      seenTextsAgainst.add(normalized);
+      deduplicatedQuotesAgainst.push(quote);
+    }
+  }
+  
+  const topQuotesFor = deduplicatedQuotesFor.slice(0, 5);
+  const topQuotesAgainst = deduplicatedQuotesAgainst.slice(0, 3);
 
   // Check for stored featured perspective
   let featuredPerspective: FeaturedPerspectiveDTO | null = null;
@@ -590,7 +631,15 @@ export async function getDebateCard(
         if (quoteResult.quotes.length > 0) {
           const quote = quoteResult.quotes[0];
           // Only add if we have a valid quote and article URL
-          if (quote.text && quote.text.trim().length > 0 && article.url) {
+          // Additional validation: quote must be substantial and complete
+          const trimmedText = quote.text?.trim() || '';
+          if (
+            trimmedText.length >= 20 && // At least 20 characters
+            trimmedText.length >= 3 && // At least 3 words
+            !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
+            !(trimmedText.endsWith('"') && trimmedText.length < 50) && // Not a very short incomplete quote
+            article.url
+          ) {
             pointsForDebate.push({
               id: `debate-${article.id}`,
               text: quote.text,
