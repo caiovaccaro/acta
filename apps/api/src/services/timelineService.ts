@@ -27,6 +27,8 @@ export async function getTimelineEvents(
 
 /**
  * Generate timeline events using LLM from article content
+ * NOTE: Timeline events should be pre-generated via db:generate:timeline-events
+ * This function is available as fallback but should rarely be needed
  */
 export async function generateTimelineEvents(
   topicId?: string,
@@ -35,6 +37,9 @@ export async function generateTimelineEvents(
   // Check for existing events first
   const existing = await getTimelineEvents(topicId, questionId);
   if (existing.length > 0) return existing;
+  
+  // Warn that content should be pre-generated
+  console.warn(`[timelineService] Timeline events not pre-generated for ${questionId || topicId}. Generating on-demand. Run db:generate:timeline-events to pre-generate.`);
 
   // Get articles for LLM generation
   let articles: Array<{
