@@ -471,7 +471,21 @@ Return JSON:
               if (trimmed.length < 20) return false;
               
               // Must not end with incomplete punctuation (just a quote mark, escape sequence, etc.)
-              if (trimmed.endsWith('\\"')) return false; // Incomplete escaped quote
+              // Check for patterns ending with backslash (with or without quote)
+              if (trimmed.endsWith('\\') || 
+                  trimmed.endsWith('\\ ') || 
+                  trimmed.endsWith(' \\') ||
+                  trimmed.endsWith('\\"') || 
+                  trimmed.endsWith('\\" ') || 
+                  trimmed.endsWith(' \\"') || 
+                  trimmed.endsWith(' \\" ')) {
+                return false; // Incomplete escaped quote
+              }
+              // Check for quotes that end with backslash-quote pattern (incomplete)
+              const lastChars = trimmed.slice(-10); // Check last 10 chars for the pattern
+              if (lastChars.match(/\\\s*"[\s]*$/)) return false; // Incomplete escape pattern
+              // Check for quotes ending with just a backslash (with or without trailing space)
+              if (lastChars.match(/\\[\s]*$/)) return false; // Incomplete backslash
               if (trimmed.endsWith('"') && trimmed.length < 50) {
                 // Ends with quote - check if it has sentence-ending punctuation before the quote
                 const beforeQuote = trimmed.slice(0, -1);

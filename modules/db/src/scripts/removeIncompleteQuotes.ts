@@ -30,7 +30,24 @@ function isIncompleteQuote(text: string): boolean {
   if (trimmed.length < 20) return true;
   
   // Must not end with incomplete escape sequence
-  if (trimmed.endsWith('\\"')) return true;
+  // Check for patterns ending with backslash (with or without quote)
+  if (trimmed.endsWith('\\') || 
+      trimmed.endsWith('\\ ') || 
+      trimmed.endsWith(' \\') ||
+      trimmed.endsWith('\\"') || 
+      trimmed.endsWith('\\" ') || 
+      trimmed.endsWith(' \\"') || 
+      trimmed.endsWith(' \\" ')) {
+    return true;
+  }
+  
+  // Check for quotes that end with backslash-quote pattern (incomplete)
+  // Pattern: ends with backslash followed by quote, possibly with whitespace
+  const lastChars = trimmed.slice(-10); // Check last 10 chars for the pattern
+  if (lastChars.match(/\\\s*"[\s]*$/)) return true;
+  
+  // Check for quotes ending with just a backslash (with or without trailing space)
+  if (lastChars.match(/\\[\s]*$/)) return true;
   
   // Must not end with just a quote mark if very short (unless it has sentence-ending punctuation)
   if (trimmed.endsWith('"') && trimmed.length < 50) {
@@ -65,26 +82,62 @@ async function main() {
     
     console.log(`📊 Found ${allBullets.length} total evidence bullets\n`);
     
+    // Debug: Search for quotes matching the screenshot patterns
+    const welcomeQuotes = allBullets.filter(b => 
+      b.text.toLowerCase().includes('welcome')
+    );
+    const readyQuotes = allBullets.filter(b => 
+      b.text.toLowerCase().includes('ready to lead')
+    );
+    
+    if (welcomeQuotes.length > 0 || readyQuotes.length > 0) {
+      console.log(`🔍 Found ${welcomeQuotes.length + readyQuotes.length} quotes matching screenshot patterns:\n`);
+      for (const b of [...welcomeQuotes, ...readyQuotes]) {
+        const trimmed = b.text.trim();
+        const last20 = trimmed.slice(-20);
+        const last10 = trimmed.slice(-10);
+        console.log(`   - ${b.id} (${b.type}):`);
+        console.log(`     Full text: ${trimmed}`);
+        console.log(`     Last 20 chars: ${JSON.stringify(last20)}`);
+        console.log(`     Last 10 chars: ${JSON.stringify(last10)}`);
+        console.log(`     Ends with \\\": ${trimmed.endsWith('\\"')}`);
+        console.log(`     Ends with \\\" : ${trimmed.endsWith('\\" ')}`);
+        console.log(`     Ends with  \\\": ${trimmed.endsWith(' \\"')}`);
+        console.log(`     Contains \\\": ${trimmed.includes('\\"')}`);
+        console.log(`     Char codes (last 5): ${trimmed.slice(-5).split('').map(c => c.charCodeAt(0)).join(', ')}`);
+        console.log(`     Is incomplete: ${isIncompleteQuote(b.text)}`);
+        console.log('');
+      }
+    }
+    
     // Find incomplete quotes
     const incompleteBullets = allBullets.filter(bullet => isIncompleteQuote(bullet.text));
     
-    if (incompleteBullets.length === 0) {
+    // Add any suspect quotes to incomplete list
+    const allIncomplete = Array.from(new Set([
+      ...incompleteBullets.map(b => b.id),
+      ...welcomeQuotes.filter(b => isIncompleteQuote(b.text)).map(b => b.id),
+      ...readyQuotes.filter(b => isIncompleteQuote(b.text)).map(b => b.id),
+    ])).map(id => allBullets.find(b => b.id === id))
+      .filter((b): b is typeof allBullets[0] => b !== undefined);
+    
+    if (allIncomplete.length === 0) {
       console.log('✅ No incomplete quotes found. All quotes are valid.\n');
       return;
     }
     
-    console.log(`🔍 Found ${incompleteBullets.length} incomplete quote(s) to remove:\n`);
+    console.log(`🔍 Found ${allIncomplete.length} incomplete quote(s) to remove:\n`);
     
     // Show some examples
-    for (let i = 0; i < Math.min(10, incompleteBullets.length); i++) {
-      const bullet = incompleteBullets[i];
+    for (let i = 0; i < Math.min(10, allIncomplete.length); i++) {
+      const bullet = allIncomplete[i];
       const textPreview = bullet.text.length > 60 
         ? bullet.text.substring(0, 60) + '...' 
         : bullet.text;
       console.log(`   - ${bullet.id}: "${textPreview}" (${bullet.type}, length: ${bullet.text.length})`);
     }
-    if (incompleteBullets.length > 10) {
-      console.log(`   ... and ${incompleteBullets.length - 10} more\n`);
+    if (allIncomplete.length > 10) {
+      console.log(`   ... and ${allIncomplete.length - 10} more\n`);
     } else {
       console.log('');
     }
@@ -94,7 +147,7 @@ async function main() {
     const result = await prisma.evidenceBullet.deleteMany({
       where: {
         id: {
-          in: incompleteBullets.map(b => b.id),
+          in: allIncomplete.map(b => b.id),
         },
       },
     });

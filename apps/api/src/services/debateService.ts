@@ -252,9 +252,19 @@ export async function getDebateCard(
             const quote = quoteResult.quotes[0];
             const trimmedText = quote.text?.trim() || '';
             // Additional validation: quote must be substantial and complete
+            // Check for incomplete escape patterns (ending with backslash, with or without quote)
+            const hasIncompleteEscape = trimmedText.endsWith('\\') || 
+                                        trimmedText.endsWith('\\ ') || 
+                                        trimmedText.endsWith(' \\') ||
+                                        trimmedText.endsWith('\\"') || 
+                                        trimmedText.endsWith('\\" ') || 
+                                        trimmedText.endsWith(' \\"') || 
+                                        trimmedText.endsWith(' \\" ') ||
+                                        trimmedText.slice(-10).match(/\\\s*"[\s]*$/) ||
+                                        trimmedText.slice(-10).match(/\\[\s]*$/);
             if (
               trimmedText.length >= 20 && // At least 20 characters
-              !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
+              !hasIncompleteEscape && // Not ending with incomplete escape
               !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
             ) {
               quotesToStore.push({
@@ -320,9 +330,19 @@ export async function getDebateCard(
             const quote = quoteResult.quotes[0];
             const trimmedText = quote.text?.trim() || '';
             // Additional validation: quote must be substantial and complete
+            // Check for incomplete escape patterns (ending with backslash, with or without quote)
+            const hasIncompleteEscape = trimmedText.endsWith('\\') || 
+                                        trimmedText.endsWith('\\ ') || 
+                                        trimmedText.endsWith(' \\') ||
+                                        trimmedText.endsWith('\\"') || 
+                                        trimmedText.endsWith('\\" ') || 
+                                        trimmedText.endsWith(' \\"') || 
+                                        trimmedText.endsWith(' \\" ') ||
+                                        trimmedText.slice(-10).match(/\\\s*"[\s]*$/) ||
+                                        trimmedText.slice(-10).match(/\\[\s]*$/);
             if (
               trimmedText.length >= 20 && // At least 20 characters
-              !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
+              !hasIncompleteEscape && // Not ending with incomplete escape
               !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
             ) {
               quotesToStore.push({
@@ -501,7 +521,8 @@ export async function getDebateCard(
             outletName: outlet?.name || '',
             stance: attempt?.stance || 'Unclear',
             reasoning: attempt?.reasoning || '',
-            confidence: attempt?.confidence || 0.5,
+            // Use ?? instead of || because 0.0 is a valid confidence value
+            confidence: attempt?.confidence ?? 0.5,
           };
         });
 

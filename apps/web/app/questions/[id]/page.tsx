@@ -74,7 +74,16 @@ export default function QuestionDetail() {
   }
 
   const verdictLabel = verdict?.verdictLabel;
-  const alignmentPercentage = verdict ? Math.round(verdict.confidence) : undefined;
+  // Calculate overall alignment as the average of individual outlet alignments
+  // This represents how well the outlets collectively align with the verdict
+  const alignmentPercentage = consensus?.outletStances && consensus.outletStances.length > 0
+    ? Math.round(
+        consensus.outletStances.reduce((sum, os) => sum + os.weightedContribution, 0) /
+        consensus.outletStances.length * 100
+      )
+    : verdict
+    ? Math.round(verdict.confidence) // Fallback to confidence if no consensus data
+    : undefined;
 
   // Get unique outlets
   const outlets = consensus?.outletStances?.map(os => ({
