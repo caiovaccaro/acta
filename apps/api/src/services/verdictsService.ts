@@ -54,14 +54,26 @@ export async function getVerdictCard(
   // Get evidence bullets
   const evidenceBullets = await findEvidenceBulletsByVerdictId(verdict.id);
 
-  // Get article stances to calculate counts
-  const stances = await findArticleStancesByQuestionId(questionId);
-  const articleIds = new Set(stances.map((s) => s.articleId));
+  // Get article stances to calculate counts - filter by the verdict's month period
+  const allStances = await findArticleStancesByQuestionId(questionId);
+  
+  // Filter stances by month (from articleAnalysisAttempt) to match the verdict's month
+  const monthStances = allStances.filter((stance) => {
+    const attempt = (stance as any).articleAnalysisAttempt;
+    if (!attempt) return false;
+    const attemptMonth = new Date(attempt.month);
+    return (
+      attemptMonth.getFullYear() === monthDate.getFullYear() &&
+      attemptMonth.getMonth() === monthDate.getMonth()
+    );
+  });
+  
+  const articleIds = new Set(monthStances.map((s) => s.articleId));
   const articleCount = articleIds.size;
 
-  // Get unique outlets from stances (which include article with outlet)
+  // Get unique outlets from month-filtered stances (which include article with outlet)
   const outlets = new Set(
-    stances
+    monthStances
       .map((s) => (s as any).article?.outlet?.id)
       .filter((id): id is string => id !== undefined)
   );
@@ -135,13 +147,16 @@ export async function getVerdictHistory(
   const verdicts = await findVerdictsByQuestion(questionId);
   const limited = verdicts.slice(0, limit);
 
-  const stances = await findArticleStancesByQuestionId(questionId);
-  const articleIds = new Set(stances.map((s) => s.articleId));
+  // For verdict history, we need to calculate counts per verdict's month
+  // Since each verdict can have different months, we'll calculate for the most recent one
+  // or aggregate across all months (for now, using all stances as fallback)
+  const allStances = await findArticleStancesByQuestionId(questionId);
+  const articleIds = new Set(allStances.map((s) => s.articleId));
   const articleCount = articleIds.size;
 
-  // Get unique outlets from stances (which include article with outlet)
+  // Get unique outlets from all stances (for history, we show aggregate)
   const outlets = new Set(
-    stances
+    allStances
       .map((s) => (s as any).article?.outlet?.id)
       .filter((id): id is string => id !== undefined)
   );
