@@ -750,7 +750,7 @@ export async function convergeQuestions(
     // Recalculate verdicts for each month to include all merged stances
     // This ensures article and outlet counts are correct after convergence
     const { recalculateVerdict } = await import('@acta/core');
-    for (const month of verdictMonths) {
+    for (const month of Array.from(verdictMonths)) {
       try {
         await recalculateVerdict(targetQuestionId, month);
       } catch (error) {
