@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
+import TopicConvergenceModal from './components/TopicConvergenceModal';
 
 async function fetchTopics() {
   const res = await fetch('/admin/api/topics');
@@ -22,6 +23,7 @@ async function batchUpdateTopics(ids: string[], action: 'approve' | 'reject') {
 
 export default function AdminTopics() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: topics, isLoading } = useQuery({
@@ -82,6 +84,14 @@ export default function AdminTopics() {
             {selectedIds.size} topic(s) selected
           </span>
           <div className="flex gap-2">
+            {selectedIds.size >= 2 && (
+              <button
+                onClick={() => setIsConvergenceModalOpen(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Converge {selectedIds.size} Topics
+              </button>
+            )}
             <button
               onClick={() => handleBatchAction('approve')}
               disabled={batchMutation.isPending}
@@ -181,6 +191,21 @@ export default function AdminTopics() {
         </div>
       ) : (
         <div className="text-text-muted">No topics found</div>
+      )}
+
+      {/* Convergence Modal */}
+      {isConvergenceModalOpen && topics && (
+        <TopicConvergenceModal
+          topics={topics.filter((t: any) => selectedIds.has(t.id))}
+          isOpen={isConvergenceModalOpen}
+          onClose={() => {
+            setIsConvergenceModalOpen(false);
+            setSelectedIds(new Set());
+          }}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['admin-topics'] });
+          }}
+        />
       )}
     </div>
   );

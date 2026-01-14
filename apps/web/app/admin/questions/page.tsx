@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, Suspense } from 'react';
+import QuestionConvergenceModal from './components/QuestionConvergenceModal';
 
 async function fetchQuestions(topicId?: string | null) {
   const url = topicId ? `/admin/api/questions?topicId=${topicId}` : '/admin/api/questions';
@@ -44,6 +45,7 @@ function AdminQuestionsContent() {
   const topicId = searchParams.get('topicId');
   const [selectedTopicId, setSelectedTopicId] = useState(topicId || '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: questions, isLoading } = useQuery({
@@ -122,11 +124,19 @@ function AdminQuestionsContent() {
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between sticky top-4 z-20 shadow-sm">
           <span className="text-blue-800 font-semibold">
             {selectedIds.size} question(s) selected
           </span>
           <div className="flex gap-2">
+            {selectedIds.size >= 2 && (
+              <button
+                onClick={() => setIsConvergenceModalOpen(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Converge {selectedIds.size} Questions
+              </button>
+            )}
             <button
               onClick={() => handleBatchAction('approve')}
               disabled={batchMutation.isPending}
@@ -235,6 +245,21 @@ function AdminQuestionsContent() {
         </div>
       ) : (
         <div className="text-text-muted">No questions found</div>
+      )}
+
+      {/* Convergence Modal */}
+      {isConvergenceModalOpen && questions && (
+        <QuestionConvergenceModal
+          questions={questions.filter((q: any) => selectedIds.has(q.id))}
+          isOpen={isConvergenceModalOpen}
+          onClose={() => {
+            setIsConvergenceModalOpen(false);
+            setSelectedIds(new Set());
+          }}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+          }}
+        />
       )}
     </div>
   );
