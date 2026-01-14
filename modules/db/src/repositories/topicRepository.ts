@@ -337,7 +337,7 @@ export async function convergeTopics(
     }
 
     // 5. Update target topic metadata
-    const updateData: UpdateTopicInput = {
+    const updateData: any = {
       name: newName || targetTopic.name,
       description: newDescription !== undefined ? newDescription : targetTopic.description,
       safetyNoteRequired: sourceTopics.some(t => t.safetyNoteRequired) || targetTopic.safetyNoteRequired,
@@ -362,7 +362,7 @@ export async function convergeTopics(
 
     const updatedTargetTopic = await tx.topic.update({
       where: { id: targetTopicId },
-      data: updateData,
+      data: updateData as any,
     });
 
     // 6. Delete source topics
