@@ -24,6 +24,7 @@ export interface CreateQuestionInput {
 export interface UpdateQuestionInput {
   questionText?: string;
   originalQuestionText?: string | null;
+  contextBlurb?: string | null;
   confidence?: number | null;
   sourceArticlesCount?: number;
   validationStatus?: QuestionValidationStatus;
@@ -243,7 +244,7 @@ export interface ConvergeQuestionsResult {
  * @returns QuestionRedirect or null if not found
  */
 export async function findQuestionRedirect(oldQuestionId: string) {
-  return prisma.questionRedirect.findUnique({
+  return (prisma as any).questionRedirect.findUnique({
     where: { oldQuestionId },
   });
 }
@@ -564,8 +565,8 @@ export async function convergeQuestions(
                 supportShare: verdict.supportShare,
                 variance: verdict.variance,
                 reasoning: verdict.reasoning,
-                overviewBullets: verdict.overviewBullets,
-                featuredPerspective: verdict.featuredPerspective,
+                overviewBullets: verdict.overviewBullets as any,
+                featuredPerspective: verdict.featuredPerspective as any,
               },
             });
           } else {
@@ -620,18 +621,18 @@ export async function convergeQuestions(
     let createdRedirects = 0;
     for (const sourceQuestion of sourceQuestions) {
       // Check if redirect already exists (idempotent)
-      const existingRedirect = await prisma.questionRedirect.findUnique({
+      const existingRedirect = await (prisma as any).questionRedirect.findUnique({
         where: { oldQuestionId: sourceQuestion.id },
       });
 
       if (!existingRedirect) {
         try {
           // Verify the model is available in the transaction client
-          if (!prisma.questionRedirect) {
+          if (!(prisma as any).questionRedirect) {
             throw new Error('QuestionRedirect model not available in Prisma client. Please regenerate Prisma client with: npm run db:generate and restart the server.');
           }
           
-          await prisma.questionRedirect.create({
+          await (prisma as any).questionRedirect.create({
             data: {
               oldQuestionId: sourceQuestion.id,
               newQuestionId: targetQuestionId,
@@ -682,7 +683,7 @@ export async function convergeQuestions(
     // The counts will be correct once verdicts are recalculated
 
     // 7. Update target question metadata
-    const updateData: UpdateQuestionInput = {
+    const updateData: any = {
       questionText: newQuestionText || targetQuestion.questionText,
       contextBlurb: newContextBlurb !== undefined ? newContextBlurb : targetQuestion.contextBlurb,
       confidence: Math.max(
@@ -712,7 +713,7 @@ export async function convergeQuestions(
 
     const updatedTargetQuestion = await prisma.question.update({
       where: { id: targetQuestionId },
-      data: updateData,
+      data: updateData as any,
     });
 
     // 8. Delete source questions
