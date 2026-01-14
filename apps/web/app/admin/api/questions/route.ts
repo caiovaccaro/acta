@@ -7,7 +7,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const topicId = searchParams.get('topicId');
 
-    const where = topicId ? { topicId } : {};
+    const where = {
+      ...(topicId ? { topicId } : {}),
+      OR: [
+        { articleStances: { some: {} } },
+        { verdicts: { some: {} } },
+      ],
+    };
 
     const questions = await prisma.question.findMany({
       where,
