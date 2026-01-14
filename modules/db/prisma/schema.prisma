@@ -182,6 +182,8 @@ model Question {
   articleStances ArticleStance[]
   verdicts            Verdict[]        // Multiple verdicts (one per month)
   timelineEvents      TimelineEvent[]
+  redirectsFrom       QuestionRedirect[] @relation("QuestionRedirects")
+  redirectsTo         QuestionRedirect[] @relation("QuestionRedirectsTo")
 
   @@index([topicId])
   @@index([isActive])
@@ -317,4 +319,19 @@ model TimelineEvent {
   @@index([questionId])
   @@index([date])
   @@map("timeline_events")
+}
+
+model QuestionRedirect {
+  id            String   @id @default(uuid())
+  oldQuestionId String   @unique  // The question ID that was merged
+  newQuestionId String   // The unified question ID
+  convergedAt   DateTime @default(now())
+  
+  // Relations
+  oldQuestion   Question @relation("QuestionRedirects", fields: [oldQuestionId], references: [id], onDelete: Cascade)
+  newQuestion   Question @relation("QuestionRedirectsTo", fields: [newQuestionId], references: [id], onDelete: Cascade)
+  
+  @@index([oldQuestionId])
+  @@index([newQuestionId])
+  @@map("question_redirects")
 }

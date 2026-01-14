@@ -1,4 +1,4 @@
-import { findActiveQuestions, findQuestionById } from '@acta/db';
+import { findActiveQuestions, findQuestionById, findQuestionRedirect } from '@acta/db';
 import { findVerdictByQuestionAndMonth, findLatestVerdictByQuestion } from '@acta/db';
 import { findArticleStancesByQuestionId } from '@acta/db';
 import { getCurrentMonthPeriod } from '@acta/core';
@@ -127,4 +127,10 @@ export async function getQuestionById(id: string): Promise<QuestionCardDTO | nul
     outlets,
   };
 }
+
+/**
+ * Find a question redirect by old question ID
+ * Re-exported from @acta/db for convenience
+ */
+export { findQuestionRedirect } from '@acta/db';
 
