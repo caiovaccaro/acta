@@ -487,13 +487,85 @@ Generate 3-5 key events total (at least 3, no more than 5), ordered chronologica
 
           const parsed = JSON.parse(content);
           const bullets = Array.isArray(parsed.bullets) ? parsed.bullets : [];
-          return { bullets: bullets.filter((b: any) => b && typeof b === 'string' && b.trim().length > 0) };
+          const normalized = this.normalizeOverviewBullets(
+            bullets,
+            params.question.text
+          );
+          return { bullets: normalized };
         } catch (error) {
           throw this.handleError(error);
         }
       },
       { maxRetries: this.maxRetries }
     );
+  }
+
+  private normalizeOverviewBullets(bullets: any[], questionText: string): string[] {
+    const cleaned = bullets
+      .filter((b) => typeof b === 'string')
+      .map((b) => this.normalizeBulletText(b))
+      .filter((b) => b.length > 0);
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+    for (const bullet of cleaned) {
+      const key = bullet.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(bullet);
+    }
+
+    return deduped.slice(0, 3).map((bullet) =>
+      this.adjustBulletLength(bullet, questionText)
+    );
+  }
+
+  private normalizeBulletText(text: string): string {
+    return text
+      .replace(/^[\s\-•\u2022]+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private adjustBulletLength(text: string, questionText: string): string {
+    const minLen = 120;
+    const maxLen = 150;
+    let output = text.trim();
+
+    if (output.length > maxLen) {
+      output = `${output.slice(0, maxLen - 3).trimEnd()}...`;
+      return output;
+    }
+
+    if (output.length >= minLen) {
+      return output;
+    }
+
+    const fillers = [
+      ' This frames how coverage answers the question.',
+      ' It highlights a key trade-off in the issue.',
+    ];
+
+    for (const filler of fillers) {
+      if (output.length >= minLen) break;
+      const remaining = maxLen - output.length;
+      if (remaining <= 0) break;
+      const addition =
+        filler.length > remaining ? filler.slice(0, remaining) : filler;
+      output = `${output}${addition}`.trim();
+    }
+
+    if (output.length < minLen && questionText) {
+      const tail = ` It centers on ${questionText}.`;
+      const remaining = maxLen - output.length;
+      if (remaining > 0) {
+        const addition =
+          tail.length > remaining ? tail.slice(0, remaining) : tail;
+        output = `${output}${addition}`.trim();
+      }
+    }
+
+    return output;
   }
 
   private buildOverviewBulletsPrompt(params: {
@@ -522,11 +594,12 @@ Verdict: ${params.verdict.label} (${params.verdict.confidence}% confidence)
 Article stances and reasoning:
 ${stanceSummary}
 
-Generate 5-8 bullet points that help readers understand this debate. Each bullet should:
+Generate 3 bullet points total (no more than 3) that help readers understand this debate. Each bullet should:
 - Be a complete sentence
 - Explain a key aspect of the debate
 - Be neutral and factual
 - Cover different perspectives
+- Be about 120-150 characters long
 
 Return JSON:
 {
