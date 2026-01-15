@@ -53,6 +53,20 @@ export default function QuestionDetail() {
     }
   };
 
+  const formatPublicationDate = (date?: string | null) => {
+    if (!date) return 'Unknown date';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return 'Unknown date';
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const buildSourceLabel = (outletName?: string | null, publishedDate?: string | null) =>
+    `${outletName || 'Unknown outlet'} — ${formatPublicationDate(publishedDate)}`;
+
   if (questionLoading) {
     return (
       <main className="flex w-full flex-1 justify-center py-10 md:py-16 bg-background-lighter">
@@ -227,10 +241,12 @@ export default function QuestionDetail() {
                           rel="noopener noreferrer"
                           className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
                         >
-                          {quote.outletName}
+                          {buildSourceLabel(quote.outletName, quote.publishedDate)}
                         </Link>
                       ) : (
-                        <span className="text-xs font-bold text-text-main">{quote.outletName}</span>
+                        <span className="text-xs font-bold text-text-main">
+                          {buildSourceLabel(quote.outletName, quote.publishedDate)}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -270,10 +286,12 @@ export default function QuestionDetail() {
                               rel="noopener noreferrer"
                               className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
                             >
-                              {point.outletName}
+                              {buildSourceLabel(point.outletName, point.publishedDate)}
                             </Link>
                           ) : (
-                            <span className="text-xs font-bold text-text-main">{point.outletName}</span>
+                            <span className="text-xs font-bold text-text-main">
+                              {buildSourceLabel(point.outletName, point.publishedDate)}
+                            </span>
                           )}
                         </div>
                       )}
