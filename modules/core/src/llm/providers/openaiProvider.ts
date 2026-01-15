@@ -254,11 +254,12 @@ Return JSON:
 
           const parsed = JSON.parse(content);
           const events = Array.isArray(parsed.events) ? parsed.events : [];
+          const normalized = this.normalizeTimelineEvents(events, params.articles);
           return {
-            events: events.map((e: any) => ({
-              date: e.date || new Date().toISOString(),
-              title: e.title || '',
-              description: e.description || '',
+            events: normalized.map((e) => ({
+              date: e.date,
+              title: e.title,
+              description: e.description,
             })),
           };
         } catch (error) {
@@ -267,6 +268,123 @@ Return JSON:
       },
       { maxRetries: this.maxRetries }
     );
+  }
+
+  private normalizeTimelineEvents(
+    events: Array<{ date?: string; title?: string; description?: string }>,
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>
+  ): Array<{ date: string; title: string; description: string }> {
+    const normalized = events
+      .map((e) => ({
+        date: this.normalizeTimelineDate(e.date),
+        title: (e.title || '').trim(),
+        description: (e.description || '').trim(),
+      }))
+      .filter((e) => e.title || e.description);
+
+    const deduped: Array<{ date: string; title: string; description: string }> = [];
+    const seen = new Set<string>();
+    for (const event of normalized) {
+      const key = `${event.date}|${event.title.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(event);
+    }
+
+    const sorted = deduped.every((e) => this.isValidDate(e.date))
+      ? [...deduped].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      : deduped;
+
+    let output = sorted;
+    if (output.length > 5) {
+      output = this.selectTimelineEvents(output, 5);
+    }
+    if (output.length < 3) {
+      output = this.padTimelineEvents(output, articles, 3);
+    }
+
+    return output.slice(0, 5);
+  }
+
+  private normalizeTimelineDate(input?: string): string {
+    if (!input) {
+      return new Date().toISOString().split('T')[0];
+    }
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      return new Date().toISOString().split('T')[0];
+    }
+    return parsed.toISOString().split('T')[0];
+  }
+
+  private isValidDate(input: string): boolean {
+    return !Number.isNaN(new Date(input).getTime());
+  }
+
+  private selectTimelineEvents(
+    events: Array<{ date: string; title: string; description: string }>,
+    count: number
+  ): Array<{ date: string; title: string; description: string }> {
+    if (events.length <= count) return events;
+    const lastIndex = events.length - 1;
+    const step = lastIndex / (count - 1);
+    const selected: Array<{ date: string; title: string; description: string }> = [];
+    const used = new Set<number>();
+
+    for (let i = 0; i < count; i++) {
+      let idx = Math.round(step * i);
+      while (used.has(idx) && idx < lastIndex) idx += 1;
+      while (used.has(idx) && idx > 0) idx -= 1;
+      used.add(idx);
+      selected.push(events[idx]);
+    }
+
+    return selected.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  private padTimelineEvents(
+    events: Array<{ date: string; title: string; description: string }>,
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>,
+    minCount: number
+  ): Array<{ date: string; title: string; description: string }> {
+    if (events.length >= minCount) return events;
+    const usedTitles = new Set(events.map((e) => e.title.toLowerCase()));
+    const candidates = [...articles]
+      .filter((a) => a.publishedDate && a.title)
+      .sort((a, b) => {
+        const dateA = new Date(a.publishedDate as string).getTime();
+        const dateB = new Date(b.publishedDate as string).getTime();
+        return dateA - dateB;
+      });
+
+    const padded = [...events];
+    for (const article of candidates) {
+      if (padded.length >= minCount) break;
+      const title = article.title.trim();
+      if (!title || usedTitles.has(title.toLowerCase())) continue;
+      usedTitles.add(title.toLowerCase());
+      const sentenceMatch = article.textContent?.match(/[^.!?]+[.!?]/);
+      const description = sentenceMatch ? sentenceMatch[0].trim() : `Reported by ${article.outletName}.`;
+      padded.push({
+        date: this.normalizeTimelineDate(article.publishedDate || undefined),
+        title,
+        description,
+      });
+    }
+
+    return padded.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   private buildTimelineEventsPrompt(params: {
@@ -306,7 +424,7 @@ Return JSON:
 Articles (chronologically ordered):
 ${articleList}
 
-Extract the key events from these articles and create a chronological timeline. Focus on:
+Extract the key events from these articles and create a chronological timeline that represents the full arc of the issue. Focus on:
 - Factual developments and milestones
 - Important dates and occurrences
 - Significant changes or decisions
@@ -323,7 +441,7 @@ Return JSON with a chronological list of events:
   ]
 }
 
-Generate 5-10 key events, ordered chronologically.`;
+Generate 3-5 key events total (at least 3, no more than 5), ordered chronologically.`;
   }
 
   async generateOverviewBullets(params: {
