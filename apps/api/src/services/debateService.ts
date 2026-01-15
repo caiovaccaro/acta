@@ -184,6 +184,7 @@ export async function getDebateCard(
       articleTitle: (eb as any).article?.title || '',
       articleUrl: (eb as any).article?.url || '',
       outletName: (eb as any).article?.outlet?.name || '',
+      publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
     }));
     quotesAgainst = storedQuotesAgainst.map((eb) => ({
       id: eb.id,
@@ -192,6 +193,7 @@ export async function getDebateCard(
       articleTitle: (eb as any).article?.title || '',
       articleUrl: (eb as any).article?.url || '',
       outletName: (eb as any).article?.outlet?.name || '',
+      publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
     }));
   } else if (monthStances.length > 0) {
     // Generate quotes and store them (fallback - should be pre-generated)
@@ -281,6 +283,7 @@ export async function getDebateCard(
                 articleTitle: article.title,
                 articleUrl: article.url,
                 outletName: outlet.name,
+                publishedDate: article.publishedDate?.toISOString() || null,
               });
             }
           }
@@ -359,6 +362,7 @@ export async function getDebateCard(
                 articleTitle: article.title,
                 articleUrl: article.url,
                 outletName: outlet.name,
+                publishedDate: article.publishedDate?.toISOString() || null,
               });
             }
           }
@@ -381,6 +385,7 @@ export async function getDebateCard(
             articleTitle: (eb as any).article?.title || '',
             articleUrl: (eb as any).article?.url || '',
             outletName: (eb as any).article?.outlet?.name || '',
+            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
           }));
         quotesAgainst = storedEvidence
           .filter((eb) => eb.type === 'Dissent')
@@ -391,6 +396,7 @@ export async function getDebateCard(
             articleTitle: (eb as any).article?.title || '',
             articleUrl: (eb as any).article?.url || '',
             outletName: (eb as any).article?.outlet?.name || '',
+            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
           }));
       }
     } catch (error) {
@@ -422,6 +428,7 @@ export async function getDebateCard(
             articleTitle: article.title,
             articleUrl: article.url,
             outletName: outlet.name,
+            publishedDate: article.publishedDate?.toISOString() || null,
           });
         }
       }
@@ -608,6 +615,7 @@ export async function getDebateCard(
         articleTitle: (eb as any).article?.title || null,
         articleUrl: (eb as any).article?.url || null, // Always required
         outletName: (eb as any).article?.outlet?.name || null,
+        publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
       }));
   }
   
@@ -674,6 +682,7 @@ export async function getDebateCard(
               articleTitle: article.title,
               articleUrl: article.url, // Always include article URL
               outletName: outlet.name,
+              publishedDate: article.publishedDate?.toISOString() || null,
             });
           }
         }
