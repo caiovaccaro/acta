@@ -53,18 +53,10 @@ export async function getAllTopics(
       }
 
       // Determine main question:
-      // 1) Admin override via mainQuestionId (must be a real question)
+      // 1) Featured question for this topic (if set)
       // 2) Fallback to question with highest article + outlet count (from real questions)
-      let mainQuestion = realQuestions[0] || null;
-      const topicWithOverride = topic as any;
-      if (topicWithOverride.mainQuestionId) {
-        const override = realQuestions.find(
-          (q) => q.id === topicWithOverride.mainQuestionId
-        );
-        if (override) {
-          mainQuestion = override;
-        }
-      }
+      let mainQuestion =
+        realQuestions.find((q: any) => q.isFeatured) || realQuestions[0] || null;
 
       if (!mainQuestion && realQuestions.length > 0) {
         // Compute counts for each question and pick the one with highest
@@ -182,19 +174,11 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
     .filter(({ hasArticles }) => hasArticles)
     .map(({ question }) => question);
 
-  // Determine main question (same logic as getAllTopics)
-  let mainQuestion = realQuestions[0] || null;
-  const topicWithOverride = topic as any;
-  if (topicWithOverride.mainQuestionId) {
-    const override = realQuestions.find(
-      (q) => q.id === topicWithOverride.mainQuestionId
-    );
-    if (override) {
-      mainQuestion = override;
-    }
-  }
+      // Determine main question (same logic as getAllTopics)
+      let mainQuestion =
+        realQuestions.find((q: any) => q.isFeatured) || realQuestions[0] || null;
 
-  if (!mainQuestion && realQuestions.length > 0) {
+      if (!mainQuestion && realQuestions.length > 0) {
     // Compute counts for each question and pick the one with highest
     let best = realQuestions[0];
     let bestScore = -1;

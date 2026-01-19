@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect, type DragEvent } from 'react';
 import QuestionConvergenceModal from './components/QuestionConvergenceModal';
 
 async function fetchQuestions(topicId?: string | null) {
@@ -29,6 +29,26 @@ async function batchUpdateQuestions(ids: string[], action: 'approve' | 'reject')
   return res.json();
 }
 
+async function updateFeaturedQuestion(id: string, isFeatured: boolean) {
+  const res = await fetch('/admin/api/questions/featured', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, isFeatured }),
+  });
+  if (!res.ok) throw new Error('Failed to update featured question');
+  return res.json();
+}
+
+async function updateQuestionOrder(ids: string[]) {
+  const res = await fetch('/admin/api/questions/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error('Failed to update question order');
+  return res.json();
+}
+
 function getBarScore(validationResults: any): number | null {
   if (!validationResults) return null;
   if (validationResults.barValidation?.barReadinessScore !== undefined) {
@@ -46,6 +66,8 @@ function AdminQuestionsContent() {
   const [selectedTopicId, setSelectedTopicId] = useState(topicId || '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
+  const [orderedQuestions, setOrderedQuestions] = useState<any[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: questions, isLoading } = useQuery({
@@ -66,6 +88,27 @@ function AdminQuestionsContent() {
       setSelectedIds(new Set());
     },
   });
+
+  const featuredMutation = useMutation({
+    mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
+      updateFeaturedQuestion(id, isFeatured),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+    },
+  });
+
+  const orderMutation = useMutation({
+    mutationFn: (ids: string[]) => updateQuestionOrder(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+    },
+  });
+
+  useEffect(() => {
+    if (questions) {
+      setOrderedQuestions(questions);
+    }
+  }, [questions]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -88,6 +131,39 @@ function AdminQuestionsContent() {
   const handleBatchAction = (action: 'approve' | 'reject') => {
     if (selectedIds.size === 0) return;
     batchMutation.mutate({ ids: Array.from(selectedIds), action });
+  };
+
+  const handleDragStart = (id: string) => (event: DragEvent<HTMLButtonElement>) => {
+    setDraggingId(id);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (targetId: string) => (event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    const sourceId = draggingId || event.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === targetId) return;
+
+    const current = orderedQuestions.length ? orderedQuestions : questions || [];
+    const sourceIndex = current.findIndex((q: any) => q.id === sourceId);
+    const targetIndex = current.findIndex((q: any) => q.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const next = [...current];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setOrderedQuestions(next);
+    orderMutation.mutate(next.map((q: any) => q.id));
+    setDraggingId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
   };
 
   return (
@@ -176,8 +252,10 @@ function AdminQuestionsContent() {
                     className="rounded border-border-light"
                   />
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Order</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Question</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Topic</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Featured</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">BAR Score</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stances</th>
@@ -186,10 +264,15 @@ function AdminQuestionsContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {questions.map((question: any) => {
+              {(orderedQuestions.length ? orderedQuestions : questions).map((question: any) => {
                 const barScore = getBarScore(question.validationResults);
                 return (
-                  <tr key={question.id} className="hover:bg-background-lighter/50">
+                  <tr
+                    key={question.id}
+                    className="hover:bg-background-lighter/50"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop(question.id)}
+                  >
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
@@ -197,6 +280,18 @@ function AdminQuestionsContent() {
                         onChange={(e) => handleSelect(question.id, e.target.checked)}
                         className="rounded border-border-light"
                       />
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        className="cursor-move text-text-muted hover:text-primary-blue"
+                        draggable
+                        onDragStart={handleDragStart(question.id)}
+                        onDragEnd={handleDragEnd}
+                        aria-label="Drag to reorder"
+                      >
+                        ⋮⋮
+                      </button>
                     </td>
                     <td className="px-6 py-4">
                       <Link href={`/admin/questions/${question.id}/edit`} className="font-medium text-text-main hover:text-primary-blue line-clamp-2">
@@ -207,6 +302,22 @@ function AdminQuestionsContent() {
                       <Link href={`/admin/topics/${question.topicId}`} className="text-text-muted hover:text-primary-blue">
                         {question.topic.name}
                       </Link>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => featuredMutation.mutate({
+                          id: question.id,
+                          isFeatured: !question.isFeatured,
+                        })}
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          question.isFeatured
+                            ? 'bg-primary-blue/10 text-primary-blue'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {question.isFeatured ? 'Featured' : 'Not Featured'}
+                      </button>
                     </td>
                     <td className="px-6 py-4">
                       {barScore !== null ? (
