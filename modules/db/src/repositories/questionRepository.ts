@@ -19,6 +19,8 @@ export interface CreateQuestionInput {
   discoveredAt?: Date | null;
   discoveredFromArticles?: Record<string, unknown> | null;
   isActive?: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
 }
 
 export interface UpdateQuestionInput {
@@ -34,6 +36,8 @@ export interface UpdateQuestionInput {
   discoveredAt?: Date | null;
   discoveredFromArticles?: Record<string, unknown> | null;
   isActive?: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
 }
 
 /**
@@ -70,7 +74,10 @@ export async function findQuestionsByTopicId(
       topicId,
       ...(includeInactive ? {} : { isActive: true }),
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { featuredOrder: 'asc' } as any,
+      { createdAt: 'desc' },
+    ],
     include: {
       topic: true,
       verdicts: {
@@ -99,7 +106,10 @@ export async function findActiveQuestions(topicId?: string): Promise<Question[]>
         take: 1, // Get latest verdict for backward compatibility
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { featuredOrder: 'asc' } as any,
+      { createdAt: 'desc' },
+    ],
   });
 }
 
@@ -140,7 +150,9 @@ export async function createQuestion(input: CreateQuestionInput): Promise<Questi
       discoveredAt: input.discoveredAt ?? null,
       discoveredFromArticles: (input.discoveredFromArticles ?? null) as any,
       isActive: input.isActive ?? false,
-    },
+      isFeatured: input.isFeatured ?? false,
+      featuredOrder: input.featuredOrder ?? null,
+    } as any,
     include: {
       topic: true,
     },

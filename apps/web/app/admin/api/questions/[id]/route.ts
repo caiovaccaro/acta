@@ -49,6 +49,8 @@ export async function PUT(
       validationStatus,
       isActive,
       suggestions,
+      isFeatured,
+      featuredOrder,
     } = body;
 
     const question = await prisma.question.update({
@@ -59,6 +61,8 @@ export async function PUT(
         validationStatus: validationStatus || 'pending',
         isActive: isActive ?? false,
         suggestions: suggestions || [],
+        isFeatured: isFeatured ?? undefined,
+        featuredOrder: featuredOrder ?? undefined,
       },
     });
 

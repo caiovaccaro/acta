@@ -17,7 +17,11 @@ export async function GET(request: Request) {
 
     const questions = await prisma.question.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isFeatured: 'desc' },
+        { featuredOrder: 'asc' },
+        { createdAt: 'desc' },
+      ],
       include: {
         topic: true,
         _count: {
