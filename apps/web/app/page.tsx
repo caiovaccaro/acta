@@ -23,8 +23,8 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="flex flex-col items-start gap-8">
               <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl lg:text-6xl leading-[1.1]">
-                Clear discussions. <br />
-                <span className="text-verdict-yes">Clear answers.</span><br />
+                Difficult questions. <br />
+                <span className="text-verdict-yes">Clear debates.</span><br />
                 How you can act.
               </h1>
             </div>
