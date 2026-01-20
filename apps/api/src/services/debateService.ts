@@ -22,6 +22,66 @@ import type {
   PointForDebateDTO,
 } from '@acta/shared';
 
+function distributeQuotesByOutlet(quotes: QuoteDTO[], limit: number): QuoteDTO[] {
+  if (quotes.length <= limit) return quotes;
+  const outletMap = new Map<string, QuoteDTO[]>();
+  for (const quote of quotes) {
+    const outletKey = quote.outletName || 'unknown';
+    const bucket = outletMap.get(outletKey);
+    if (bucket) {
+      bucket.push(quote);
+    } else {
+      outletMap.set(outletKey, [quote]);
+    }
+  }
+
+  if (outletMap.size <= 1) {
+    return quotes.slice(0, limit);
+  }
+
+  const queues = Array.from(outletMap.values());
+  const results: QuoteDTO[] = [];
+  let index = 0;
+  while (results.length < limit && queues.some((q) => q.length > 0)) {
+    const queue = queues[index % queues.length];
+    if (queue.length > 0) {
+      results.push(queue.shift()!);
+    }
+    index += 1;
+  }
+
+  return results;
+}
+
+function distributePointsByOutlet(points: PointForDebateDTO[]): PointForDebateDTO[] {
+  if (points.length <= 1) return points;
+  const outletMap = new Map<string, PointForDebateDTO[]>();
+  for (const point of points) {
+    const outletKey = point.outletName || 'unknown';
+    const bucket = outletMap.get(outletKey);
+    if (bucket) {
+      bucket.push(point);
+    } else {
+      outletMap.set(outletKey, [point]);
+    }
+  }
+
+  if (outletMap.size <= 1) return points;
+
+  const queues = Array.from(outletMap.values());
+  const results: PointForDebateDTO[] = [];
+  let index = 0;
+  while (queues.some((q) => q.length > 0)) {
+    const queue = queues[index % queues.length];
+    if (queue.length > 0) {
+      results.push(queue.shift()!);
+    }
+    index += 1;
+  }
+
+  return results;
+}
+
 /**
  * Get debate card data for a question
  * Checks for stored LLM-generated data first, only generates if missing
@@ -461,8 +521,8 @@ export async function getDebateCard(
     }
   }
   
-  const topQuotesFor = deduplicatedQuotesFor.slice(0, 5);
-  const topQuotesAgainst = deduplicatedQuotesAgainst.slice(0, 3);
+  const topQuotesFor = distributeQuotesByOutlet(deduplicatedQuotesFor, 5);
+  const topQuotesAgainst = distributeQuotesByOutlet(deduplicatedQuotesAgainst, 3);
 
   // Check for stored featured perspective
   let featuredPerspective: FeaturedPerspectiveDTO | null = null;
@@ -746,7 +806,8 @@ export async function getDebateCard(
       };
     });
 
-  const unknowns: UnknownDTO[] = pointsForDebate.map((p) => ({
+  const balancedPointsForDebate = distributePointsByOutlet(pointsForDebate);
+  const unknowns: UnknownDTO[] = balancedPointsForDebate.map((p) => ({
     id: p.id,
     text: p.text,
     articleId: p.articleId,
@@ -777,7 +838,7 @@ export async function getDebateCard(
     argumentsFor,
     argumentsAgainst,
     unknowns, // Legacy field
-    pointsForDebate,
+    pointsForDebate: balancedPointsForDebate,
     sources: sources.slice(0, 20), // Limit to 20 sources
     featuredPerspective,
     timeline, // Legacy field

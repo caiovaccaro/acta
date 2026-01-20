@@ -28,7 +28,7 @@
         "crawler:health": "cd apps/crawler && npm run health",
         "crawler:crawl-pending": "cd apps/crawler && npm run crawl-pending --",
         "crawler:crawl-in-progress": "cd apps/crawler && npm run crawl-in-progress --",
-    "crawler:drain-queue": "cd apps/crawler && npm run drain-queue --",
+        "crawler:drain-queue": "cd apps/crawler && npm run drain-queue --",
         "db:seed:topics": "cd modules/db && npm run db:seed:topics",
         "db:seed:questions": "cd modules/db && npm run db:seed:questions",
         "db:validate:bar-questions": "cd modules/db && npm run db:validate:bar-questions",
