@@ -51,6 +51,7 @@ async function main() {
     }
 
     const existingTopics = await findAllTopics(true);
+    const existingById = new Map(existingTopics.map((t) => [t.id, t]));
     let offset = 0;
     let batchNumber = 0;
     let totalDiscovered = 0;
@@ -81,14 +82,22 @@ async function main() {
 
       // Merge discovered topics (deduplicate by name, keep highest confidence)
       for (const topic of discovered) {
+        if (topic.matchedTopicId) {
+          const matched = existingById.get(topic.matchedTopicId);
+          console.log(
+            `   🔗 Matched "${topic.name}" -> "${matched?.name || topic.matchedTopicId}" (${topic.matchReason}, ${((topic.matchConfidence ?? 0) * 100).toFixed(1)}%)`
+          );
+          continue;
+        }
         const existing = allDiscoveredTopics.get(topic.name);
         if (!existing || topic.confidence > existing.confidence) {
           allDiscoveredTopics.set(topic.name, topic);
         }
       }
 
-      if (discovered.length > 0) {
-        console.log(`   ✅ Discovered ${discovered.length} new topic(s) in this batch`);
+      const newCount = discovered.filter((t) => !t.matchedTopicId).length;
+      if (newCount > 0) {
+        console.log(`   ✅ Discovered ${newCount} new topic(s) in this batch`);
       } else {
         console.log(`   ℹ️  No new topics discovered in this batch`);
       }
