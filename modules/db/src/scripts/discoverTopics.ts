@@ -31,6 +31,10 @@ import { discoverTopics } from '@acta/core/analysis';
 
 // Parse command line arguments
 const BATCH_SIZE = parseInt(process.argv.find(arg => arg.startsWith('--batch-size='))?.split('=')[1] || '200');
+const OFFSET_ARG = process.argv.find(arg => arg.startsWith('--offset='))?.split('=')[1];
+const START_BATCH_ARG = process.argv.find(arg => arg.startsWith('--start-batch='))?.split('=')[1];
+const START_OFFSET = OFFSET_ARG ? parseInt(OFFSET_ARG, 10) : null;
+const START_BATCH = START_BATCH_ARG ? parseInt(START_BATCH_ARG, 10) : null;
 
 async function main() {
   try {
@@ -54,6 +58,16 @@ async function main() {
     const existingById = new Map(existingTopics.map((t) => [t.id, t]));
     let offset = 0;
     let batchNumber = 0;
+
+    if (START_BATCH && START_BATCH > 0) {
+      offset = (START_BATCH - 1) * BATCH_SIZE;
+      batchNumber = START_BATCH - 1;
+      console.log(`↪️  Resuming from batch ${START_BATCH} (offset ${offset})`);
+    } else if (START_OFFSET && START_OFFSET >= 0) {
+      offset = START_OFFSET;
+      batchNumber = Math.floor(offset / BATCH_SIZE);
+      console.log(`↪️  Resuming from offset ${offset} (batch ${batchNumber + 1})`);
+    }
     let totalDiscovered = 0;
     const allDiscoveredTopics = new Map<string, any>(); // Use Map to deduplicate by name
 
