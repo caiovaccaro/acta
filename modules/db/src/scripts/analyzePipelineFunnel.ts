@@ -146,7 +146,7 @@ async function main() {
         },
       });
 
-      const MIN_ARTICLES_FOR_VERDICT = 4;
+      const MIN_ARTICLES_FOR_VERDICT = 3;
       let reason = '';
       if (articleCount < MIN_ARTICLES_FOR_VERDICT) {
         reason = `Insufficient articles (${articleCount} < ${MIN_ARTICLES_FOR_VERDICT} minimum)`;
@@ -190,7 +190,7 @@ async function main() {
         v.supportShare >= 0.45 && v.supportShare <= 0.55 && v.variance <= 0.5
       );
 
-      const MIN_ARTICLES_FOR_VERDICT = 4;
+      const MIN_ARTICLES_FOR_VERDICT = 3;
       console.log(`   Insufficient articles (< ${MIN_ARTICLES_FOR_VERDICT}): ${insufficientArticles.length}`);
       console.log(`   High variance (> 0.5): ${highVariance.length}`);
       console.log(`   Support share in unclear range (0.45-0.55): ${unclearRange.length}`);
@@ -288,7 +288,7 @@ async function main() {
     // Recommendations
     console.log('💡 Recommendations:');
     
-    const MIN_ARTICLES_FOR_VERDICT = 4;
+    const MIN_ARTICLES_FOR_VERDICT = 3;
     const avgClassificationsPerQuestion = storedStances / allVerdicts.length;
     if (avgClassificationsPerQuestion < MIN_ARTICLES_FOR_VERDICT) {
       console.log(`   ⚠️  Average ${avgClassificationsPerQuestion.toFixed(1)} classifications per question (need ${MIN_ARTICLES_FOR_VERDICT}+ for clear verdicts)`);

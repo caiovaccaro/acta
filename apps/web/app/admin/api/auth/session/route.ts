@@ -16,3 +16,5 @@ export async function GET(request: Request) {
   return NextResponse.json({ authenticated: true, email: session.email }, { status: 200 });
 }
 
+
+

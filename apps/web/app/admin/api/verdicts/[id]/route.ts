@@ -24,7 +24,7 @@ export async function GET(
       },
     });
 
-    if (!verdict) {
+    if (!verdict || !verdict.question) {
       return NextResponse.json(
         { error: 'Verdict not found' },
         { status: 404 }

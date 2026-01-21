@@ -3,7 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, Suspense, useEffect, type DragEvent } from 'react';
+import { useState, Suspense, useEffect } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import QuestionConvergenceModal from './components/QuestionConvergenceModal';
 
 async function fetchQuestions(topicId?: string | null) {
@@ -49,6 +64,39 @@ async function updateQuestionOrder(ids: string[]) {
   return res.json();
 }
 
+function SortableRow({
+  id,
+  children,
+}: {
+  id: string;
+  children: (props: {
+    attributes: Record<string, any>;
+    listeners: Record<string, any>;
+    isDragging: boolean;
+    setNodeRef: (node: HTMLElement | null) => void;
+    style: React.CSSProperties;
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-background-lighter/50 ${isDragging ? 'bg-background-lighter/80 shadow-sm' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      {children({ attributes, listeners, isDragging, setNodeRef, style })}
+    </tr>
+  );
+}
+
 function getBarScore(validationResults: any): number | null {
   if (!validationResults) return null;
   if (validationResults.barValidation?.barReadinessScore !== undefined) {
@@ -60,6 +108,24 @@ function getBarScore(validationResults: any): number | null {
   return null;
 }
 
+function formatVerdictLabel(label?: string | null): string {
+  if (!label) return '-';
+  switch (label) {
+    case 'YesItSeemsSo':
+      return 'Yes';
+    case 'ProbablyYes':
+      return 'Probably yes';
+    case 'Unclear':
+      return 'Unclear';
+    case 'ProbablyNot':
+      return 'Probably not';
+    case 'NoItDoesntSeemSo':
+      return 'No';
+    default:
+      return label;
+  }
+}
+
 function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId');
@@ -67,8 +133,12 @@ function AdminQuestionsContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
   const [orderedQuestions, setOrderedQuestions] = useState<any[]>([]);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const { data: questions, isLoading } = useQuery({
     queryKey: ['admin-questions', selectedTopicId || null],
@@ -133,37 +203,18 @@ function AdminQuestionsContent() {
     batchMutation.mutate({ ids: Array.from(selectedIds), action });
   };
 
-  const handleDragStart = (id: string) => (event: DragEvent<HTMLButtonElement>) => {
-    setDraggingId(id);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', id);
-  };
-
-  const handleDragOver = (event: DragEvent<HTMLTableRowElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (targetId: string) => (event: DragEvent<HTMLTableRowElement>) => {
-    event.preventDefault();
-    const sourceId = draggingId || event.dataTransfer.getData('text/plain');
-    if (!sourceId || sourceId === targetId) return;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
     const current = orderedQuestions.length ? orderedQuestions : questions || [];
-    const sourceIndex = current.findIndex((q: any) => q.id === sourceId);
-    const targetIndex = current.findIndex((q: any) => q.id === targetId);
-    if (sourceIndex === -1 || targetIndex === -1) return;
+    const oldIndex = current.findIndex((q: any) => q.id === active.id);
+    const newIndex = current.findIndex((q: any) => q.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
 
-    const next = [...current];
-    const [moved] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, moved);
+    const next = arrayMove(current, oldIndex, newIndex);
     setOrderedQuestions(next);
     orderMutation.mutate(next.map((q: any) => q.id));
-    setDraggingId(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggingId(null);
   };
 
   return (
@@ -241,7 +292,12 @@ function AdminQuestionsContent() {
         <div className="text-text-muted">Loading questions...</div>
       ) : questions && questions.length > 0 ? (
         <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden">
-          <table className="w-full">
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={(orderedQuestions.length ? orderedQuestions : questions).map((q: any) => q.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <table className="w-full">
             <thead className="bg-background-lighter">
               <tr>
                 <th className="px-6 py-3 text-left">
@@ -260,6 +316,7 @@ function AdminQuestionsContent() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stances</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Verdicts</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Latest Verdict</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
               </tr>
             </thead>
@@ -267,12 +324,9 @@ function AdminQuestionsContent() {
               {(orderedQuestions.length ? orderedQuestions : questions).map((question: any) => {
                 const barScore = getBarScore(question.validationResults);
                 return (
-                  <tr
-                    key={question.id}
-                    className="hover:bg-background-lighter/50"
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop(question.id)}
-                  >
+                  <SortableRow key={question.id} id={question.id}>
+                    {({ attributes, listeners, isDragging }) => (
+                      <>
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
@@ -282,16 +336,12 @@ function AdminQuestionsContent() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        className="cursor-move text-text-muted hover:text-primary-blue"
-                        draggable
-                        onDragStart={handleDragStart(question.id)}
-                        onDragEnd={handleDragEnd}
-                        aria-label="Drag to reorder"
+                      <span
+                        className={`cursor-grab text-text-muted hover:text-primary-blue ${isDragging ? 'cursor-grabbing' : ''}`}
+                        aria-hidden="true"
                       >
-                        ⋮⋮
-                      </button>
+                        <GripVertical className="size-5" />
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <Link href={`/admin/questions/${question.id}/edit`} className="font-medium text-text-main hover:text-primary-blue line-clamp-2">
@@ -306,17 +356,23 @@ function AdminQuestionsContent() {
                     <td className="px-6 py-4">
                       <button
                         type="button"
-                        onClick={() => featuredMutation.mutate({
-                          id: question.id,
-                          isFeatured: !question.isFeatured,
-                        })}
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          question.isFeatured
-                            ? 'bg-primary-blue/10 text-primary-blue'
-                            : 'bg-gray-100 text-gray-700'
+                        role="switch"
+                        aria-checked={!!question.isFeatured}
+                        onClick={() =>
+                          featuredMutation.mutate({
+                            id: question.id,
+                            isFeatured: !question.isFeatured,
+                          })
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          question.isFeatured ? 'bg-primary-blue' : 'bg-gray-300'
                         }`}
                       >
-                        {question.isFeatured ? 'Featured' : 'Not Featured'}
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            question.isFeatured ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
                       </button>
                     </td>
                     <td className="px-6 py-4">
@@ -346,13 +402,20 @@ function AdminQuestionsContent() {
                     <td className="px-6 py-4 text-text-muted">{question._count.articleStances}</td>
                     <td className="px-6 py-4 text-text-muted">{question._count.verdicts}</td>
                     <td className="px-6 py-4 text-text-muted">
+                      {formatVerdictLabel(question.verdicts?.[0]?.verdictLabel)}
+                    </td>
+                    <td className="px-6 py-4 text-text-muted">
                       {new Date(question.createdAt).toLocaleDateString()}
                     </td>
-                  </tr>
+                      </>
+                    )}
+                  </SortableRow>
                 );
               })}
             </tbody>
-          </table>
+              </table>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : (
         <div className="text-text-muted">No questions found</div>
