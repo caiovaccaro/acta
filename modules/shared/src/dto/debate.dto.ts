@@ -71,6 +71,7 @@ export interface QuoteDTO {
   articleTitle: string;
   articleUrl: string;
   outletName: string;
+  publishedDate?: string | null;
 }
 
 export interface UnknownDTO {
@@ -86,6 +87,7 @@ export interface PointForDebateDTO {
   articleTitle: string | null;
   articleUrl: string | null;
   outletName: string | null;
+  publishedDate?: string | null;
 }
 
 export interface SourceCitationDTO {

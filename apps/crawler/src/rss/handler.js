@@ -207,7 +207,7 @@ export async function processRSSFeed($parser, source, feedUrl, log, pushData, ou
             const firstItem = $parser(items[0]);
             log.warning(`Debug: First item HTML: ${firstItem.html()?.substring(0, 500)}`);
         }
-        return;
+        return { detectedCount: 0, storedCount: 0, skippedCount: 0 };
     }
     
     log.info(`Found ${articles.length} articles in ${format} feed`);
@@ -224,11 +224,16 @@ export async function processRSSFeed($parser, source, feedUrl, log, pushData, ou
     // Process articles (save RSS metadata to PostgreSQL)
     if (!outletId) {
         log.error('Outlet ID is required to save articles to PostgreSQL');
-        return;
+        return { detectedCount: articles.length, storedCount: 0, skippedCount: 0 };
     }
     
     const stats = await processRSSArticles(articles, source, feedUrl, log, pushData, format, outletId);
     
     log.info(`Added ${stats.processedCount} articles to PostgreSQL for content extraction (skipped ${stats.skippedCount})`);
+    return {
+        detectedCount: articles.length,
+        storedCount: stats.processedCount,
+        skippedCount: stats.skippedCount,
+    };
 }
 

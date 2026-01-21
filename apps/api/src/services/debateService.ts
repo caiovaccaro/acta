@@ -4,6 +4,7 @@ import {
   findVerdictByQuestionAndMonth,
   findLatestVerdictByQuestion,
   findEvidenceBulletsByVerdictId,
+  deleteEvidenceBullet,
   createEvidenceBullets,
   deleteEvidenceBulletsByVerdictId,
   updateVerdict,
@@ -21,6 +22,61 @@ import type {
   TimelineEventDTO,
   PointForDebateDTO,
 } from '@acta/shared';
+
+function distributeQuotesByOutlet(quotes: QuoteDTO[], limit: number): QuoteDTO[] {
+  if (quotes.length <= limit) return quotes;
+  const seen = new Set<string>();
+  const results: QuoteDTO[] = [];
+  for (const quote of quotes) {
+    const outletKey = quote.outletName || 'unknown';
+    if (seen.has(outletKey)) continue;
+    seen.add(outletKey);
+    results.push(quote);
+    if (results.length >= limit) break;
+  }
+  return results;
+}
+
+function isNonQuoteResponse(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return (
+    normalized.startsWith("i'm sorry") ||
+    normalized.includes('provided text does not contain') ||
+    normalized.includes('does not contain any direct quotes') ||
+    normalized.includes('no direct quotes') ||
+    normalized.includes('cannot find any direct quotes') ||
+    normalized.includes('does not include any direct quotes')
+  );
+}
+
+function distributePointsByOutlet(points: PointForDebateDTO[]): PointForDebateDTO[] {
+  if (points.length <= 1) return points;
+  const outletMap = new Map<string, PointForDebateDTO[]>();
+  for (const point of points) {
+    const outletKey = point.outletName || 'unknown';
+    const bucket = outletMap.get(outletKey);
+    if (bucket) {
+      bucket.push(point);
+    } else {
+      outletMap.set(outletKey, [point]);
+    }
+  }
+
+  if (outletMap.size <= 1) return points;
+
+  const queues = Array.from(outletMap.values());
+  const results: PointForDebateDTO[] = [];
+  let index = 0;
+  while (queues.some((q) => q.length > 0)) {
+    const queue = queues[index % queues.length];
+    if (queue.length > 0) {
+      results.push(queue.shift()!);
+    }
+    index += 1;
+  }
+
+  return results;
+}
 
 /**
  * Get debate card data for a question
@@ -172,26 +228,36 @@ export async function getDebateCard(
   let quotesFor: QuoteDTO[] = [];
   let quotesAgainst: QuoteDTO[] = [];
   const evidenceBullets = await findEvidenceBulletsByVerdictId(verdict.id);
+  const invalidEvidence = evidenceBullets.filter((eb) => isNonQuoteResponse(eb.text));
+  if (invalidEvidence.length > 0) {
+    await Promise.allSettled(invalidEvidence.map((eb) => deleteEvidenceBullet(eb.id)));
+  }
   const storedQuotesFor = evidenceBullets.filter((eb) => eb.type === 'Why');
   const storedQuotesAgainst = evidenceBullets.filter((eb) => eb.type === 'Dissent');
 
   if (storedQuotesFor.length > 0 || storedQuotesAgainst.length > 0) {
     // Use stored quotes
-    quotesFor = storedQuotesFor.map((eb) => ({
+    quotesFor = storedQuotesFor
+      .filter((eb) => !isNonQuoteResponse(eb.text))
+      .map((eb) => ({
       id: eb.id,
       text: eb.text,
       articleId: eb.articleId || '',
       articleTitle: (eb as any).article?.title || '',
       articleUrl: (eb as any).article?.url || '',
       outletName: (eb as any).article?.outlet?.name || '',
+      publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
     }));
-    quotesAgainst = storedQuotesAgainst.map((eb) => ({
+    quotesAgainst = storedQuotesAgainst
+      .filter((eb) => !isNonQuoteResponse(eb.text))
+      .map((eb) => ({
       id: eb.id,
       text: eb.text,
       articleId: eb.articleId || '',
       articleTitle: (eb as any).article?.title || '',
       articleUrl: (eb as any).article?.url || '',
       outletName: (eb as any).article?.outlet?.name || '',
+      publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
     }));
   } else if (monthStances.length > 0) {
     // Generate quotes and store them (fallback - should be pre-generated)
@@ -265,7 +331,8 @@ export async function getDebateCard(
             if (
               trimmedText.length >= 20 && // At least 20 characters
               !hasIncompleteEscape && // Not ending with incomplete escape
-              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
+              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) && // Not a very short incomplete quote
+              !isNonQuoteResponse(trimmedText)
             ) {
               quotesToStore.push({
                 verdictId: verdict.id,
@@ -281,6 +348,7 @@ export async function getDebateCard(
                 articleTitle: article.title,
                 articleUrl: article.url,
                 outletName: outlet.name,
+                publishedDate: article.publishedDate?.toISOString() || null,
               });
             }
           }
@@ -343,7 +411,8 @@ export async function getDebateCard(
             if (
               trimmedText.length >= 20 && // At least 20 characters
               !hasIncompleteEscape && // Not ending with incomplete escape
-              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) // Not a very short incomplete quote
+              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) && // Not a very short incomplete quote
+              !isNonQuoteResponse(trimmedText)
             ) {
               quotesToStore.push({
                 verdictId: verdict.id,
@@ -359,6 +428,7 @@ export async function getDebateCard(
                 articleTitle: article.title,
                 articleUrl: article.url,
                 outletName: outlet.name,
+                publishedDate: article.publishedDate?.toISOString() || null,
               });
             }
           }
@@ -381,6 +451,7 @@ export async function getDebateCard(
             articleTitle: (eb as any).article?.title || '',
             articleUrl: (eb as any).article?.url || '',
             outletName: (eb as any).article?.outlet?.name || '',
+            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
           }));
         quotesAgainst = storedEvidence
           .filter((eb) => eb.type === 'Dissent')
@@ -391,6 +462,7 @@ export async function getDebateCard(
             articleTitle: (eb as any).article?.title || '',
             articleUrl: (eb as any).article?.url || '',
             outletName: (eb as any).article?.outlet?.name || '',
+            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
           }));
       }
     } catch (error) {
@@ -422,6 +494,7 @@ export async function getDebateCard(
             articleTitle: article.title,
             articleUrl: article.url,
             outletName: outlet.name,
+            publishedDate: article.publishedDate?.toISOString() || null,
           });
         }
       }
@@ -454,8 +527,8 @@ export async function getDebateCard(
     }
   }
   
-  const topQuotesFor = deduplicatedQuotesFor.slice(0, 5);
-  const topQuotesAgainst = deduplicatedQuotesAgainst.slice(0, 3);
+  const topQuotesFor = distributeQuotesByOutlet(deduplicatedQuotesFor, 5);
+  const topQuotesAgainst = distributeQuotesByOutlet(deduplicatedQuotesAgainst, 3);
 
   // Check for stored featured perspective
   let featuredPerspective: FeaturedPerspectiveDTO | null = null;
@@ -600,6 +673,7 @@ export async function getDebateCard(
     // Only use stored points if they have articleId (meaning they're quotes, not summaries)
     // And only include those that have articleUrl (required for linking)
     pointsForDebate = storedPointsForDebate
+      .filter((eb) => !isNonQuoteResponse(eb.text))
       .filter((eb) => eb.articleId && (eb as any).article?.url) // Only include quotes with article links
       .map((eb) => ({
         id: eb.id,
@@ -608,6 +682,7 @@ export async function getDebateCard(
         articleTitle: (eb as any).article?.title || null,
         articleUrl: (eb as any).article?.url || null, // Always required
         outletName: (eb as any).article?.outlet?.name || null,
+        publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
       }));
   }
   
@@ -665,6 +740,7 @@ export async function getDebateCard(
             trimmedText.length >= 3 && // At least 3 words
             !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
             !(trimmedText.endsWith('"') && trimmedText.length < 50) && // Not a very short incomplete quote
+            !isNonQuoteResponse(trimmedText) &&
             article.url
           ) {
             pointsForDebate.push({
@@ -674,6 +750,7 @@ export async function getDebateCard(
               articleTitle: article.title,
               articleUrl: article.url, // Always include article URL
               outletName: outlet.name,
+              publishedDate: article.publishedDate?.toISOString() || null,
             });
           }
         }
@@ -737,7 +814,8 @@ export async function getDebateCard(
       };
     });
 
-  const unknowns: UnknownDTO[] = pointsForDebate.map((p) => ({
+  const balancedPointsForDebate = distributePointsByOutlet(pointsForDebate);
+  const unknowns: UnknownDTO[] = balancedPointsForDebate.map((p) => ({
     id: p.id,
     text: p.text,
     articleId: p.articleId,
@@ -768,7 +846,7 @@ export async function getDebateCard(
     argumentsFor,
     argumentsAgainst,
     unknowns, // Legacy field
-    pointsForDebate,
+    pointsForDebate: balancedPointsForDebate,
     sources: sources.slice(0, 20), // Limit to 20 sources
     featuredPerspective,
     timeline, // Legacy field

@@ -43,3 +43,12 @@ export async function createTimelineEvents(
   );
 }
 
+export async function deleteTimelineEventsByQuestionId(
+  questionId: string
+): Promise<{ count: number }> {
+  return prisma.timelineEvent.deleteMany({
+    where: { questionId },
+  });
+}
+
+

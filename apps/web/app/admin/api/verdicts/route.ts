@@ -5,6 +5,11 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const verdicts = await prisma.verdict.findMany({
+      where: {
+        question: {
+          is: {},
+        },
+      },
       orderBy: { month: 'desc' },
       include: {
         question: {
@@ -25,22 +30,24 @@ export async function GET() {
     });
 
     // Calculate article and outlet counts for each verdict
-    const verdictsWithCounts = verdicts.map(verdict => {
-      const articleIds = new Set(
-        verdict.question.articleStances.map(as => as.article.id)
-      );
-      const outletIds = new Set(
-        verdict.question.articleStances.map(as => as.article.outlet.id)
-      );
+    const verdictsWithCounts = verdicts
+      .filter((verdict) => verdict.question)
+      .map((verdict) => {
+        const articleIds = new Set(
+          verdict.question.articleStances.map((as) => as.article.id)
+        );
+        const outletIds = new Set(
+          verdict.question.articleStances.map((as) => as.article.outlet.id)
+        );
 
-      return {
-        ...verdict,
-        _count: {
-          articles: articleIds.size,
-          outlets: outletIds.size,
-        },
-      };
-    });
+        return {
+          ...verdict,
+          _count: {
+            articles: articleIds.size,
+            outlets: outletIds.size,
+          },
+        };
+      });
 
     return NextResponse.json(verdictsWithCounts);
   } catch (error) {

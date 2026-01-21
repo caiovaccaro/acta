@@ -7,7 +7,7 @@ import type { QuestionCardDTO } from '@acta/shared';
 /**
  * Get all active questions with their topics and verdicts for card display
  */
-export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
+export async function getAllQuestions(options?: { featuredOnly?: boolean }): Promise<QuestionCardDTO[]> {
   const questions = await findActiveQuestions();
 
   const currentMonth = getCurrentMonthPeriod();
@@ -58,6 +58,8 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
         isActive: question.isActive,
         topicId: question.topicId,
         topicName: (question as any).topic?.name || 'Unknown',
+        isFeatured: (question as any).isFeatured ?? false,
+        featuredOrder: (question as any).featuredOrder ?? null,
         verdict: verdict
           ? {
               id: verdict.id,
@@ -74,8 +76,17 @@ export async function getAllQuestions(): Promise<QuestionCardDTO[]> {
     })
   );
 
-  // Filter out null values (questions with no articles)
-  return questionsWithData.filter((q) => q !== null) as QuestionCardDTO[];
+  const filtered = questionsWithData.filter((q) => q !== null) as QuestionCardDTO[];
+  if (options?.featuredOnly) {
+    return filtered
+      .filter((q) => (q as any).isFeatured)
+      .sort((a, b) => {
+        const orderA = (a as any).featuredOrder ?? Number.MAX_SAFE_INTEGER;
+        const orderB = (b as any).featuredOrder ?? Number.MAX_SAFE_INTEGER;
+        return orderA - orderB;
+      });
+  }
+  return filtered;
 }
 
 /**
@@ -116,6 +127,8 @@ export async function getQuestionById(id: string): Promise<QuestionCardDTO | nul
     isActive: question.isActive,
     topicId: question.topicId,
     topicName: (question as any).topic?.name || 'Unknown',
+    isFeatured: (question as any).isFeatured ?? false,
+    featuredOrder: (question as any).featuredOrder ?? null,
     verdict: verdict
       ? {
           id: verdict.id,

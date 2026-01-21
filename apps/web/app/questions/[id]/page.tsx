@@ -53,6 +53,30 @@ export default function QuestionDetail() {
     }
   };
 
+  const formatPublicationDate = (date?: string | null) => {
+    if (!date) return 'Unknown date';
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return 'Unknown date';
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const buildSourceLabel = (outletName?: string | null, publishedDate?: string | null) =>
+    `${outletName || 'Unknown outlet'} — ${formatPublicationDate(publishedDate)}`;
+
+  const uniqueByOutlet = <T extends { outletName?: string | null }>(items: T[]) => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      const key = item.outletName || 'unknown';
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   if (questionLoading) {
     return (
       <main className="flex w-full flex-1 justify-center py-10 md:py-16 bg-background-lighter">
@@ -91,6 +115,9 @@ export default function QuestionDetail() {
     logoUrl: getOutletLogoUrl(os.outletName)
   })) || [];
   const uniqueOutlets = Array.from(new Map(outlets.map(o => [o.name, o])).values());
+  const quotesFor = debateCard?.quotesFor ? uniqueByOutlet(debateCard.quotesFor) : [];
+  const quotesAgainst = debateCard?.quotesAgainst ? uniqueByOutlet(debateCard.quotesAgainst) : [];
+  const pointsForDebate = debateCard?.pointsForDebate ? uniqueByOutlet(debateCard.pointsForDebate) : [];
 
   return (
     <main className="flex w-full flex-1 justify-center py-10 md:py-16 bg-background-lighter">
@@ -200,7 +227,7 @@ export default function QuestionDetail() {
           )}
 
           {/* Quotes Section (majority-aligned) */}
-          {debateCard?.quotesFor && debateCard.quotesFor.length > 0 && (
+          {quotesFor.length > 0 && (
             <div className="border-t border-border-light pt-8">
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-blue/10 text-primary-blue">
@@ -209,7 +236,7 @@ export default function QuestionDetail() {
                 <h3 className="text-lg font-bold text-text-main">Quotes</h3>
               </div>
               <div className="space-y-6">
-                {debateCard.quotesFor.map((quote, i) => (
+                {quotesFor.map((quote, i) => (
                   <div key={i} className="flex flex-col gap-3">
                     <blockquote className="text-base text-text-muted italic leading-relaxed border-l-2 border-primary-blue/30 pl-3">
                       &ldquo;{quote.text}&rdquo;
@@ -227,10 +254,12 @@ export default function QuestionDetail() {
                           rel="noopener noreferrer"
                           className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
                         >
-                          {quote.outletName}
+                          {buildSourceLabel(quote.outletName, quote.publishedDate)}
                         </Link>
                       ) : (
-                        <span className="text-xs font-bold text-text-main">{quote.outletName}</span>
+                        <span className="text-xs font-bold text-text-main">
+                          {buildSourceLabel(quote.outletName, quote.publishedDate)}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -240,7 +269,7 @@ export default function QuestionDetail() {
           )}
 
           {/* Points for Debate Section */}
-          {debateCard?.pointsForDebate?.length ? (
+          {pointsForDebate.length ? (
             <div className="border-t border-border-light pt-8">
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-verdict-split/20 text-verdict-split">
@@ -249,7 +278,7 @@ export default function QuestionDetail() {
                 <h3 className="text-lg font-bold text-text-main">Some points for debate</h3>
               </div>
               <div className="space-y-6">
-                {debateCard.pointsForDebate
+                {pointsForDebate
                   .filter((point) => point.text && point.text.trim().length > 0) // Only show non-empty quotes
                   .map((point, i) => (
                     <div key={i} className="flex flex-col gap-3">
@@ -270,10 +299,12 @@ export default function QuestionDetail() {
                               rel="noopener noreferrer"
                               className="text-xs font-bold text-text-main hover:text-primary-blue transition-colors"
                             >
-                              {point.outletName}
+                              {buildSourceLabel(point.outletName, point.publishedDate)}
                             </Link>
                           ) : (
-                            <span className="text-xs font-bold text-text-main">{point.outletName}</span>
+                            <span className="text-xs font-bold text-text-main">
+                              {buildSourceLabel(point.outletName, point.publishedDate)}
+                            </span>
                           )}
                         </div>
                       )}

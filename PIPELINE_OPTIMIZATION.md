@@ -87,3 +87,5 @@
 - The analysis script (`db:analyze:funnel`) has been updated to reflect the new thresholds
 - Historical data (existing `ArticleAnalysisAttempt` records) are not affected - only new classifications will use the new thresholds
 
+
+
