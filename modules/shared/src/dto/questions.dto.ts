@@ -11,6 +11,8 @@ export interface QuestionCardDTO {
   isActive: boolean;
   topicId: string;
   topicName: string;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
   verdict?: QuestionSummaryDTO['verdict'] | null;
   outlets: OutletInfo[]; // Unique outlets/publications that have articles for this question
   contextBlurb?: string | null;

@@ -384,3 +384,5 @@ router.get('/health', async (req, res) => {
 - **Mock external dependencies** - LLM APIs, databases, etc. for unit tests
 - **Use test utilities** - create shared helpers to reduce duplication
 
+
+

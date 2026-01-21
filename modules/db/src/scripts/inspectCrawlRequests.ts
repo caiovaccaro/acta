@@ -75,8 +75,25 @@ async function main() {
       MAX_RETRY_ATTEMPTS
     );
 
+    const pendingTotal = await prisma.crawlRequest.count({
+      where: {
+        ...(args.outletId ? { outletId: args.outletId } : {}),
+        status: CrawlStatus.pending,
+      },
+    });
+
+    const pendingExceededRetries = await prisma.crawlRequest.count({
+      where: {
+        ...(args.outletId ? { outletId: args.outletId } : {}),
+        status: CrawlStatus.pending,
+        attempts: { gte: MAX_RETRY_ATTEMPTS },
+      },
+    });
+
     console.log('📈 Overall Statistics:');
-    console.log(`   Pending (eligible): ${stats[CrawlStatus.pending]}`);
+    console.log(`   Pending (total): ${pendingTotal}`);
+    console.log(`   Pending (eligible <${MAX_RETRY_ATTEMPTS}): ${stats[CrawlStatus.pending]}`);
+    console.log(`   Pending (>=${MAX_RETRY_ATTEMPTS}): ${pendingExceededRetries}`);
     console.log(`   In Progress: ${stats[CrawlStatus.in_progress]}`);
     console.log(`   Done: ${stats[CrawlStatus.done]}`);
     console.log(`   Failed (all): ${stats[CrawlStatus.failed]}`);

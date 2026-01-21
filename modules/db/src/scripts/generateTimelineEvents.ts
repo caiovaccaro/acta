@@ -7,6 +7,7 @@
  *   npm run db:generate:timeline-events
  *   npm run db:generate:timeline-events -- --question-id=<question-id>
  *   npm run db:generate:timeline-events -- --topic-id=<topic-id>
+ *   npm run db:generate:timeline-events -- --force  # Regenerate even if events exist
  */
 
 import { config } from 'dotenv';
@@ -23,6 +24,7 @@ import {
   findTopicArticlesByTopicId,
   findTimelineEventsByTopicOrQuestion,
   createTimelineEvents,
+  deleteTimelineEventsByQuestionId,
 } from '@acta/db';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 
@@ -57,6 +59,9 @@ async function main() {
   const args = parseScriptArgs();
 
   console.log('🚀 Starting Timeline Events Generation...\n');
+  if (args.force) {
+    console.log('⚠️  --force mode: Will regenerate events even if they already exist\n');
+  }
 
   try {
     // Connect to database
@@ -141,6 +146,14 @@ async function main() {
         const topic = (question as any).topic;
         const topicName = topic?.name || 'Unknown';
 
+        // If force, remove existing events to avoid duplicates
+        if (args.force) {
+          const existing = await findTimelineEventsByTopicOrQuestion(undefined, question.id);
+          if (existing.length > 0) {
+            await deleteTimelineEventsByQuestionId(question.id);
+          }
+        }
+
         // Generate timeline using LLM
         // Note: withRetry in the provider already handles retries with exponential backoff
         console.log(`   🤖 Calling LLM to generate timeline events...`);
@@ -206,4 +219,5 @@ async function main() {
 }
 
 main();
+
 

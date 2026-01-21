@@ -28,6 +28,12 @@ Data-driven consensus verdicts on complex topics.
    DATABASE_URL="postgresql://acta:acta_dev_password@localhost:5432/acta_dev?schema=public"
    NODE_ENV=development
    ```
+   Admin auth requires these additional variables:
+   ```env
+   ADMIN_EMAIL="admin@acta.app"
+   ADMIN_PASSWORD="change-me"
+   ADMIN_SESSION_SECRET="change-this-to-a-long-random-string"
+   ```
 
 4. **Set up database:**
    ```bash

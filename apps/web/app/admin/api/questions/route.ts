@@ -9,17 +9,27 @@ export async function GET(request: Request) {
 
     const where = {
       ...(topicId ? { topicId } : {}),
-      OR: [
-        { articleStances: { some: {} } },
-        { verdicts: { some: {} } },
-      ],
+      articleStances: { some: {} },
     };
 
     const questions = await prisma.question.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isFeatured: 'desc' },
+        { featuredOrder: 'asc' },
+        { createdAt: 'desc' },
+      ],
       include: {
         topic: true,
+        verdicts: {
+          orderBy: { month: 'desc' },
+          take: 1,
+          select: {
+            verdictLabel: true,
+            confidence: true,
+            month: true,
+          },
+        },
         _count: {
           select: {
             articleStances: true,

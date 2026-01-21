@@ -15,7 +15,9 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "health": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/healthCheck.js",
-        "crawl-pending": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/crawlPendingRequests.js"
+        "crawl-pending": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/crawlPendingRequests.js",
+        "crawl-in-progress": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/crawlInProgressRequests.js",
+        "drain-queue": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/drainCrawlQueue.js"
     },
     "dependencies": {
     "@acta/db": "file:../../modules/db",

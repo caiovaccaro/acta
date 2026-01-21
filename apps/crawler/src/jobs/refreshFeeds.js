@@ -4,7 +4,7 @@ import { router } from '../crawlers/articleCrawler.js';
 import { enqueuePendingArticles } from '../utils/enqueue.js';
 import { createCrawler } from '../crawlers/crawlerFactory.js';
 import { logErrorSummary } from '../utils/errorHandler.js';
-import { connectDatabase, disconnectDatabase, resetStuckInProgressRequests } from '@acta/db';
+import { connectDatabase, disconnectDatabase, resetStuckInProgressRequests, prisma } from '@acta/db';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -77,39 +77,80 @@ Configuration.getGlobalConfig().set('storageClientOptions', {
     localDataDirectory: resolve(__dirname, '../../storage'),
 });
 
-// Load outlet configuration
+// Load outlet configuration (fallback)
 const outletsPath = resolve(__dirname, '../config/outlets.json');
 const outletsConfig = JSON.parse(readFileSync(outletsPath, 'utf-8'));
 
-// Filter to pilot outlets only
-let pilotOutlets = outletsConfig.outlets.filter(outlet => outlet.isPilot);
+// Prefer outlets from database when available
+let outletsToProcess = [];
+let outletSourceLabel = 'config';
+
+try {
+    const dbOutlets = await prisma.outlet.findMany({
+        orderBy: { name: 'asc' },
+    });
+    if (dbOutlets.length > 0) {
+        outletsToProcess = dbOutlets.map((outlet) => {
+            const rssFeedsRaw = outlet.rssFeeds || [];
+            const rssFeeds = Array.isArray(rssFeedsRaw)
+                ? rssFeedsRaw.map((feed) => {
+                    if (typeof feed === 'string') {
+                        return { name: null, url: feed };
+                    }
+                    if (feed && typeof feed === 'object') {
+                        return { name: feed.name || null, url: feed.url || feed.link || null };
+                    }
+                    return null;
+                }).filter(Boolean)
+                : [];
+
+            return {
+                name: outlet.name,
+                ideology: outlet.ideology,
+                rssFeeds,
+                paywallType: 'None',
+                requiresAuth: false,
+                contentPolicy: 'full-text-licensed',
+                rateLimit: { maxRPS: 10, jitterMs: 100 },
+            };
+        });
+        outletSourceLabel = 'database';
+    }
+} catch (error) {
+    console.warn('⚠️  Failed to load outlets from database, falling back to config file.', error);
+}
+
+if (outletsToProcess.length === 0) {
+    outletsToProcess = outletsConfig.outlets;
+    outletSourceLabel = 'config';
+}
 
 // Filter by outlet names if provided
 if (outletNames && outletNames.length > 0) {
     const normalizedOutletNames = outletNames.map(name => name.toLowerCase().trim());
-    pilotOutlets = pilotOutlets.filter(outlet => {
+    outletsToProcess = outletsToProcess.filter(outlet => {
         const outletNameLower = outlet.name.toLowerCase();
         return normalizedOutletNames.some(filterName => 
             outletNameLower.includes(filterName) || filterName.includes(outletNameLower)
         );
     });
     
-    if (pilotOutlets.length === 0) {
+    if (outletsToProcess.length === 0) {
         console.error(`❌ No outlets found matching: ${outletNames.join(', ')}`);
-        console.log(`\nAvailable outlets: ${outletsConfig.outlets.filter(o => o.isPilot).map(o => o.name).join(', ')}`);
+        console.log(`\nAvailable outlets (${outletSourceLabel}): ${outletsToProcess.map(o => o.name).join(', ')}`);
         await disconnectDatabase();
         process.exit(1);
     }
     
-    console.log(`🎯 Filtering to ${pilotOutlets.length} outlet(s): ${pilotOutlets.map(o => o.name).join(', ')}\n`);
+    console.log(`🎯 Filtering to ${outletsToProcess.length} outlet(s): ${outletsToProcess.map(o => o.name).join(', ')}\n`);
 }
 
-console.log(`📰 Found ${pilotOutlets.length} pilot outlets to process\n`);
+console.log(`📰 Found ${outletsToProcess.length} outlets to process (${outletSourceLabel})\n`);
 
 // Phase 1: Process RSS feeds per outlet
 console.log('📡 Phase 1: Processing RSS feeds...');
 
-for (const outlet of pilotOutlets) {
+for (const outlet of outletsToProcess) {
     console.log(`\n📰 Processing ${outlet.name} (${outlet.ideology})...`);
     
     // RSS feeds are always public - use CheerioCrawler for all RSS feeds (no authentication needed)
@@ -219,8 +260,8 @@ if (articleRequests.length > 0) {
         
         // Process articles per outlet with appropriate crawler
         for (const [outletName, requests] of Object.entries(articlesByOutlet)) {
-            // Try to find outlet config - first from pilotOutlets, then from all outlets
-            let outlet = pilotOutlets.find(o => o.name === outletName);
+            // Try to find outlet config - first from loaded outlets, then from all outlets
+            let outlet = outletsToProcess.find(o => o.name === outletName);
             if (!outlet) {
                 // Load all outlets to find the config
                 const { loadOutlets } = await import('../config/crawlerConfig.js');

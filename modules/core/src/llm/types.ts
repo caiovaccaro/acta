@@ -90,6 +90,9 @@ export interface DiscoveredTopic {
   description: string;
   confidence: number; // 0-1
   articleIds: string[];
+  matchedTopicId?: string;
+  matchConfidence?: number;
+  matchReason?: 'exact' | 'alias' | 'token_overlap' | 'fuzzy' | 'none';
 }
 
 export interface TopicDiscoveryResult {

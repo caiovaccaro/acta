@@ -42,6 +42,8 @@ export class OpenAIProvider implements LLMProvider {
   private model: string;
   private maxRetries: number;
   private timeout: number;
+  private pricePerMillionInput: number;
+  private pricePerMillionOutput: number;
 
   constructor(config: OpenAIProviderConfig) {
     if (!config.apiKey) {
@@ -55,6 +57,21 @@ export class OpenAIProvider implements LLMProvider {
     this.model = config.model || 'gpt-4-turbo-preview';
     this.maxRetries = config.maxRetries || 3;
     this.timeout = config.timeout || 30000;
+    this.pricePerMillionInput = Number(process.env.OPENAI_COST_PER_MILLION_INPUT || 10);
+    this.pricePerMillionOutput = Number(process.env.OPENAI_COST_PER_MILLION_OUTPUT || 30);
+  }
+
+  private logUsage(label: string, usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null) {
+    if (!usage) return;
+    const promptTokens = usage.prompt_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
+    const inputCost = (promptTokens / 1_000_000) * this.pricePerMillionInput;
+    const outputCost = (completionTokens / 1_000_000) * this.pricePerMillionOutput;
+    const totalCost = inputCost + outputCost;
+    console.log(
+      `[llm-usage] ${label} model=${this.model} prompt=${promptTokens} completion=${completionTokens} total=${totalTokens} cost=$${totalCost.toFixed(4)}`
+    );
   }
 
   async validateBarQuestion(
@@ -80,6 +97,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('validateBarQuestion', response.usage);
 
           return this.parseBarQuestionValidationResponse(response);
         } catch (error) {
@@ -114,6 +133,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('summarizeVerdict', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -161,6 +182,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('generateQuestionContextBlurb', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -243,6 +266,8 @@ Return JSON:
             temperature: 0.3,
           });
 
+          this.logUsage('generateTimelineEvents', response.usage);
+
           const content = response.choices[0]?.message?.content;
           if (!content) {
             throw new LLMProviderError(
@@ -254,11 +279,12 @@ Return JSON:
 
           const parsed = JSON.parse(content);
           const events = Array.isArray(parsed.events) ? parsed.events : [];
+          const normalized = this.normalizeTimelineEvents(events, params.articles);
           return {
-            events: events.map((e: any) => ({
-              date: e.date || new Date().toISOString(),
-              title: e.title || '',
-              description: e.description || '',
+            events: normalized.map((e) => ({
+              date: e.date,
+              title: e.title,
+              description: e.description,
             })),
           };
         } catch (error) {
@@ -267,6 +293,125 @@ Return JSON:
       },
       { maxRetries: this.maxRetries }
     );
+  }
+
+  private normalizeTimelineEvents(
+    events: Array<{ date?: string; title?: string; description?: string }>,
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>
+  ): Array<{ date: string; title: string; description: string }> {
+    const normalized = events
+      .map((e) => ({
+        date: this.normalizeTimelineDate(e.date),
+        title: this.sanitizeTimelineText(e.title || ''),
+        description: this.sanitizeTimelineText(e.description || ''),
+      }))
+      .filter((e) => e.title || e.description);
+
+    const deduped: Array<{ date: string; title: string; description: string }> = [];
+    const seen = new Set<string>();
+    for (const event of normalized) {
+      const key = `${event.date}|${event.title.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(event);
+    }
+
+    const sorted = deduped.every((e) => this.isValidDate(e.date))
+      ? [...deduped].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      : deduped;
+
+    let output = sorted;
+    if (output.length > 5) {
+      output = this.selectTimelineEvents(output, 5);
+    }
+    if (output.length < 3) {
+      output = this.padTimelineEvents(output, articles, 3);
+    }
+
+    return output.slice(0, 5);
+  }
+
+  private normalizeTimelineDate(input?: string): string {
+    if (!input) {
+      return new Date().toISOString().split('T')[0];
+    }
+    const parsed = new Date(input);
+    if (Number.isNaN(parsed.getTime())) {
+      return new Date().toISOString().split('T')[0];
+    }
+    return parsed.toISOString().split('T')[0];
+  }
+
+  private isValidDate(input: string): boolean {
+    return !Number.isNaN(new Date(input).getTime());
+  }
+
+  private selectTimelineEvents(
+    events: Array<{ date: string; title: string; description: string }>,
+    count: number
+  ): Array<{ date: string; title: string; description: string }> {
+    if (events.length <= count) return events;
+    const lastIndex = events.length - 1;
+    const step = lastIndex / (count - 1);
+    const selected: Array<{ date: string; title: string; description: string }> = [];
+    const used = new Set<number>();
+
+    for (let i = 0; i < count; i++) {
+      let idx = Math.round(step * i);
+      while (used.has(idx) && idx < lastIndex) idx += 1;
+      while (used.has(idx) && idx > 0) idx -= 1;
+      used.add(idx);
+      selected.push(events[idx]);
+    }
+
+    return selected.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
+  private padTimelineEvents(
+    events: Array<{ date: string; title: string; description: string }>,
+    articles: Array<{
+      id: string;
+      title: string;
+      textContent: string;
+      publishedDate: string | null;
+      outletName: string;
+    }>,
+    minCount: number
+  ): Array<{ date: string; title: string; description: string }> {
+    if (events.length >= minCount) return events;
+    const usedTitles = new Set(events.map((e) => e.title.toLowerCase()));
+    const candidates = [...articles]
+      .filter((a) => a.publishedDate && a.title)
+      .sort((a, b) => {
+        const dateA = new Date(a.publishedDate as string).getTime();
+        const dateB = new Date(b.publishedDate as string).getTime();
+        return dateA - dateB;
+      });
+
+    const padded = [...events];
+    for (const article of candidates) {
+      if (padded.length >= minCount) break;
+      const title = this.sanitizeTimelineText(article.title || '');
+      if (!title || usedTitles.has(title.toLowerCase())) continue;
+      usedTitles.add(title.toLowerCase());
+      const sentenceMatch = article.textContent?.match(/[^.!?]+[.!?]/);
+      const description = this.sanitizeTimelineText(
+        sentenceMatch ? sentenceMatch[0] : `Reported by ${article.outletName}.`
+      );
+      padded.push({
+        date: this.normalizeTimelineDate(article.publishedDate || undefined),
+        title,
+        description,
+      });
+    }
+
+    return padded.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   private buildTimelineEventsPrompt(params: {
@@ -296,8 +441,9 @@ Return JSON:
     const articleList = sortedArticles
       .map((a) => {
         const date = a.publishedDate ? new Date(a.publishedDate).toLocaleDateString() : 'Unknown date';
-        const snippet = a.textContent.substring(0, 400);
-        return `[${date}] ${a.title} (${a.outletName})\n${snippet}...`;
+        const snippet = this.sanitizeTimelineText(a.textContent.substring(0, 400));
+        const title = this.sanitizeTimelineText(a.title || '');
+        return `[${date}] ${title} (${a.outletName})\n${snippet}...`;
       })
       .join('\n\n');
 
@@ -306,7 +452,7 @@ Return JSON:
 Articles (chronologically ordered):
 ${articleList}
 
-Extract the key events from these articles and create a chronological timeline. Focus on:
+Extract the key events from these articles and create a chronological timeline that represents the full arc of the issue. Focus on:
 - Factual developments and milestones
 - Important dates and occurrences
 - Significant changes or decisions
@@ -323,7 +469,29 @@ Return JSON with a chronological list of events:
   ]
 }
 
-Generate 5-10 key events, ordered chronologically.`;
+Generate 3-5 key events total (at least 3, no more than 5), ordered chronologically.`;
+  }
+
+  private sanitizeTimelineText(input: string): string {
+    let output = (input || '').replace(/\s+/g, ' ').trim();
+    if (!output) return '';
+
+    // Remove common boilerplate or promo text that leaks into titles/snippets.
+    const boilerplatePatterns = [
+      /NEW\s*You can now listen to Fox News articles!?/i,
+      /You can now listen to Fox News articles!?/i,
+      /Listen to Fox News.*$/i,
+      /Click here to listen.*$/i,
+    ];
+
+    for (const pattern of boilerplatePatterns) {
+      output = output.replace(pattern, '').trim();
+    }
+
+    // Handle glued "NEWYou" prefix
+    output = output.replace(/^NEW(?=[A-Z])/i, '').trim();
+
+    return output;
   }
 
   async generateOverviewBullets(params: {
@@ -358,6 +526,8 @@ Generate 5-10 key events, ordered chronologically.`;
             temperature: 0.3,
           });
 
+          this.logUsage('generateOverviewBullets', response.usage);
+
           const content = response.choices[0]?.message?.content;
           if (!content) {
             throw new LLMProviderError(
@@ -369,13 +539,48 @@ Generate 5-10 key events, ordered chronologically.`;
 
           const parsed = JSON.parse(content);
           const bullets = Array.isArray(parsed.bullets) ? parsed.bullets : [];
-          return { bullets: bullets.filter((b: any) => b && typeof b === 'string' && b.trim().length > 0) };
+          const normalized = this.normalizeOverviewBullets(
+            bullets,
+            params.question.text
+          );
+          return { bullets: normalized };
         } catch (error) {
           throw this.handleError(error);
         }
       },
       { maxRetries: this.maxRetries }
     );
+  }
+
+  private normalizeOverviewBullets(bullets: any[], questionText: string): string[] {
+    const cleaned = bullets
+      .filter((b) => typeof b === 'string')
+      .map((b) => this.normalizeBulletText(b))
+      .filter((b) => b.length > 0);
+
+    const deduped: string[] = [];
+    const seen = new Set<string>();
+    for (const bullet of cleaned) {
+      const key = bullet.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(bullet);
+    }
+
+    return deduped.slice(0, 3).map((bullet) =>
+      this.adjustBulletLength(bullet, questionText)
+    );
+  }
+
+  private normalizeBulletText(text: string): string {
+    return text
+      .replace(/^[\s\-•\u2022]+/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private adjustBulletLength(text: string, questionText: string): string {
+    return text.trim();
   }
 
   private buildOverviewBulletsPrompt(params: {
@@ -404,11 +609,13 @@ Verdict: ${params.verdict.label} (${params.verdict.confidence}% confidence)
 Article stances and reasoning:
 ${stanceSummary}
 
-Generate 5-8 bullet points that help readers understand this debate. Each bullet should:
+Generate 3 bullet points total (no more than 3) that help readers understand this debate. Each bullet should:
 - Be a complete sentence
 - Explain a key aspect of the debate
 - Be neutral and factual
 - Cover different perspectives
+- Be plain and direct (no filler text)
+- Align with the verdict overall (include counterpoints but ensure the dominant framing supports the verdict)
 
 Return JSON:
 {
@@ -447,6 +654,8 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('extractQuotes', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -590,6 +799,8 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('generateFeaturedPerspective', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -1135,6 +1346,8 @@ Return a JSON object with:
       { maxRetries: this.maxRetries }
     );
 
+    this.logUsage('discoverTopicsFromArticles', response.usage);
+
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseTopicDiscoveryResponse(content);
   }
@@ -1157,6 +1370,8 @@ Return a JSON object with:
         }),
       { maxRetries: this.maxRetries }
     );
+
+    this.logUsage('discoverQuestionsFromArticles', response.usage);
 
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseQuestionDiscoveryResponse(content);

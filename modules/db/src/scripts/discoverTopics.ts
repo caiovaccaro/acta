@@ -31,12 +31,29 @@ import { discoverTopics } from '@acta/core/analysis';
 
 // Parse command line arguments
 const BATCH_SIZE = parseInt(process.argv.find(arg => arg.startsWith('--batch-size='))?.split('=')[1] || '200');
+const OFFSET_ARG = process.argv.find(arg => arg.startsWith('--offset='))?.split('=')[1];
+const START_BATCH_ARG = process.argv.find(arg => arg.startsWith('--start-batch='))?.split('=')[1];
+const TIMEOUT_ARG = process.argv.find(arg => arg.startsWith('--timeout-ms='))?.split('=')[1];
+const MAX_RETRIES_ARG = process.argv.find(arg => arg.startsWith('--max-retries='))?.split('=')[1];
+const START_OFFSET = OFFSET_ARG ? parseInt(OFFSET_ARG, 10) : null;
+const START_BATCH = START_BATCH_ARG ? parseInt(START_BATCH_ARG, 10) : null;
+const LLM_TIMEOUT_MS = TIMEOUT_ARG ? parseInt(TIMEOUT_ARG, 10) : null;
+const LLM_MAX_RETRIES = MAX_RETRIES_ARG ? parseInt(MAX_RETRIES_ARG, 10) : null;
 
 async function main() {
   try {
     console.log('🔎 Discovering topics from articles...');
     console.log(`📦 Batch size: ${BATCH_SIZE} articles per batch\n`);
     await connectDatabase();
+
+    if (LLM_TIMEOUT_MS) {
+      process.env.OPENAI_TIMEOUT = String(LLM_TIMEOUT_MS);
+      console.log(`⏱️  LLM timeout set to ${LLM_TIMEOUT_MS}ms`);
+    }
+    if (LLM_MAX_RETRIES !== null) {
+      process.env.OPENAI_MAX_RETRIES = String(LLM_MAX_RETRIES);
+      console.log(`🔁 LLM max retries set to ${LLM_MAX_RETRIES}`);
+    }
 
     const llmConfig = createLLMConfigFromEnv();
     const llmProvider = createLLMProvider(llmConfig);
@@ -51,8 +68,19 @@ async function main() {
     }
 
     const existingTopics = await findAllTopics(true);
+    const existingById = new Map(existingTopics.map((t) => [t.id, t]));
     let offset = 0;
     let batchNumber = 0;
+
+    if (START_BATCH && START_BATCH > 0) {
+      offset = (START_BATCH - 1) * BATCH_SIZE;
+      batchNumber = START_BATCH - 1;
+      console.log(`↪️  Resuming from batch ${START_BATCH} (offset ${offset})`);
+    } else if (START_OFFSET && START_OFFSET >= 0) {
+      offset = START_OFFSET;
+      batchNumber = Math.floor(offset / BATCH_SIZE);
+      console.log(`↪️  Resuming from offset ${offset} (batch ${batchNumber + 1})`);
+    }
     let totalDiscovered = 0;
     const allDiscoveredTopics = new Map<string, any>(); // Use Map to deduplicate by name
 
@@ -74,21 +102,40 @@ async function main() {
         excerpt: a.excerpt,
       }));
 
-      const discovered = await discoverTopics(articlePayload, existingTopics, llmProvider, {
-        maxTopics: 10,
-        confidenceThreshold: 0.6,
-      });
+      const batchStart = Date.now();
+      let discovered = [];
+      try {
+        discovered = await discoverTopics(articlePayload, existingTopics, llmProvider, {
+          maxTopics: 10,
+          confidenceThreshold: 0.6,
+        });
+      } catch (error) {
+        console.error(`   ❌ Error discovering topics in batch ${batchNumber}:`, error);
+        console.error(`   💡 Resume with: --offset=${offset} --batch-size=${BATCH_SIZE}`);
+        throw error;
+      } finally {
+        const duration = ((Date.now() - batchStart) / 1000).toFixed(1);
+        console.log(`   ⏱️  LLM batch duration: ${duration}s`);
+      }
 
       // Merge discovered topics (deduplicate by name, keep highest confidence)
       for (const topic of discovered) {
+        if (topic.matchedTopicId) {
+          const matched = existingById.get(topic.matchedTopicId);
+          console.log(
+            `   🔗 Matched "${topic.name}" -> "${matched?.name || topic.matchedTopicId}" (${topic.matchReason}, ${((topic.matchConfidence ?? 0) * 100).toFixed(1)}%)`
+          );
+          continue;
+        }
         const existing = allDiscoveredTopics.get(topic.name);
         if (!existing || topic.confidence > existing.confidence) {
           allDiscoveredTopics.set(topic.name, topic);
         }
       }
 
-      if (discovered.length > 0) {
-        console.log(`   ✅ Discovered ${discovered.length} new topic(s) in this batch`);
+      const newCount = discovered.filter((t) => !t.matchedTopicId).length;
+      if (newCount > 0) {
+        console.log(`   ✅ Discovered ${newCount} new topic(s) in this batch`);
       } else {
         console.log(`   ℹ️  No new topics discovered in this batch`);
       }

@@ -36,7 +36,7 @@ const STANCE_SCORES: Record<Stance, number> = {
  * If fewer articles, verdict is set to "Unclear" with low confidence
  * Lower values allow more verdicts to be calculated (default: 4)
  */
-const MIN_ARTICLES_FOR_VERDICT = 4;
+const MIN_ARTICLES_FOR_VERDICT = 3;
 
 /**
  * Verdict calculation result

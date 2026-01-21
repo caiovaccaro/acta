@@ -42,6 +42,18 @@ interface ScriptArgs {
   force?: boolean; // Regenerate even if content exists
 }
 
+function isNonQuoteResponse(text: string): boolean {
+  const normalized = text.trim().toLowerCase();
+  return (
+    normalized.startsWith("i'm sorry") ||
+    normalized.includes('provided text does not contain') ||
+    normalized.includes('does not contain any direct quotes') ||
+    normalized.includes('no direct quotes') ||
+    normalized.includes('cannot find any direct quotes') ||
+    normalized.includes('does not include any direct quotes')
+  );
+}
+
 function parseScriptArgs(): ScriptArgs {
   const { values } = parseArgs({
     options: {
@@ -320,7 +332,12 @@ async function main() {
                 if (quoteResult.quotes.length > 0) {
                   const quote = quoteResult.quotes[0];
                   // Only store if we have a valid quote and article URL
-                  if (quote.text && quote.text.trim().length > 0 && article.url) {
+                  if (
+                    quote.text &&
+                    quote.text.trim().length > 0 &&
+                    !isNonQuoteResponse(quote.text) &&
+                    article.url
+                  ) {
                     pointsForDebate.push({
                       verdictId: verdict.id,
                       text: quote.text,

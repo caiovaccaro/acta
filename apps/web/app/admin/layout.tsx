@@ -22,6 +22,18 @@ export default function AdminLayout({
     // { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/admin/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/admin/login';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background-lighter">
       {/* Admin Navigation Bar */}
@@ -57,14 +69,20 @@ export default function AdminLayout({
               })}
             </div>
 
-            {/* Back to Site Link */}
-            <div className="flex items-center">
+            {/* Back to Site / Logout */}
+            <div className="flex items-center gap-4">
               <Link
                 href="/"
                 className="text-sm text-text-muted hover:text-primary-blue transition-colors"
               >
                 ← Back to Site
               </Link>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-text-muted hover:text-primary-blue transition-colors"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

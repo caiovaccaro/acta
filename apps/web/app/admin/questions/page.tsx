@@ -3,7 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import QuestionConvergenceModal from './components/QuestionConvergenceModal';
 
 async function fetchQuestions(topicId?: string | null) {
@@ -29,6 +44,59 @@ async function batchUpdateQuestions(ids: string[], action: 'approve' | 'reject')
   return res.json();
 }
 
+async function updateFeaturedQuestion(id: string, isFeatured: boolean) {
+  const res = await fetch('/admin/api/questions/featured', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, isFeatured }),
+  });
+  if (!res.ok) throw new Error('Failed to update featured question');
+  return res.json();
+}
+
+async function updateQuestionOrder(ids: string[]) {
+  const res = await fetch('/admin/api/questions/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error('Failed to update question order');
+  return res.json();
+}
+
+function SortableRow({
+  id,
+  children,
+}: {
+  id: string;
+  children: (props: {
+    attributes: Record<string, any>;
+    listeners: Record<string, any>;
+    isDragging: boolean;
+    setNodeRef: (node: HTMLElement | null) => void;
+    style: React.CSSProperties;
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-background-lighter/50 ${isDragging ? 'bg-background-lighter/80 shadow-sm' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      {children({ attributes, listeners, isDragging, setNodeRef, style })}
+    </tr>
+  );
+}
+
 function getBarScore(validationResults: any): number | null {
   if (!validationResults) return null;
   if (validationResults.barValidation?.barReadinessScore !== undefined) {
@@ -40,13 +108,37 @@ function getBarScore(validationResults: any): number | null {
   return null;
 }
 
+function formatVerdictLabel(label?: string | null): string {
+  if (!label) return '-';
+  switch (label) {
+    case 'YesItSeemsSo':
+      return 'Yes';
+    case 'ProbablyYes':
+      return 'Probably yes';
+    case 'Unclear':
+      return 'Unclear';
+    case 'ProbablyNot':
+      return 'Probably not';
+    case 'NoItDoesntSeemSo':
+      return 'No';
+    default:
+      return label;
+  }
+}
+
 function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId');
   const [selectedTopicId, setSelectedTopicId] = useState(topicId || '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
+  const [orderedQuestions, setOrderedQuestions] = useState<any[]>([]);
   const queryClient = useQueryClient();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const { data: questions, isLoading } = useQuery({
     queryKey: ['admin-questions', selectedTopicId || null],
@@ -66,6 +158,27 @@ function AdminQuestionsContent() {
       setSelectedIds(new Set());
     },
   });
+
+  const featuredMutation = useMutation({
+    mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
+      updateFeaturedQuestion(id, isFeatured),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+    },
+  });
+
+  const orderMutation = useMutation({
+    mutationFn: (ids: string[]) => updateQuestionOrder(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-questions'] });
+    },
+  });
+
+  useEffect(() => {
+    if (questions) {
+      setOrderedQuestions(questions);
+    }
+  }, [questions]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -88,6 +201,20 @@ function AdminQuestionsContent() {
   const handleBatchAction = (action: 'approve' | 'reject') => {
     if (selectedIds.size === 0) return;
     batchMutation.mutate({ ids: Array.from(selectedIds), action });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const current = orderedQuestions.length ? orderedQuestions : questions || [];
+    const oldIndex = current.findIndex((q: any) => q.id === active.id);
+    const newIndex = current.findIndex((q: any) => q.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const next = arrayMove(current, oldIndex, newIndex);
+    setOrderedQuestions(next);
+    orderMutation.mutate(next.map((q: any) => q.id));
   };
 
   return (
@@ -165,7 +292,12 @@ function AdminQuestionsContent() {
         <div className="text-text-muted">Loading questions...</div>
       ) : questions && questions.length > 0 ? (
         <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden">
-          <table className="w-full">
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={(orderedQuestions.length ? orderedQuestions : questions).map((q: any) => q.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <table className="w-full">
             <thead className="bg-background-lighter">
               <tr>
                 <th className="px-6 py-3 text-left">
@@ -176,20 +308,25 @@ function AdminQuestionsContent() {
                     className="rounded border-border-light"
                   />
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Order</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Question</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Topic</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Featured</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">BAR Score</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stances</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Verdicts</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Latest Verdict</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
-              {questions.map((question: any) => {
+              {(orderedQuestions.length ? orderedQuestions : questions).map((question: any) => {
                 const barScore = getBarScore(question.validationResults);
                 return (
-                  <tr key={question.id} className="hover:bg-background-lighter/50">
+                  <SortableRow key={question.id} id={question.id}>
+                    {({ attributes, listeners, isDragging }) => (
+                      <>
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
@@ -197,6 +334,14 @@ function AdminQuestionsContent() {
                         onChange={(e) => handleSelect(question.id, e.target.checked)}
                         className="rounded border-border-light"
                       />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`cursor-grab text-text-muted hover:text-primary-blue ${isDragging ? 'cursor-grabbing' : ''}`}
+                        aria-hidden="true"
+                      >
+                        <GripVertical className="size-5" />
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <Link href={`/admin/questions/${question.id}/edit`} className="font-medium text-text-main hover:text-primary-blue line-clamp-2">
@@ -207,6 +352,28 @@ function AdminQuestionsContent() {
                       <Link href={`/admin/topics/${question.topicId}`} className="text-text-muted hover:text-primary-blue">
                         {question.topic.name}
                       </Link>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!!question.isFeatured}
+                        onClick={() =>
+                          featuredMutation.mutate({
+                            id: question.id,
+                            isFeatured: !question.isFeatured,
+                          })
+                        }
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          question.isFeatured ? 'bg-primary-blue' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                            question.isFeatured ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </td>
                     <td className="px-6 py-4">
                       {barScore !== null ? (
@@ -235,13 +402,20 @@ function AdminQuestionsContent() {
                     <td className="px-6 py-4 text-text-muted">{question._count.articleStances}</td>
                     <td className="px-6 py-4 text-text-muted">{question._count.verdicts}</td>
                     <td className="px-6 py-4 text-text-muted">
+                      {formatVerdictLabel(question.verdicts?.[0]?.verdictLabel)}
+                    </td>
+                    <td className="px-6 py-4 text-text-muted">
                       {new Date(question.createdAt).toLocaleDateString()}
                     </td>
-                  </tr>
+                      </>
+                    )}
+                  </SortableRow>
                 );
               })}
             </tbody>
-          </table>
+              </table>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : (
         <div className="text-text-muted">No questions found</div>
