@@ -51,7 +51,8 @@ export function deduplicateTopics(
   }
 
   const results: DiscoveredTopic[] = [];
-  for (const topic of dedupedByName.values()) {
+  const dedupedTopics = Array.from(dedupedByName.values());
+  for (const topic of dedupedTopics) {
     const match = matchDiscoveredTopic(topic, existing, {
       tokenOverlapThreshold,
       fuzzyThreshold,
@@ -156,8 +157,10 @@ function tokenOverlapScore(a: string, b: string): number {
   const tokensA = new Set(a.split(/\s+/).filter(Boolean));
   const tokensB = new Set(b.split(/\s+/).filter(Boolean));
   if (tokensA.size === 0 || tokensB.size === 0) return 0;
-  const intersection = new Set([...tokensA].filter((t) => tokensB.has(t)));
-  const union = new Set([...tokensA, ...tokensB]);
+  const tokensAList = Array.from(tokensA);
+  const tokensBList = Array.from(tokensB);
+  const intersection = new Set(tokensAList.filter((t) => tokensB.has(t)));
+  const union = new Set([...tokensAList, ...tokensBList]);
   return intersection.size / union.size;
 }
 
