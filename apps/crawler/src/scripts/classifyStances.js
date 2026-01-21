@@ -23,7 +23,6 @@ import {
   connectDatabase,
   disconnectDatabase,
   findAllTopics,
-  findActiveQuestions,
   findQuestionsByTopicId,
   prisma,
 } from '@acta/db';
@@ -61,8 +60,11 @@ async function main() {
       return;
     }
 
-    const questions = await findActiveQuestions();
-    console.log(`❓ Found ${questions.length} active questions\n`);
+    const questions = await prisma.question.findMany({
+      include: { topic: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    console.log(`❓ Found ${questions.length} questions (including inactive)\n`);
 
     if (questions.length === 0) {
       console.log('⚠️  No active questions found. Run seed script first:');
@@ -72,6 +74,10 @@ async function main() {
 
     // Load articles that have been matched to topics
     const batchSize = args.limit || 1000;
+    if (args.startBatch && args.startBatch > 1) {
+      args.offset = (args.startBatch - 1) * batchSize;
+      console.log(`↪️  Resuming from batch ${args.startBatch} (offset ${args.offset})`);
+    }
     let totalArticles = 0;
     let allMatchedArticles = [];
     let allArticleTopicMap = new Map();
@@ -262,8 +268,23 @@ async function main() {
     let errorCount = 0;
 
     // Process matched articles in batches
-    const classificationBatchSize = 10;
-    for (let i = 0; i < matchedArticles.length; i += classificationBatchSize) {
+    const classificationBatchSize = args.classifyBatchSize || 10;
+    const classificationStartBatch =
+      args.classifyStartBatch && args.classifyStartBatch > 1
+        ? args.classifyStartBatch
+        : 1;
+    const classificationStartIndex = (classificationStartBatch - 1) * classificationBatchSize;
+    if (classificationStartIndex > 0) {
+      console.log(
+        `↪️  Resuming classification from batch ${classificationStartBatch} (index ${classificationStartIndex})`
+      );
+    }
+
+    for (
+      let i = classificationStartIndex;
+      i < matchedArticles.length;
+      i += classificationBatchSize
+    ) {
       const batch = matchedArticles.slice(i, i + classificationBatchSize);
       const batchNum = Math.floor(i / classificationBatchSize) + 1;
       const totalBatches = Math.ceil(matchedArticles.length / classificationBatchSize);
@@ -271,23 +292,37 @@ async function main() {
       
       for (const article of batch) {
         try {
+          if (args.logArticles) {
+            console.log(
+              `      ▶ Article "${article.title.substring(0, 60)}..." (${article.id})`
+            );
+          }
           // Get topics this article matched to
           const topicIds = articleTopicMap.get(article.id) || [];
           
           // Get all questions for these topics
           const relevantQuestions = [];
           for (const topicId of topicIds) {
-            const topicQuestions = await findQuestionsByTopicId(topicId, false); // Only active questions
-            relevantQuestions.push(...topicQuestions);
+            const topicQuestions = await findQuestionsByTopicId(topicId, true); // Include inactive questions
+            const limitedTopicQuestions =
+              args.maxQuestionsPerTopic && args.maxQuestionsPerTopic > 0
+                ? topicQuestions.slice(0, args.maxQuestionsPerTopic)
+                : topicQuestions;
+            relevantQuestions.push(...limitedTopicQuestions);
           }
           
           // Remove duplicates
           const uniqueQuestions = Array.from(
             new Map(relevantQuestions.map(q => [q.id, q])).values()
           );
+
+          const cappedQuestions = uniqueQuestions;
           
-          if (uniqueQuestions.length === 0) {
+          if (cappedQuestions.length === 0) {
             articlesSkippedNoQuestions++;
+            if (args.logArticles) {
+              console.log(`      ⚠️  Article "${article.title.substring(0, 50)}..." - no matching questions`);
+            }
             continue;
           }
           
@@ -296,7 +331,7 @@ async function main() {
           
           // Classify stance for all relevant questions
           const { classifyStances } = await import('@acta/core/analysis');
-          const items = uniqueQuestions.map(question => ({ article, question }));
+          const items = cappedQuestions.map(question => ({ article, question }));
           const classifications = await classifyStances(
             items,
             llmProvider,
@@ -344,6 +379,10 @@ async function main() {
           console.error(`      ✗ Error classifying article ${article.id}:`, error.message);
         }
       }
+
+      const processedSoFar = Math.min(i + batch.length, matchedArticles.length);
+      const progress = ((processedSoFar / matchedArticles.length) * 100).toFixed(1);
+      console.log(`   📈 Progress: ${processedSoFar}/${matchedArticles.length} articles (${progress}%)`);
     }
 
     console.log(`\n   ✅ Classification complete:`);
@@ -437,6 +476,12 @@ function parseArgs() {
     questionId: null,
     limit: null,
     offset: null,
+    startBatch: null,
+    classifyStartBatch: null,
+    classifyBatchSize: null,
+    logArticles: true,
+    maxQuestionsPerArticle: Infinity,
+    maxQuestionsPerTopic: null,
   };
 
   const allArgs = process.argv.slice(2);
@@ -450,6 +495,18 @@ function parseArgs() {
       args.limit = parseInt(arg.split('=')[1], 10);
     } else if (arg.startsWith('--offset=')) {
       args.offset = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--start-batch=')) {
+      args.startBatch = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--classify-start-batch=')) {
+      args.classifyStartBatch = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--classify-batch-size=')) {
+      args.classifyBatchSize = parseInt(arg.split('=')[1], 10);
+    } else if (arg === '--no-article-logs') {
+      args.logArticles = false;
+    } else if (arg.startsWith('--max-questions-per-article=')) {
+      args.maxQuestionsPerArticle = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--max-questions-per-topic=')) {
+      args.maxQuestionsPerTopic = parseInt(arg.split('=')[1], 10);
     } else if (arg === '--topic-id' || arg === '--question-id' || arg === '--limit') {
       const index = allArgs.indexOf(arg);
       if (index !== -1 && index + 1 < allArgs.length) {

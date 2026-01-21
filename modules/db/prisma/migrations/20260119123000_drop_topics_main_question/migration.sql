@@ -7,3 +7,5 @@ DROP INDEX IF EXISTS "topics_mainQuestionId_idx";
 ALTER TABLE IF EXISTS "topics"
 DROP CONSTRAINT IF EXISTS "topics_mainQuestionId_fkey";
 
+
+

@@ -20,3 +20,5 @@ echo ""
 echo "✅ Migrations complete!"
 echo "Run: cd ../.. && npm run db:generate"
 
+
+

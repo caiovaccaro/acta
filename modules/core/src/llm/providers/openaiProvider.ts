@@ -42,6 +42,8 @@ export class OpenAIProvider implements LLMProvider {
   private model: string;
   private maxRetries: number;
   private timeout: number;
+  private pricePerMillionInput: number;
+  private pricePerMillionOutput: number;
 
   constructor(config: OpenAIProviderConfig) {
     if (!config.apiKey) {
@@ -55,6 +57,21 @@ export class OpenAIProvider implements LLMProvider {
     this.model = config.model || 'gpt-4-turbo-preview';
     this.maxRetries = config.maxRetries || 3;
     this.timeout = config.timeout || 30000;
+    this.pricePerMillionInput = Number(process.env.OPENAI_COST_PER_MILLION_INPUT || 10);
+    this.pricePerMillionOutput = Number(process.env.OPENAI_COST_PER_MILLION_OUTPUT || 30);
+  }
+
+  private logUsage(label: string, usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null) {
+    if (!usage) return;
+    const promptTokens = usage.prompt_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
+    const inputCost = (promptTokens / 1_000_000) * this.pricePerMillionInput;
+    const outputCost = (completionTokens / 1_000_000) * this.pricePerMillionOutput;
+    const totalCost = inputCost + outputCost;
+    console.log(
+      `[llm-usage] ${label} model=${this.model} prompt=${promptTokens} completion=${completionTokens} total=${totalTokens} cost=$${totalCost.toFixed(4)}`
+    );
   }
 
   async validateBarQuestion(
@@ -80,6 +97,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('validateBarQuestion', response.usage);
 
           return this.parseBarQuestionValidationResponse(response);
         } catch (error) {
@@ -114,6 +133,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('summarizeVerdict', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -161,6 +182,8 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('generateQuestionContextBlurb', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -243,6 +266,8 @@ Return JSON:
             temperature: 0.3,
           });
 
+          this.logUsage('generateTimelineEvents', response.usage);
+
           const content = response.choices[0]?.message?.content;
           if (!content) {
             throw new LLMProviderError(
@@ -283,8 +308,8 @@ Return JSON:
     const normalized = events
       .map((e) => ({
         date: this.normalizeTimelineDate(e.date),
-        title: (e.title || '').trim(),
-        description: (e.description || '').trim(),
+        title: this.sanitizeTimelineText(e.title || ''),
+        description: this.sanitizeTimelineText(e.description || ''),
       }))
       .filter((e) => e.title || e.description);
 
@@ -372,11 +397,13 @@ Return JSON:
     const padded = [...events];
     for (const article of candidates) {
       if (padded.length >= minCount) break;
-      const title = article.title.trim();
+      const title = this.sanitizeTimelineText(article.title || '');
       if (!title || usedTitles.has(title.toLowerCase())) continue;
       usedTitles.add(title.toLowerCase());
       const sentenceMatch = article.textContent?.match(/[^.!?]+[.!?]/);
-      const description = sentenceMatch ? sentenceMatch[0].trim() : `Reported by ${article.outletName}.`;
+      const description = this.sanitizeTimelineText(
+        sentenceMatch ? sentenceMatch[0] : `Reported by ${article.outletName}.`
+      );
       padded.push({
         date: this.normalizeTimelineDate(article.publishedDate || undefined),
         title,
@@ -414,8 +441,9 @@ Return JSON:
     const articleList = sortedArticles
       .map((a) => {
         const date = a.publishedDate ? new Date(a.publishedDate).toLocaleDateString() : 'Unknown date';
-        const snippet = a.textContent.substring(0, 400);
-        return `[${date}] ${a.title} (${a.outletName})\n${snippet}...`;
+        const snippet = this.sanitizeTimelineText(a.textContent.substring(0, 400));
+        const title = this.sanitizeTimelineText(a.title || '');
+        return `[${date}] ${title} (${a.outletName})\n${snippet}...`;
       })
       .join('\n\n');
 
@@ -442,6 +470,28 @@ Return JSON with a chronological list of events:
 }
 
 Generate 3-5 key events total (at least 3, no more than 5), ordered chronologically.`;
+  }
+
+  private sanitizeTimelineText(input: string): string {
+    let output = (input || '').replace(/\s+/g, ' ').trim();
+    if (!output) return '';
+
+    // Remove common boilerplate or promo text that leaks into titles/snippets.
+    const boilerplatePatterns = [
+      /NEW\s*You can now listen to Fox News articles!?/i,
+      /You can now listen to Fox News articles!?/i,
+      /Listen to Fox News.*$/i,
+      /Click here to listen.*$/i,
+    ];
+
+    for (const pattern of boilerplatePatterns) {
+      output = output.replace(pattern, '').trim();
+    }
+
+    // Handle glued "NEWYou" prefix
+    output = output.replace(/^NEW(?=[A-Z])/i, '').trim();
+
+    return output;
   }
 
   async generateOverviewBullets(params: {
@@ -475,6 +525,8 @@ Generate 3-5 key events total (at least 3, no more than 5), ordered chronologica
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('generateOverviewBullets', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -528,44 +580,7 @@ Generate 3-5 key events total (at least 3, no more than 5), ordered chronologica
   }
 
   private adjustBulletLength(text: string, questionText: string): string {
-    const minLen = 120;
-    const maxLen = 150;
-    let output = text.trim();
-
-    if (output.length > maxLen) {
-      output = `${output.slice(0, maxLen - 3).trimEnd()}...`;
-      return output;
-    }
-
-    if (output.length >= minLen) {
-      return output;
-    }
-
-    const fillers = [
-      ' This frames how coverage answers the question.',
-      ' It highlights a key trade-off in the issue.',
-    ];
-
-    for (const filler of fillers) {
-      if (output.length >= minLen) break;
-      const remaining = maxLen - output.length;
-      if (remaining <= 0) break;
-      const addition =
-        filler.length > remaining ? filler.slice(0, remaining) : filler;
-      output = `${output}${addition}`.trim();
-    }
-
-    if (output.length < minLen && questionText) {
-      const tail = ` It centers on ${questionText}.`;
-      const remaining = maxLen - output.length;
-      if (remaining > 0) {
-        const addition =
-          tail.length > remaining ? tail.slice(0, remaining) : tail;
-        output = `${output}${addition}`.trim();
-      }
-    }
-
-    return output;
+    return text.trim();
   }
 
   private buildOverviewBulletsPrompt(params: {
@@ -599,7 +614,8 @@ Generate 3 bullet points total (no more than 3) that help readers understand thi
 - Explain a key aspect of the debate
 - Be neutral and factual
 - Cover different perspectives
-- Be about 120-150 characters long
+- Be plain and direct (no filler text)
+- Align with the verdict overall (include counterpoints but ensure the dominant framing supports the verdict)
 
 Return JSON:
 {
@@ -638,6 +654,8 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('extractQuotes', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -781,6 +799,8 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
+
+          this.logUsage('generateFeaturedPerspective', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -1326,6 +1346,8 @@ Return a JSON object with:
       { maxRetries: this.maxRetries }
     );
 
+    this.logUsage('discoverTopicsFromArticles', response.usage);
+
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseTopicDiscoveryResponse(content);
   }
@@ -1348,6 +1370,8 @@ Return a JSON object with:
         }),
       { maxRetries: this.maxRetries }
     );
+
+    this.logUsage('discoverQuestionsFromArticles', response.usage);
 
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseQuestionDiscoveryResponse(content);
