@@ -51,6 +51,7 @@ export async function PUT(
       suggestions,
       isFeatured,
       featuredOrder,
+      topicId,
     } = body;
 
     const question = await prisma.question.update({
@@ -63,6 +64,7 @@ export async function PUT(
         suggestions: suggestions || [],
         isFeatured: isFeatured ?? undefined,
         featuredOrder: featuredOrder ?? undefined,
+        topicId: topicId || undefined,
       },
     });
 

@@ -695,9 +695,20 @@ export async function convergeQuestions(
     // The counts will be correct once verdicts are recalculated
 
     // 7. Update target question metadata
+    const sourceBlurbs = sourceQuestions
+      .map((q) => q.contextBlurb)
+      .filter((blurb) => typeof blurb === 'string' && blurb.trim().length > 0) as string[];
+    const bestSourceBlurb = sourceBlurbs.length > 0 ? sourceBlurbs[0] : null;
+    const preservedBlurb =
+      newContextBlurb !== undefined
+        ? newContextBlurb
+        : (targetQuestion.contextBlurb && targetQuestion.contextBlurb.trim().length > 0)
+        ? targetQuestion.contextBlurb
+        : bestSourceBlurb;
+
     const updateData: any = {
       questionText: newQuestionText || targetQuestion.questionText,
-      contextBlurb: newContextBlurb !== undefined ? newContextBlurb : targetQuestion.contextBlurb,
+      contextBlurb: preservedBlurb,
       confidence: Math.max(
         targetQuestion.confidence || 0,
         ...sourceQuestions.map(q => q.confidence || 0)
