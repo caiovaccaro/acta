@@ -22,6 +22,7 @@
     "db:approve:topic": "tsx src/scripts/approveTopic.ts",
     "db:reject:topic": "tsx src/scripts/rejectTopic.ts",
     "db:generate:context-blurbs": "tsx src/scripts/generateContextBlurbs.ts",
+    "db:list:missing-context-blurbs": "tsx src/scripts/listMissingContextBlurbs.ts",
     "db:generate:timeline-events": "tsx src/scripts/generateTimelineEvents.ts",
     "db:generate:debate-content": "tsx src/scripts/generateDebateCardContent.ts",
     "db:generate:featured-perspectives": "tsx src/scripts/generateFeaturedPerspectives.ts",

@@ -7,6 +7,7 @@
  * Usage:
  *   npm run db:sync:production
  *   npm run db:sync:production -- --target-url="postgresql://user:pass@host:5432/db"
+ *   npm run db:sync:production -- --skip-drop-schema
  * 
  * Environment Variables:
  *   DATABASE_URL - Your local database (source)
@@ -63,7 +64,7 @@ async function main() {
 
   try {
     console.log('📦 Step 1: Creating database dump from local database...');
-    const dumpFile = resolve(__dirname, '../../../../.tmp-dump.sql');
+    const dumpFile = resolve(__dirname, '../../../../.tmp-dump.dump');
     
     // Clean connection URLs (remove Prisma-specific query parameters)
     const cleanSourceUrl = cleanConnectionUrl(sourceUrl);
@@ -79,7 +80,7 @@ async function main() {
     
     const pgDump = findPgDump();
     const env = { ...process.env, PGPASSWORD: password };
-    const dumpCommand = `"${pgDump}" -h "${host}" -p "${port}" -U "${user}" -d "${database}" --no-owner --no-acl --clean --if-exists > "${dumpFile}"`;
+    const dumpCommand = `"${pgDump}" -h "${host}" -p "${port}" -U "${user}" -d "${database}" --no-owner --no-acl --format=custom --file "${dumpFile}"`;
     
     execSync(dumpCommand, { 
       stdio: 'inherit',
@@ -100,7 +101,15 @@ async function main() {
     
     const psql = findPsql();
     const restoreEnv = { ...process.env, PGPASSWORD: targetPassword };
-    const restoreCommand = `"${psql}" -h "${targetHost}" -p "${targetPort}" -U "${targetUser}" -d "${targetDatabase}" < "${dumpFile}"`;
+
+    if (!args.skipDropSchema) {
+      console.log('🧹 Dropping and recreating public schema on target...');
+      const dropSchemaCommand = `"${psql}" -h "${targetHost}" -p "${targetPort}" -U "${targetUser}" -d "${targetDatabase}" -v ON_ERROR_STOP=1 -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`;
+      execSync(dropSchemaCommand, { stdio: 'inherit', shell: true, env: restoreEnv });
+    }
+
+    const pgRestore = findPgRestore();
+    const restoreCommand = `"${pgRestore}" -h "${targetHost}" -p "${targetPort}" -U "${targetUser}" -d "${targetDatabase}" --no-owner --no-acl --clean --if-exists "${dumpFile}"`;
     execSync(restoreCommand, { stdio: 'inherit', shell: true, env: restoreEnv });
     
     console.log('✅ Data restored successfully\n');
@@ -126,7 +135,7 @@ async function main() {
 }
 
 function parseArgs() {
-  const args: any = { skipConfirm: false };
+  const args: any = { skipConfirm: false, skipDropSchema: false };
   const allArgs = process.argv.slice(2);
   
   allArgs.forEach((arg) => {
@@ -134,6 +143,8 @@ function parseArgs() {
       args.targetUrl = arg.split('=')[1];
     } else if (arg === '--skip-confirm' || arg === '-y') {
       args.skipConfirm = true;
+    } else if (arg === '--skip-drop-schema') {
+      args.skipDropSchema = true;
     }
   });
 
@@ -264,6 +275,36 @@ function findPsql(): string {
 
   // Default to psql and hope it's in PATH
   return 'psql';
+}
+
+/**
+ * Find pg_restore executable in common locations
+ */
+function findPgRestore(): string {
+  const possiblePaths = [
+    '/usr/local/opt/postgresql@16/bin/pg_restore',
+    '/usr/local/opt/postgresql@15/bin/pg_restore',
+    '/usr/local/opt/postgresql/bin/pg_restore',
+    '/opt/homebrew/opt/postgresql@16/bin/pg_restore',
+    '/opt/homebrew/opt/postgresql/bin/pg_restore',
+    'pg_restore'
+  ];
+
+  for (const path of possiblePaths) {
+    if (path === 'pg_restore') {
+      try {
+        execSync('which pg_restore', { stdio: 'ignore' });
+        return 'pg_restore';
+      } catch {
+        continue;
+      }
+    }
+    if (existsSync(path)) {
+      return path;
+    }
+  }
+
+  return 'pg_restore';
 }
 
 function maskUrl(url: string): string {

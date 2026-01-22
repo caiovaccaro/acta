@@ -41,6 +41,7 @@
         "db:approve:topic": "cd modules/db && npm run db:approve:topic",
         "db:reject:topic": "cd modules/db && npm run db:reject:topic",
         "db:generate:context-blurbs": "cd modules/db && npm run db:generate:context-blurbs --",
+        "db:list:missing-context-blurbs": "cd modules/db && npm run db:list:missing-context-blurbs --",
         "db:generate:timeline-events": "cd modules/db && npm run db:generate:timeline-events --",
         "db:generate:debate-content": "cd modules/db && npm run db:generate:debate-content --",
         "db:generate:featured-perspectives": "cd modules/db && npm run db:generate:featured-perspectives --",
