@@ -291,13 +291,26 @@ function AdminQuestionsContent() {
       {isLoading ? (
         <div className="text-text-muted">Loading questions...</div>
       ) : questions && questions.length > 0 ? (
-        <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-x-auto">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <SortableContext
               items={(orderedQuestions.length ? orderedQuestions : questions).map((q: any) => q.id)}
               strategy={verticalListSortingStrategy}
             >
-              <table className="w-full">
+              <table className="w-full min-w-[1500px] table-fixed">
+                <colgroup>
+                  <col className="w-12" />
+                  <col className="w-16" />
+                  <col className="w-[45%]" />
+                  <col className="w-[20%]" />
+                  <col className="w-32" />
+                  <col className="w-28" />
+                  <col className="w-32" />
+                  <col className="w-28" />
+                  <col className="w-24" />
+                  <col className="w-24" />
+                  <col className="w-32" />
+                </colgroup>
             <thead className="bg-background-lighter">
               <tr>
                 <th className="px-6 py-3 text-left">
@@ -308,16 +321,16 @@ function AdminQuestionsContent() {
                     className="rounded border-border-light"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Order</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Question</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Topic</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Featured</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">BAR Score</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Stances</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Verdicts</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Latest Verdict</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap w-16">Order</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Question</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Topic</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Featured</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Latest Verdict</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Stances</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">Verdicts</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider whitespace-nowrap">BAR Score</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-light">
@@ -335,7 +348,7 @@ function AdminQuestionsContent() {
                         className="rounded border-border-light"
                       />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-4 w-16">
                       <span
                         className={`cursor-grab text-text-muted hover:text-primary-blue ${isDragging ? 'cursor-grabbing' : ''}`}
                         aria-hidden="true"
@@ -344,11 +357,11 @@ function AdminQuestionsContent() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <Link href={`/admin/questions/${question.id}/edit`} className="font-medium text-text-main hover:text-primary-blue line-clamp-2">
+                      <Link href={`/admin/questions/${question.id}/edit`} className="font-medium text-text-main hover:text-primary-blue">
                         {question.questionText}
                       </Link>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 break-words">
                       <Link href={`/admin/topics/${question.topicId}`} className="text-text-muted hover:text-primary-blue">
                         {question.topic.name}
                       </Link>
@@ -376,6 +389,23 @@ function AdminQuestionsContent() {
                       </button>
                     </td>
                     <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        question.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {question.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-text-muted whitespace-nowrap">
+                      {formatVerdictLabel(question.verdicts?.[0]?.verdictLabel)}
+                    </td>
+                    <td className="px-6 py-4 text-text-muted whitespace-nowrap">
+                      {new Date(question.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-text-muted whitespace-nowrap">{question._count.articleStances}</td>
+                    <td className="px-6 py-4 text-text-muted whitespace-nowrap">{question._count.verdicts}</td>
+                    <td className="px-6 py-4">
                       {barScore !== null ? (
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           barScore >= 70 
@@ -389,23 +419,6 @@ function AdminQuestionsContent() {
                       ) : (
                         <span className="text-text-muted text-xs">-</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        question.isActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {question.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-text-muted">{question._count.articleStances}</td>
-                    <td className="px-6 py-4 text-text-muted">{question._count.verdicts}</td>
-                    <td className="px-6 py-4 text-text-muted">
-                      {formatVerdictLabel(question.verdicts?.[0]?.verdictLabel)}
-                    </td>
-                    <td className="px-6 py-4 text-text-muted">
-                      {new Date(question.createdAt).toLocaleDateString()}
                     </td>
                       </>
                     )}
