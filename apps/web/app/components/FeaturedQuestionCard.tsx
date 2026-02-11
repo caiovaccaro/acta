@@ -4,44 +4,17 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import type { TopicDTO } from '@acta/shared';
 import { getOutletLogoUrl } from '../../lib/utils/outletLogos';
+import VerdictSlider from './VerdictSlider';
 
 interface FeaturedQuestionCardProps {
   topic: TopicDTO;
   questionId: string;
 }
 
-function getVerdictColor(verdict: string | undefined) {
-  if (!verdict) return 'text-verdict-unclear';
-  switch (verdict) {
-    case 'YesItSeemsSo':
-    case 'ProbablyYes':
-      return 'text-verdict-yes';
-    case 'NoItDoesntSeemSo':
-    case 'ProbablyNot':
-      return 'text-verdict-no';
-    case 'Unclear':
-      return 'text-verdict-unclear';
-    default:
-      return 'text-verdict-unclear'; // Default to unclear color instead of black
-  }
-}
-
 export default function FeaturedQuestionCard({ topic, questionId }: FeaturedQuestionCardProps) {
   // Get the main / first question summary for display
   const firstQuestion = topic.firstQuestion;
   const verdictLabel = firstQuestion?.verdict?.verdictLabel;
-  const getVerdictTextFromLabel = (label: string | undefined) => {
-    if (!label) return 'Unclear.';
-    switch (label) {
-      case 'YesItSeemsSo': return 'Yes, it seems so.';
-      case 'ProbablyYes': return 'Probably yes.';
-      case 'NoItDoesntSeemSo': return "No, it doesn't seem so.";
-      case 'ProbablyNot': return 'Probably not.';
-      case 'Unclear': return 'Unclear.';
-      default: return 'Unclear.';
-    }
-  };
-  const verdictText = getVerdictTextFromLabel(verdictLabel);
   
   // Get outlets for the first question (if available)
   const topicWithOutlets = topic as any;
@@ -63,11 +36,12 @@ export default function FeaturedQuestionCard({ topic, questionId }: FeaturedQues
       <h3 className="text-3xl md:text-4xl font-extrabold text-text-main leading-tight mb-3 group-hover:text-primary-blue transition-colors">
         {firstQuestion?.questionText || 'No questions yet'}
       </h3>
-      
-      {/* Verdict / Stance */}
-      <p className={`text-base font-bold ${getVerdictColor(verdictLabel)} mb-3`}>
-        {verdictText}
-      </p>
+
+      {verdictLabel && (
+        <div className="mb-3">
+          <VerdictSlider verdictLabel={verdictLabel} size="sm" />
+        </div>
+      )}
 
       {/* Excerpt of Content - Larger for featured */}
       <p className="text-base md:text-lg text-text-muted leading-relaxed line-clamp-3 mb-6">
