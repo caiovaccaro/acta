@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 export async function GET() {
   try {
     const topics = await prisma.topic.findMany({
-      orderBy: { name: 'asc' },
+      orderBy: [{ isFeatured: 'desc' }, { featuredOrder: 'asc' }, { name: 'asc' }],
       include: {
         questions: {
           where: { isActive: true },
@@ -32,13 +32,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, safetyNoteRequired, moderationStatus } = body;
+    const { name, description, safetyNoteRequired, moderationStatus, isFeatured, featuredOrder } = body;
 
     const topic = await prisma.topic.create({
       data: {
         name,
         description: description || null,
         safetyNoteRequired: safetyNoteRequired ?? false,
+        isFeatured: isFeatured ?? false,
+        featuredOrder: featuredOrder ?? null,
         moderationStatus: moderationStatus || 'approved',
         source: 'seeded',
       },

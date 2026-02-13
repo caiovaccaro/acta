@@ -13,6 +13,10 @@ Implement a topic-level equivalent of featured questions: admins can feature top
 - Admin can reorder featured topics from admin UI.
 - Homepage shows featured topics above Featured Debates.
 - Homepage displays featured topics in the exact admin-defined order.
+- Homepage featured-topics section uses a responsive carousel:
+  - desktop/tablet-wide: 3 cards per horizontal slide
+  - mobile: 3 cards stacked vertically per slide
+- Carousel has pagination dots and next/previous controls consistent with provided references.
 - Each featured topic card links to `/topics/[id]`.
 - Featured topic cards use the interaction style established in `_prototype2`.
 
@@ -117,13 +121,29 @@ Implement a topic-level equivalent of featured questions: admins can feature top
 **Files**:
 - `apps/web/app/page.tsx`
 - `apps/web/lib/hooks/useTopics.ts`
+- `apps/web/app/components/*` (carousel/card components as needed)
 
 **Changes**:
 - Fetch with `featuredOnly=true`.
-- Add section header and grid above existing Featured Debates section.
+- Add section header and replace static grid with responsive carousel above existing Featured Debates section.
 - Keep Featured Debates section unchanged below.
 
-#### 5.2 Apply prototype interaction pattern
+#### 5.2 Carousel layout behavior (reference-aligned)
+**References**: provided screenshots + `_prototype2` style language
+
+**Desktop behavior**:
+- Show 3 featured topic cards per slide in a horizontal row.
+- Show right/left navigation controls.
+
+**Mobile behavior**:
+- Show slides where each slide contains 3 topic cards stacked vertically.
+- Keep pagination dots visible and centered below cards.
+
+**Ordering behavior**:
+- Carousel item order must exactly follow `featuredOrder` from admin.
+- If featured topics are not a multiple of 3, last slide shows remaining cards without reordering.
+
+#### 5.3 Apply prototype interaction pattern
 **Reference**: `_prototype2/pages/Home.tsx`
 
 Apply the same card interaction language:
@@ -166,12 +186,17 @@ topicsTable --> homePage
 - Homepage:
   - featured topics render above Featured Debates
   - rendering order matches featuredOrder
+  - desktop carousel renders 3 cards per slide
+  - mobile carousel renders 3 stacked cards per slide
+  - carousel dots and next/previous controls work
   - topic card links point to `/topics/[id]`
 
 ### Manual Verification
 - Feature at least 3 topics in admin.
 - Reorder and refresh admin page; verify persisted order.
 - Open homepage; verify order and placement above Featured Debates.
+- Verify desktop shows 3 cards per horizontal slide and navigation controls.
+- Verify mobile shows 3 stacked cards per slide and pagination dots.
 - Verify hover effects match `_prototype2` behavior.
 
 ## Risks / Notes

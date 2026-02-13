@@ -10,6 +10,8 @@ export interface CreateTopicInput {
   name: string;
   description?: string | null;
   safetyNoteRequired?: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
   source?: TopicSource;
   moderationStatus?: ModerationStatus;
   discoveredAt?: Date | null;
@@ -20,6 +22,8 @@ export interface UpdateTopicInput {
   name?: string;
   description?: string | null;
   safetyNoteRequired?: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
   source?: TopicSource;
   moderationStatus?: ModerationStatus;
   discoveredAt?: Date | null;
@@ -66,15 +70,17 @@ export async function findTopicByName(name: string): Promise<Topic | null> {
  * @returns Array of Topics
  */
 export async function findAllTopics(
-  includePending: boolean = false
+  includePending: boolean = false,
+  featuredOnly: boolean = false
 ): Promise<Topic[]> {
   return prisma.topic.findMany({
-    where: includePending
-      ? {}
-      : {
-          moderationStatus: 'approved',
-        },
-    orderBy: { name: 'asc' },
+    where: {
+      ...(includePending ? {} : { moderationStatus: 'approved' }),
+      ...(featuredOnly ? { isFeatured: true } : {}),
+    },
+    orderBy: featuredOnly
+      ? [{ featuredOrder: 'asc' }, { name: 'asc' }]
+      : { name: 'asc' },
     include: {
       questions: {
         where: { isActive: true },
@@ -95,6 +101,8 @@ export async function createTopic(input: CreateTopicInput): Promise<Topic> {
       name: input.name,
       description: input.description ?? null,
       safetyNoteRequired: input.safetyNoteRequired ?? false,
+      isFeatured: input.isFeatured ?? false,
+      featuredOrder: input.featuredOrder ?? null,
       source: input.source ?? 'seeded',
       moderationStatus: input.moderationStatus ?? 'approved',
       discoveredAt: input.discoveredAt ?? null,
