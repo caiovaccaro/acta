@@ -4,41 +4,14 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import type { QuestionCardDTO } from '@acta/shared';
 import { getOutletLogoUrl } from '../../lib/utils/outletLogos';
+import VerdictSlider from './VerdictSlider';
 
 interface QuestionCardProps {
   question: QuestionCardDTO;
 }
 
-function getVerdictColor(verdict: string | undefined) {
-  if (!verdict) return 'text-verdict-unclear';
-  switch (verdict) {
-    case 'YesItSeemsSo':
-    case 'ProbablyYes':
-      return 'text-verdict-yes';
-    case 'NoItDoesntSeemSo':
-    case 'ProbablyNot':
-      return 'text-verdict-no';
-    case 'Unclear':
-      return 'text-verdict-unclear';
-    default:
-      return 'text-verdict-unclear'; // Default to unclear color instead of black
-  }
-}
-
 export default function QuestionCard({ question }: QuestionCardProps) {
   const verdictLabel = question.verdict?.verdictLabel;
-  const getVerdictTextFromLabel = (label: string | undefined) => {
-    if (!label) return 'Unclear.';
-    switch (label) {
-      case 'YesItSeemsSo': return 'Yes, it seems so.';
-      case 'ProbablyYes': return 'Probably yes.';
-      case 'NoItDoesntSeemSo': return "No, it doesn't seem so.";
-      case 'ProbablyNot': return 'Probably not.';
-      case 'Unclear': return 'Unclear.';
-      default: return 'Unclear.';
-    }
-  };
-  const verdictText = getVerdictTextFromLabel(verdictLabel);
 
   const outlets = question.outlets || [];
   const displayedOutlets = outlets.slice(0, 4);
@@ -66,11 +39,13 @@ export default function QuestionCard({ question }: QuestionCardProps) {
         <h3 className="text-2xl font-extrabold text-text-main leading-tight mb-3 group-hover:text-primary-blue transition-colors">
           {question.questionText}
         </h3>
-        
-        {/* Verdict / Stance */}
-        <p className={`text-base font-bold ${getVerdictColor(verdictLabel)} mb-3`}>
-          {verdictText}
-        </p>
+
+        {/* Verdict Slider */}
+        {verdictLabel && (
+          <div className="mb-3">
+            <VerdictSlider verdictLabel={verdictLabel} size="sm" />
+          </div>
+        )}
         
         {/* Context Blurb if available */}
         {question.contextBlurb && (

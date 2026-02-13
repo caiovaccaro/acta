@@ -8,10 +8,9 @@ import { useQuestion } from '../../../lib/hooks/useQuestion';
 import { useVerdict } from '../../../lib/hooks/useVerdict';
 import { useDebateCard } from '../../../lib/hooks/useDebateCard';
 import { useConsensusThermometer } from '../../../lib/hooks/useConsensusThermometer';
-import type { VerdictLabel } from '@acta/shared';
 import { getOutletLogoUrl } from '../../../lib/utils/outletLogos';
-import React from 'react';
 import NextCause from '../../components/NextCause';
+import VerdictSlider from '../../components/VerdictSlider';
 
 export default function QuestionDetail() {
   const params = useParams();
@@ -26,32 +25,6 @@ export default function QuestionDetail() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [questionId]);
-
-  const getAccentColor = (verdictLabel: VerdictLabel | undefined) => {
-    if (!verdictLabel) return 'text-verdict-unclear';
-    switch (verdictLabel) {
-      case 'YesItSeemsSo':
-      case 'ProbablyYes':
-        return 'text-verdict-yes';
-      case 'NoItDoesntSeemSo':
-      case 'ProbablyNot':
-        return 'text-verdict-no';
-      default:
-        return 'text-verdict-unclear';
-    }
-  };
-
-  const getVerdictText = (verdictLabel: VerdictLabel | undefined) => {
-    if (!verdictLabel) return 'Unclear.';
-    switch (verdictLabel) {
-      case 'YesItSeemsSo': return 'Yes, it seems so.';
-      case 'ProbablyYes': return 'Probably yes.';
-      case 'NoItDoesntSeemSo': return "No, it doesn't seem so.";
-      case 'ProbablyNot': return 'Probably not.';
-      case 'Unclear': return 'Unclear.';
-      default: return 'Unclear.';
-    }
-  };
 
   const formatPublicationDate = (date?: string | null) => {
     if (!date) return 'Unknown date';
@@ -98,16 +71,8 @@ export default function QuestionDetail() {
   }
 
   const verdictLabel = verdict?.verdictLabel;
-  // Calculate overall alignment as the average of individual outlet alignments
-  // This represents how well the outlets collectively align with the verdict
-  const alignmentPercentage = consensus?.outletStances && consensus.outletStances.length > 0
-    ? Math.round(
-        consensus.outletStances.reduce((sum, os) => sum + os.weightedContribution, 0) /
-        consensus.outletStances.length * 100
-      )
-    : verdict
-    ? Math.round(verdict.confidence) // Fallback to confidence if no consensus data
-    : undefined;
+  const consensusPercentage =
+    typeof verdict?.confidence === 'number' ? Math.round(verdict.confidence) : 0;
 
   // Get unique outlets
   const outlets = consensus?.outletStances?.map(os => ({
@@ -121,7 +86,7 @@ export default function QuestionDetail() {
 
   return (
     <main className="flex w-full flex-1 justify-center py-10 md:py-16 bg-background-lighter">
-      <div className="w-full max-w-3xl px-4">
+      <div className="w-full max-w-4xl px-4 md:px-6 lg:px-0">
         <div className="flex flex-col gap-8">
           
           {/* Header Section */}
@@ -134,72 +99,49 @@ export default function QuestionDetail() {
               {question.topicName}
             </Link>
             
-            {/* Question Title and Verdict */}
+            {/* Question Title */}
             <div className="mb-6">
-              <h1 className="text-3xl font-black leading-tight tracking-tight md:text-4xl text-text-main">
+              <h1 className="text-4xl font-black leading-tight tracking-tight md:text-6xl text-text-main">
                 {question.questionText}
               </h1>
-              <p className={`mt-2 text-3xl font-bold md:text-4xl ${getAccentColor(verdictLabel)}`}>
-                {getVerdictText(verdictLabel)}
-              </p>
             </div>
 
-            {/* Metadata and Action Button Row */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
-              {/* Left: Perspective Info & Logos */}
-              <div className="flex flex-col gap-3">
-                <p className="text-sm text-text-muted">
-                  Based on the perspective of <span className="font-bold text-text-main">{verdict?.articleCount || 0}</span> articles from <span className="font-bold text-text-main">{verdict?.outletCount || 0}</span> publications.
-                </p>
-                
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center -space-x-2">
-                    {uniqueOutlets.slice(0, 6).map((outlet, i) => (
-                      <img
-                        key={i}
-                        alt={outlet.name}
-                        className="size-10 rounded-full ring-2 ring-background-lighter object-cover bg-white"
-                        src={outlet.logoUrl}
-                      />
-                    ))}
-                    {uniqueOutlets.length > 6 && (
-                      <div className="flex size-10 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-text-muted ring-2 ring-background-lighter">
-                        +{uniqueOutlets.length - 6}
-                      </div>
-                    )}
-                  </div>
+            {/* Slider and Action Button Row */}
+            {verdictLabel && (
+              <div className="mb-6 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="w-full md:w-[72%]">
+                  <VerdictSlider verdictLabel={verdictLabel} size="lg" />
                 </div>
-              </div>
-              
-              {/* Right: How to Act Button */}
-              <Link 
-                href={`/questions/${questionId}/act`}
-                className="flex-shrink-0 items-center justify-center rounded-lg bg-primary text-white px-8 py-4 font-bold hover:opacity-90 transition-opacity shadow-sm text-center whitespace-nowrap"
-              >
-                How to act
-              </Link>
-            </div>
-
-            {/* Alignment Bar and Action Button Row */}
-            {alignmentPercentage !== undefined && (
-              <div className="mt-8">
-                <div className="h-2 w-full rounded-full bg-gray-200">
-                  <div 
-                    className="h-2 rounded-full bg-primary-blue" 
-                    style={{ width: `${alignmentPercentage}%` }}
-                  ></div>
-                </div>
-                <p className="mt-2 text-sm font-medium text-text-muted">{alignmentPercentage}% alignment</p>
+                <Link
+                  href={`/questions/${questionId}/act`}
+                  className="mt-2 flex-shrink-0 whitespace-nowrap rounded-xl bg-primary px-8 py-4 text-center font-bold text-white shadow-lg transition-opacity hover:opacity-90"
+                >
+                  How to act
+                </Link>
               </div>
             )}
 
-            {/* Mobile Action Button (Below Alignment Bar) */}
-            {/* <Link 
-              href={`/questions/${questionId}/act`}
-              className="md:hidden mt-6 flex items-center justify-center rounded-lg bg-primary text-white px-6 py-3 font-bold hover:bg-primary/90 transition-colors shadow-sm w-full text-center"
-            >
-               How to act
-            </Link> */}
+            <div className="flex flex-col gap-5">
+              <p className="text-lg text-text-muted leading-relaxed">
+                <span className="font-bold text-text-main">{consensusPercentage}% consensus</span> based on the perspective of <span className="font-bold text-text-main">{verdict?.articleCount || 0}</span> journalists from <span className="font-bold text-text-main">{verdict?.outletCount || 0}</span> publications.
+              </p>
+
+              <div className="flex items-center -space-x-3 pl-1">
+                {uniqueOutlets.slice(0, 6).map((outlet, i) => (
+                  <img
+                    key={i}
+                    alt={outlet.name}
+                    className="size-11 rounded-full border-2 border-background-lighter bg-white object-cover shadow-sm"
+                    src={outlet.logoUrl}
+                  />
+                ))}
+                {uniqueOutlets.length > 6 && (
+                  <div className="flex size-11 items-center justify-center rounded-full border-2 border-background-lighter bg-gray-200 text-xs font-medium text-text-muted">
+                    +{uniqueOutlets.length - 6}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Understand Box - Bullet Points */}

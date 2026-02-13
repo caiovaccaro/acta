@@ -44,15 +44,15 @@ Data-driven consensus verdicts on complex topics.
    pnpm --filter @acta/db db:migrate
    ```
 
-5. **Run crawler:**
+5. **Start the app (web + API + admin):**
    ```bash
-   npm run crawler:start
+   pnpm run web:dev
    ```
+   This runs the Next.js app: public site, API routes under `/api/*`, and admin UI at `/admin` (e.g. `/admin/topics`, `/admin/questions`, `/admin/verdicts`).
 
-6. **Admin UI:**
+6. **Crawler (optional, separate process):**
    ```bash
-   ADMIN_PORT=4303 npm run admin:start
-   # Pages: /admin/topics, /admin/questions, /admin/verdicts, /admin/suggestions
+   pnpm run crawler:start
    ```
 
 7. **Reactive discovery (optional):**
@@ -64,16 +64,20 @@ Data-driven consensus verdicts on complex topics.
 
 ## Project Structure
 
-- `apps/` - Deployable applications (crawler, api, web)
+- `apps/web` - Next.js app (public site, API routes, and admin UI)
+- `apps/crawler` - Crawler service
+- `apps/api` / `apps/admin` - Standalone packages (used by web; not run separately for local dev)
 - `modules/` - Shared modules (db, config, core, shared)
-- `infra/` - Infrastructure configuration
 
 ## Available Commands
 
+### App
+- `pnpm run web:dev` - Run web app (site + API + admin)
+
 ### Crawler
-- `pnpm start` - Run crawler
-- `pnpm export:rss` - Export RSS data
-- `pnpm export:articles` - Export articles
+- `pnpm run crawler:start` (or `pnpm start`) - Run crawler
+- `pnpm run crawler:export:rss` - Export RSS data
+- `pnpm run crawler:export:articles` - Export articles
 
 ### Database
 - `pnpm --filter @acta/db db:generate` - Generate Prisma client
