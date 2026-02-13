@@ -139,6 +139,8 @@ model Topic {
   name                String   @unique
   description         String?  @db.Text
   safetyNoteRequired  Boolean  @default(false)
+  isFeatured          Boolean  @default(false)
+  featuredOrder       Int?
   source              TopicSource        @default(seeded)
   moderationStatus    ModerationStatus   @default(approved)
   discoveredAt        DateTime?
@@ -152,6 +154,8 @@ model Topic {
   timelineEvents      TimelineEvent[]
 
   @@index([moderationStatus])
+  @@index([isFeatured])
+  @@index([featuredOrder])
   @@index([source])
   @@map("topics")
 }
