@@ -7,11 +7,12 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../apiClient';
 import type { TopicDTO } from '@acta/shared';
 
-export function useTopics(includeInactive = false) {
+export function useTopics(includeInactive = false, featuredOnly = false) {
   return useQuery({
-    queryKey: ['topics', includeInactive],
+    queryKey: ['topics', includeInactive, featuredOnly],
     queryFn: () => apiClient.get<TopicDTO[]>('/topics', { 
-      includeInactive: String(includeInactive) 
+      includeInactive: String(includeInactive),
+      featured: String(featuredOnly),
     }),
     staleTime: 0, // Always fetch fresh data on mount
   });

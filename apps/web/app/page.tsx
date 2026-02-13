@@ -1,11 +1,18 @@
 'use client';
 
 import { useQuestions } from '../lib/hooks/useQuestions';
+import { useTopics } from '../lib/hooks/useTopics';
 import QuestionCard from './components/QuestionCard';
+import FeaturedTopicsCarousel from './components/FeaturedTopicsCarousel';
 import { HERO_LOGO_URLS } from '../lib/utils/outletLogos';
 
 export default function Home() {
   const { data: questions, isLoading, error } = useQuestions({ featuredOnly: true });
+  const {
+    data: featuredTopics,
+    isLoading: topicsLoading,
+    error: topicsError,
+  } = useTopics(false, true);
 
   const publicationLogos = [
     HERO_LOGO_URLS.Guardian, HERO_LOGO_URLS.AlJazeera, HERO_LOGO_URLS.BBC,
@@ -48,15 +55,45 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Featured Topics Carousel */}
+        <section className="pb-16 sm:pb-20">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
+              Featured Topics
+            </h2>
+            <p className="text-text-muted">
+              Start with a broad topic, then explore specific questions.
+            </p>
+          </div>
+          {topicsLoading && (
+            <div className="text-center py-8">
+              <p className="text-text-muted">Loading featured topics...</p>
+            </div>
+          )}
+          {topicsError && (
+            <div className="text-center py-8">
+              <p className="text-red-600">Error loading featured topics. Please try again later.</p>
+            </div>
+          )}
+          {featuredTopics && featuredTopics.length > 0 && (
+            <FeaturedTopicsCarousel topics={featuredTopics} />
+          )}
+          {featuredTopics && featuredTopics.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-text-muted">No featured topics yet.</p>
+            </div>
+          )}
+        </section>
+
         {/* Featured Debates / Topics Section */}
-        <section className="py-16 sm:py-20">
+        <section className="py-8 sm:py-12">
           <div className="flex items-end justify-between mb-12">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
                 Featured Debates
               </h2>
               <p className="text-text-muted">
-                Select a topic to explore deep-dives and specific questions.
+                Select a debate to explore deep-dives and specific questions.
               </p>
             </div>
           </div>

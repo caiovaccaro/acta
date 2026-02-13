@@ -19,9 +19,10 @@ import type {
  * Get all topics
  */
 export async function getAllTopics(
-  includeInactive: boolean = false
+  includeInactive: boolean = false,
+  featuredOnly: boolean = false
 ): Promise<TopicDTO[]> {
-  const topics = await findAllTopics(!includeInactive);
+  const topics = await findAllTopics(!includeInactive, featuredOnly);
 
   const topicsWithData = await Promise.all(
     topics.map(async (topic) => {
@@ -138,6 +139,8 @@ export async function getAllTopics(
         name: topic.name,
         description: topic.description,
         safetyNoteRequired: topic.safetyNoteRequired,
+        isFeatured: (topic as any).isFeatured ?? false,
+        featuredOrder: (topic as any).featuredOrder ?? null,
         questionCount: realQuestions.length, // Only count questions with articles
         activeQuestionCount: realQuestions.length, // Only count questions with articles
         createdAt: topic.createdAt.toISOString(),

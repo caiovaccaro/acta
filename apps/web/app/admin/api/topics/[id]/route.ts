@@ -45,7 +45,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, description, safetyNoteRequired, moderationStatus } = body;
+    const { name, description, safetyNoteRequired, moderationStatus, isFeatured, featuredOrder } = body;
 
     const topic = await prisma.topic.update({
       where: { id: params.id },
@@ -53,6 +53,8 @@ export async function PUT(
         name,
         description: description || null,
         safetyNoteRequired: safetyNoteRequired ?? false,
+        isFeatured: isFeatured ?? undefined,
+        featuredOrder: featuredOrder ?? undefined,
         moderationStatus: moderationStatus || 'approved',
       },
     });
