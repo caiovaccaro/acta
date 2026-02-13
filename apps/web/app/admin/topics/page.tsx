@@ -2,7 +2,22 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import TopicConvergenceModal from './components/TopicConvergenceModal';
 
 async function fetchTopics() {
@@ -21,10 +36,68 @@ async function batchUpdateTopics(ids: string[], action: 'approve' | 'reject') {
   return res.json();
 }
 
+async function updateFeaturedTopic(id: string, isFeatured: boolean) {
+  const res = await fetch('/admin/api/topics/featured', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, isFeatured }),
+  });
+  if (!res.ok) throw new Error('Failed to update featured topic');
+  return res.json();
+}
+
+async function updateTopicOrder(ids: string[]) {
+  const res = await fetch('/admin/api/topics/order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error('Failed to update topic order');
+  return res.json();
+}
+
+function SortableRow({
+  id,
+  children,
+}: {
+  id: string;
+  children: (props: {
+    attributes: Record<string, any>;
+    listeners: Record<string, any>;
+    isDragging: boolean;
+    setNodeRef: (node: HTMLElement | null) => void;
+    style: React.CSSProperties;
+  }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`hover:bg-background-lighter/50 ${isDragging ? 'bg-background-lighter/80 shadow-sm' : ''}`}
+    >
+      {children({ attributes, listeners, isDragging, setNodeRef, style })}
+    </tr>
+  );
+}
+
 export default function AdminTopics() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
+  const [orderedTopics, setOrderedTopics] = useState<any[]>([]);
   const queryClient = useQueryClient();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const { data: topics, isLoading } = useQuery({
     queryKey: ['admin-topics'],
@@ -39,6 +112,27 @@ export default function AdminTopics() {
       setSelectedIds(new Set());
     },
   });
+
+  const featuredMutation = useMutation({
+    mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
+      updateFeaturedTopic(id, isFeatured),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-topics'] });
+    },
+  });
+
+  const orderMutation = useMutation({
+    mutationFn: (ids: string[]) => updateTopicOrder(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-topics'] });
+    },
+  });
+
+  useEffect(() => {
+    if (topics) {
+      setOrderedTopics(topics);
+    }
+  }, [topics]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -61,6 +155,24 @@ export default function AdminTopics() {
   const handleBatchAction = (action: 'approve' | 'reject') => {
     if (selectedIds.size === 0) return;
     batchMutation.mutate({ ids: Array.from(selectedIds), action });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const current = orderedTopics.length ? orderedTopics : topics || [];
+    const oldIndex = current.findIndex((t: any) => t.id === active.id);
+    const newIndex = current.findIndex((t: any) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const next = arrayMove(current, oldIndex, newIndex);
+    setOrderedTopics(next);
+
+    const featuredIds = next.filter((t: any) => t.isFeatured).map((t: any) => t.id);
+    if (featuredIds.length > 0) {
+      orderMutation.mutate(featuredIds);
+    }
   };
 
   return (
@@ -120,74 +232,126 @@ export default function AdminTopics() {
         <div className="text-text-muted">Loading topics...</div>
       ) : topics && topics.length > 0 ? (
         <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-background-lighter">
-              <tr>
-                <th className="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size === topics.length && topics.length > 0}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-border-light"
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Questions</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Articles</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-light">
-              {topics.map((topic: any) => (
-                <tr key={topic.id} className="hover:bg-background-lighter/50">
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(topic.id)}
-                      onChange={(e) => handleSelect(topic.id, e.target.checked)}
-                      className="rounded border-border-light"
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link href={`/admin/topics/${topic.id}/edit`} className="font-medium text-text-main hover:text-primary-blue">
-                      {topic.name}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      topic.moderationStatus === 'approved' 
-                        ? 'bg-green-100 text-green-800' 
-                        : topic.moderationStatus === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {topic.moderationStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link 
-                      href={`/admin/questions?topicId=${topic.id}`}
-                      className="text-primary-blue hover:underline"
-                    >
-                      {topic._count.questions}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link 
-                      href={`/admin/articles?topicId=${topic.id}`}
-                      className="text-primary-blue hover:underline"
-                    >
-                      {topic._count.topicArticles}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 text-text-muted">
-                    {new Date(topic.createdAt).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={(orderedTopics.length ? orderedTopics : topics).map((t: any) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <table className="w-full">
+                <thead className="bg-background-lighter">
+                  <tr>
+                    <th className="px-6 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === topics.length && topics.length > 0}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded border-border-light"
+                      />
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-16">
+                      Order
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Featured</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Questions</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Articles</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light">
+                  {(orderedTopics.length ? orderedTopics : topics).map((topic: any) => (
+                    <SortableRow key={topic.id} id={topic.id}>
+                      {({ attributes, listeners, isDragging }) => (
+                        <>
+                          <td className="px-6 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(topic.id)}
+                              onChange={(e) => handleSelect(topic.id, e.target.checked)}
+                              className="rounded border-border-light"
+                            />
+                          </td>
+                          <td className="px-3 py-4 w-16">
+                            {topic.isFeatured ? (
+                              <button
+                                type="button"
+                                className={`cursor-grab text-text-muted hover:text-primary-blue ${isDragging ? 'cursor-grabbing' : ''}`}
+                                aria-label={`Reorder ${topic.name}`}
+                                {...attributes}
+                                {...listeners}
+                              >
+                                <GripVertical className="size-5" />
+                              </button>
+                            ) : (
+                              <span className="text-text-muted">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <Link href={`/admin/topics/${topic.id}/edit`} className="font-medium text-text-main hover:text-primary-blue">
+                              {topic.name}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={!!topic.isFeatured}
+                              onClick={() =>
+                                featuredMutation.mutate({
+                                  id: topic.id,
+                                  isFeatured: !topic.isFeatured,
+                                })
+                              }
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                topic.isFeatured ? 'bg-primary-blue' : 'bg-gray-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                                  topic.isFeatured ? 'translate-x-5' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              topic.moderationStatus === 'approved'
+                                ? 'bg-green-100 text-green-800'
+                                : topic.moderationStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {topic.moderationStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Link
+                              href={`/admin/questions?topicId=${topic.id}`}
+                              className="text-primary-blue hover:underline"
+                            >
+                              {topic._count.questions}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4">
+                            <Link
+                              href={`/admin/articles?topicId=${topic.id}`}
+                              className="text-primary-blue hover:underline"
+                            >
+                              {topic._count.topicArticles}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 text-text-muted">
+                            {new Date(topic.createdAt).toLocaleDateString()}
+                          </td>
+                        </>
+                      )}
+                    </SortableRow>
+                  ))}
+                </tbody>
+              </table>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : (
         <div className="text-text-muted">No topics found</div>

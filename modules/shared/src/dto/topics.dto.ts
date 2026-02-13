@@ -5,6 +5,8 @@ export interface TopicDTO {
   name: string;
   description: string | null;
   safetyNoteRequired: boolean;
+  isFeatured?: boolean;
+  featuredOrder?: number | null;
   questionCount: number;
   activeQuestionCount: number;
   createdAt: string;

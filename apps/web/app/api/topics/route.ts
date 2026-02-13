@@ -6,8 +6,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('includeInactive') === 'true';
+    const featuredOnly = ['true', '1'].includes((searchParams.get('featured') || '').toLowerCase());
     
-    const topics = await getAllTopics(includeInactive);
+    const topics = await getAllTopics(includeInactive, featuredOnly);
     return NextResponse.json(topics);
   } catch (error) {
     console.error('Error fetching topics:', error);
