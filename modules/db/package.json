@@ -8,6 +8,7 @@
     "db:generate": "bash scripts/load-env-and-run.sh npx prisma generate",
     "db:migrate": "bash scripts/load-env-and-run.sh npx prisma migrate dev",
     "db:migrate:deploy": "bash scripts/load-env-and-run.sh npx prisma migrate deploy",
+    "db:migrate:production": "bash scripts/migrate-production-schema.sh",
     "db:studio": "bash scripts/load-env-and-run.sh npx prisma studio",
     "db:seed": "tsx src/seed.ts",
     "db:seed:topics": "tsx src/scripts/seedTopics.ts",
