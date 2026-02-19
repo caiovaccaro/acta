@@ -23,6 +23,7 @@
         "db:generate": "cd modules/db && npm run db:generate",
         "db:migrate": "cd modules/db && npm run db:migrate",
         "db:migrate:deploy": "cd modules/db && npm run db:migrate:deploy",
+        "db:migrate:production": "cd modules/db && npm run db:migrate:production",
         "db:push": "cd modules/db && npm run db:push",
         "db:health": "cd modules/db && npm run db:health",
         "crawler:health": "cd apps/crawler && npm run health",
