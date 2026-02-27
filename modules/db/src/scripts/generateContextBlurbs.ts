@@ -110,14 +110,14 @@ async function main() {
       }
     } else {
       questions = await findActiveQuestions();
-      // Filter to questions without blurbs (unless force)
-      // Check for null/undefined/empty string - only process if truly missing
-      if (!args.force) {
-        questions = questions.filter((q) => {
-          const blurb = (q as any).contextBlurb;
-          return !blurb || (typeof blurb === 'string' && blurb.trim().length === 0);
-        });
-      }
+    }
+
+    // Filter to questions without blurbs (unless force) for all modes.
+    if (!args.force) {
+      questions = questions.filter((q) => {
+        const blurb = (q as any).contextBlurb;
+        return !blurb || (typeof blurb === 'string' && blurb.trim().length === 0);
+      });
     }
 
     // Log topic breakdown

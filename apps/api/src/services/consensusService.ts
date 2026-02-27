@@ -17,14 +17,22 @@ export async function getConsensusThermometer(
   const question = await findQuestionById(questionId);
   if (!question) return null;
 
-  const monthDate = month
+  let monthDate = month
     ? parseMonthPeriod(month)
     : getCurrentMonthPeriod();
+
+  // Get the verdict to calculate alignment
+  const verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
+  const currentVerdict = verdict || await findLatestVerdictByQuestion(questionId);
+  // Keep month filtering aligned with whichever verdict is actually used.
+  if (!verdict && currentVerdict) {
+    monthDate = currentVerdict.month;
+  }
 
   // Get all article stances for this question
   const stances = await findArticleStancesByQuestionId(questionId);
 
-  // Filter stances by month (from articleAnalysisAttempt)
+  // Filter stances by the final month (after verdict fallback)
   const monthStances = stances.filter((stance) => {
     const attempt = (stance as any).articleAnalysisAttempt;
     if (!attempt) return false;
@@ -34,10 +42,6 @@ export async function getConsensusThermometer(
       attemptMonth.getMonth() === monthDate.getMonth()
     );
   });
-
-  // Get the verdict to calculate alignment
-  const verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
-  const currentVerdict = verdict || await findLatestVerdictByQuestion(questionId);
   
   // Stance to numeric score mapping (for alignment calculation)
   const STANCE_SCORES: Record<Stance, number> = {

@@ -22,6 +22,9 @@ import { getCurrentMonthPeriod } from '../utils/monthPeriod';
  * Lower values allow more articles through (default: 0.2 = 20%)
  */
 const RELEVANCE_THRESHOLD = 0.2;
+const DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE = parseFloat(
+  process.env.QUESTION_MATCH_MIN_CONFIDENCE || '0.5'
+);
 
 export interface StanceClassificationResult {
   articleId: string;
@@ -253,7 +256,7 @@ export async function classifyArticleStances(
   const matchingQuestions = await filterMatchingQuestions(
     article,
     questions,
-    questionMatcher || { minConfidence: 0.3 }
+    questionMatcher || { minConfidence: DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE }
   );
   
   if (matchingQuestions.length === 0) {
