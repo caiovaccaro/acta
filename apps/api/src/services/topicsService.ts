@@ -15,6 +15,35 @@ import type {
   QuestionCardDTO,
 } from '@acta/shared';
 
+function normalizeQuestionText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function dedupeQuestionsByText(questions: any[]): any[] {
+  const byText = new Map<string, any>();
+  for (const q of questions) {
+    const key = normalizeQuestionText(q.questionText || '');
+    const existing = byText.get(key);
+    if (!existing) {
+      byText.set(key, q);
+      continue;
+    }
+    // Prefer featured question; otherwise keep newest by createdAt.
+    if (!!q.isFeatured && !existing.isFeatured) {
+      byText.set(key, q);
+      continue;
+    }
+    if (!!q.isFeatured === !!existing.isFeatured) {
+      const existingCreated = new Date(existing.createdAt).getTime();
+      const candidateCreated = new Date(q.createdAt).getTime();
+      if (candidateCreated > existingCreated) {
+        byText.set(key, q);
+      }
+    }
+  }
+  return Array.from(byText.values());
+}
+
 /**
  * Get all topics
  */
@@ -44,9 +73,10 @@ export async function getAllTopics(
       );
       
       // Only include questions that have articles
-      const realQuestions = questionsWithArticles
+      const realQuestionsRaw = questionsWithArticles
         .filter(({ hasArticles }) => hasArticles)
         .map(({ question }) => question);
+      const realQuestions = dedupeQuestionsByText(realQuestionsRaw);
 
       // If no real questions, skip this topic
       if (realQuestions.length === 0) {
@@ -173,9 +203,10 @@ export async function getTopicById(id: string): Promise<TopicDetailDTO | null> {
     })
   );
   
-  const realQuestions = questionsWithArticles
+  const realQuestionsRaw = questionsWithArticles
     .filter(({ hasArticles }) => hasArticles)
     .map(({ question }) => question);
+  const realQuestions = dedupeQuestionsByText(realQuestionsRaw);
 
       // Determine main question (same logic as getAllTopics)
       let mainQuestion =

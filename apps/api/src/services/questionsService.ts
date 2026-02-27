@@ -1,4 +1,8 @@
-import { findActiveQuestions, findQuestionById, findQuestionRedirect } from '@acta/db';
+import {
+  findActiveQuestions,
+  findQuestionById,
+  findQuestionRedirect,
+} from '@acta/db';
 import { findVerdictByQuestionAndMonth, findLatestVerdictByQuestion } from '@acta/db';
 import { findArticleStancesByQuestionId } from '@acta/db';
 import { getCurrentMonthPeriod } from '@acta/core';
