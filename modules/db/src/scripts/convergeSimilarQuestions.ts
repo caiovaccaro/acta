@@ -464,7 +464,7 @@ async function main() {
   try {
     await connectDatabase();
     const llmConfig = args.llmConfirm || args.llmCluster
-      ? createLLMConfigFromEnv()
+      ? createLLMConfigFromEnv('convergence')
       : null;
     const llmModel = llmConfig?.openai?.model || 'gpt-4-turbo-preview';
     const llmApiKey = llmConfig?.openai?.apiKey || '';

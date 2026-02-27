@@ -8,6 +8,7 @@
  *   npm run db:generate:debate-content
  *   npm run db:generate:debate-content -- --question-id=<question-id>
  *   npm run db:generate:debate-content -- --topic-id=<topic-id>
+ *   npm run db:generate:debate-content -- --month=YYYY-MM
  *   npm run db:generate:debate-content -- --force  # Regenerate even if content exists
  */
 
@@ -28,7 +29,7 @@ import {
   findEvidenceBulletsByVerdictId,
   deleteEvidenceBulletsByVerdictId,
 } from '@acta/db';
-import { getCurrentMonthPeriod } from '@acta/core';
+import { getCurrentMonthPeriod, parseMonthPeriod } from '@acta/core';
 import { createLLMConfigFromEnv, createLLMProvider } from '@acta/core/llm';
 
 // Load environment variables
@@ -39,6 +40,7 @@ config({ path: envPath });
 interface ScriptArgs {
   questionId?: string;
   topicId?: string;
+  month?: string;
   force?: boolean; // Regenerate even if content exists
 }
 
@@ -59,6 +61,7 @@ function parseScriptArgs(): ScriptArgs {
     options: {
       'question-id': { type: 'string' },
       'topic-id': { type: 'string' },
+      month: { type: 'string' },
       force: { type: 'boolean' },
     },
   });
@@ -66,6 +69,7 @@ function parseScriptArgs(): ScriptArgs {
   return {
     questionId: values['question-id'],
     topicId: values['topic-id'],
+    month: values.month,
     force: values.force || false,
   };
 }
@@ -76,6 +80,9 @@ async function main() {
   console.log('🚀 Starting Debate Card Content Generation...\n');
   if (args.force) {
     console.log('⚠️  --force mode: Will regenerate content even if it already exists\n');
+  }
+  if (args.month) {
+    console.log(`📅 Using explicit month: ${args.month}\n`);
   }
 
   try {
@@ -105,7 +112,9 @@ async function main() {
     }
 
     // Filter to questions with current-month verdicts
-    const currentMonth = getCurrentMonthPeriod();
+    const currentMonth = args.month
+      ? parseMonthPeriod(args.month)
+      : getCurrentMonthPeriod();
     const questionsWithVerdicts = [];
     for (const question of questions) {
       const verdict = await findVerdictByQuestionAndMonth(question.id, currentMonth);

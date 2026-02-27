@@ -22,6 +22,16 @@ const __dirname = dirname(__filename);
 // Load environment variables
 config({ path: resolve(__dirname, '../../../../.env') });
 
+const RELEVANCE_THRESHOLD = 0.2;
+const CLASSIFICATION_COST_PER_1K = parseFloat(
+  process.env.CLASSIFICATION_COST_PER_1K || '0'
+);
+
+function toPct(value: number, total: number): string {
+  if (total <= 0) return '0.0';
+  return ((value / total) * 100).toFixed(1);
+}
+
 async function main() {
   const args = parseArgs();
   const monthPeriod = getCurrentMonthPeriod();
@@ -54,7 +64,6 @@ async function main() {
       },
     });
 
-    const RELEVANCE_THRESHOLD = 0.2;
     const unclearLowConfidence = await prisma.articleAnalysisAttempt.count({
       where: {
         month: monthPeriod,
@@ -94,10 +103,24 @@ async function main() {
 
     console.log('🎯 Stance Classification Statistics:');
     console.log(`   Total Classification Attempts: ${totalAttempts}`);
-    console.log(`   Stored as ArticleStance: ${storedStances} (${((storedStances / totalAttempts) * 100).toFixed(1)}%)`);
-    console.log(`   Rejected (Unclear, confidence < 0.3): ${unclearLowConfidence} (${((unclearLowConfidence / totalAttempts) * 100).toFixed(1)}%)`);
-    console.log(`   Unclear (confidence ≥ 0.3): ${unclearHighConfidence} (${((unclearHighConfidence / totalAttempts) * 100).toFixed(1)}%)`);
-    console.log(`   Other Stances (Yes/No/Probably): ${otherStances} (${((otherStances / totalAttempts) * 100).toFixed(1)}%)`);
+    console.log(`   Stored as ArticleStance: ${storedStances} (${toPct(storedStances, totalAttempts)}%)`);
+    console.log(`   Rejected (Unclear, confidence < ${RELEVANCE_THRESHOLD}): ${unclearLowConfidence} (${toPct(unclearLowConfidence, totalAttempts)}%)`);
+    console.log(`   Unclear (confidence ≥ ${RELEVANCE_THRESHOLD}): ${unclearHighConfidence} (${toPct(unclearHighConfidence, totalAttempts)}%)`);
+    console.log(`   Other Stances (Yes/No/Probably): ${otherStances} (${toPct(otherStances, totalAttempts)}%)`);
+    console.log('');
+
+    console.log('💰 Pair and Cost Projections:');
+    console.log(`   Attempted article-question pairs this month: ${totalAttempts}`);
+    if (CLASSIFICATION_COST_PER_1K > 0) {
+      const projectedCost = (totalAttempts / 1000) * CLASSIFICATION_COST_PER_1K;
+      console.log(
+        `   Projected classification cost (@ ${CLASSIFICATION_COST_PER_1K.toFixed(4)}/1k pairs): ${projectedCost.toFixed(4)}`
+      );
+    } else {
+      console.log(
+        '   Projected classification cost: set CLASSIFICATION_COST_PER_1K in env to enable estimate'
+      );
+    }
     console.log('');
 
     // Verdict statistics
@@ -174,7 +197,7 @@ async function main() {
     console.log(`   Total Verdicts: ${allVerdicts.length}`);
     console.log(`   "Yes, it seems so": ${verdictsByLabel.YesItSeemsSo}`);
     console.log(`   "Probably yes": ${verdictsByLabel.ProbablyYes}`);
-    console.log(`   "Unclear": ${verdictsByLabel.Unclear} (${((verdictsByLabel.Unclear / allVerdicts.length) * 100).toFixed(1)}%)`);
+    console.log(`   "Unclear": ${verdictsByLabel.Unclear} (${toPct(verdictsByLabel.Unclear, allVerdicts.length)}%)`);
     console.log(`   "Probably not": ${verdictsByLabel.ProbablyNot}`);
     console.log(`   "No, it doesn't seem so": ${verdictsByLabel.NoItDoesntSeemSo}`);
     console.log('');
@@ -295,13 +318,15 @@ async function main() {
       console.log(`      Consider: Lowering relevance threshold (currently ${RELEVANCE_THRESHOLD}) or improving question matching`);
     }
 
-    const rejectionRate = (unclearLowConfidence / totalAttempts) * 100;
+    const rejectionRate = totalAttempts > 0 ? (unclearLowConfidence / totalAttempts) * 100 : 0;
     if (rejectionRate > 50) {
       console.log(`   ⚠️  High rejection rate: ${rejectionRate.toFixed(1)}% of classifications rejected as not relevant`);
       console.log(`      Consider: Lowering confidence threshold from ${RELEVANCE_THRESHOLD} or reviewing question specificity`);
     }
 
-    const unclearVerdictRate = (verdictsByLabel.Unclear / allVerdicts.length) * 100;
+    const unclearVerdictRate = allVerdicts.length > 0
+      ? (verdictsByLabel.Unclear / allVerdicts.length) * 100
+      : 0;
     if (unclearVerdictRate > 50) {
       console.log(`   ⚠️  High unclear verdict rate: ${unclearVerdictRate.toFixed(1)}% of verdicts are Unclear`);
       console.log(`      Consider: Lowering MIN_ARTICLES_FOR_VERDICT from ${MIN_ARTICLES_FOR_VERDICT} or adjusting variance threshold`);

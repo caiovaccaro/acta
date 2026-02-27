@@ -44,6 +44,18 @@ import {
   calculateAndStoreVerdicts,
 } from '@acta/core/analysis';
 
+const DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE = parseFloat(
+  process.env.QUESTION_MATCH_MIN_CONFIDENCE || '0.5'
+);
+const DEFAULT_MAX_QUESTIONS_PER_TOPIC = parseInt(
+  process.env.MAX_QUESTIONS_PER_TOPIC_DEFAULT || '20',
+  10
+);
+const DEFAULT_MAX_QUESTIONS_PER_ARTICLE = parseInt(
+  process.env.MAX_QUESTIONS_PER_ARTICLE_DEFAULT || '40',
+  10
+);
+
 /**
  * Main execution function
  */
@@ -58,9 +70,12 @@ async function main() {
     console.log('✅ Database connected\n');
 
     // Initialize LLM provider
-    const llmConfig = createLLMConfigFromEnv();
+    const llmConfig = createLLMConfigFromEnv('classification');
     const llmProvider = createLLMProvider(llmConfig);
     console.log(`✅ LLM Provider initialized: ${llmProvider.getName()}\n`);
+    console.log(
+      `⚙️  Question controls: prefilter=${args.disableQuestionPrefilter ? 'off' : 'on'} minConfidence=${args.questionMatchMinConfidence} maxPerTopic=${args.maxQuestionsPerTopic} maxPerArticle=${args.maxQuestionsPerArticle}`
+    );
 
     // Initialize validation framework with LLM provider
     const validationFramework = createDefaultValidationFramework(llmProvider);
@@ -222,6 +237,18 @@ async function main() {
     
     const matchedArticles = allMatchedArticles;
     const articleTopicMap = allArticleTopicMap;
+    const uniqueTopicIds = Array.from(
+      new Set(
+        matchedArticles.flatMap((article) => articleTopicMap.get(article.id) || [])
+      )
+    );
+    const topicQuestionsEntries = await Promise.all(
+      uniqueTopicIds.map(async (topicId) => [
+        topicId,
+        await findQuestionsByTopicId(topicId, false), // Only active questions
+      ])
+    );
+    const topicQuestionsMap = new Map(topicQuestionsEntries);
     
     console.log(`   📰 Processing ${matchedArticles.length} articles that matched topics (out of ${totalProcessed} total)`);
     console.log('');
@@ -234,6 +261,9 @@ async function main() {
     let articlesSkippedNoQuestions = 0;
     let successCount = 0;
     let errorCount = 0;
+    let totalQuestionsBeforePrefilter = 0;
+    let totalQuestionsAfterPrefilter = 0;
+    let totalQuestionsAfterCaps = 0;
 
     // Process matched articles in batches
     const classificationBatchSize = 10;
@@ -248,19 +278,40 @@ async function main() {
           // Get topics this article matched to
           const topicIds = articleTopicMap.get(article.id) || [];
           
-          // Get all questions for these topics
+          // Get all questions for these topics using a preloaded topic-question map
           const relevantQuestions = [];
           for (const topicId of topicIds) {
-            const topicQuestions = await findQuestionsByTopicId(topicId, false); // Only active questions
-            relevantQuestions.push(...topicQuestions);
+            const topicQuestions = topicQuestionsMap.get(topicId) || [];
+            const limitedTopicQuestions =
+              args.maxQuestionsPerTopic && args.maxQuestionsPerTopic > 0
+                ? topicQuestions.slice(0, args.maxQuestionsPerTopic)
+                : topicQuestions;
+            relevantQuestions.push(...limitedTopicQuestions);
           }
           
           // Remove duplicates
           const uniqueQuestions = Array.from(
             new Map(relevantQuestions.map(q => [q.id, q])).values()
           );
+          totalQuestionsBeforePrefilter += uniqueQuestions.length;
+
+          let filteredQuestions = uniqueQuestions;
+          if (!args.disableQuestionPrefilter && uniqueQuestions.length > 0) {
+            const { matchArticleToQuestions } = await import('@acta/core/analysis');
+            const matches = await matchArticleToQuestions(article, uniqueQuestions, {
+              minConfidence: args.questionMatchMinConfidence,
+            });
+            filteredQuestions = matches.map((match) => match.question);
+          }
+          totalQuestionsAfterPrefilter += filteredQuestions.length;
+
+          const cappedQuestions =
+            args.maxQuestionsPerArticle && args.maxQuestionsPerArticle > 0
+              ? filteredQuestions.slice(0, args.maxQuestionsPerArticle)
+              : filteredQuestions;
+          totalQuestionsAfterCaps += cappedQuestions.length;
           
-          if (uniqueQuestions.length === 0) {
+          if (cappedQuestions.length === 0) {
             articlesSkippedNoQuestions++;
             continue;
           }
@@ -271,7 +322,7 @@ async function main() {
           // Classify stance for all relevant questions (skip keyword matching since article already matched topic)
           // ArticleStance records will be created automatically for successful classifications
           const { classifyStances } = await import('@acta/core/analysis');
-          const items = uniqueQuestions.map(question => ({ article, question }));
+          const items = cappedQuestions.map(question => ({ article, question }));
           const classifications = await classifyStances(
             items,
             llmProvider,
@@ -315,6 +366,9 @@ async function main() {
     console.log(`      - Total classifications attempted: ${totalClassificationsAttempted}`);
     console.log(`      - Total classifications stored: ${totalClassifications}`);
     console.log(`      - Errors: ${errorCount}`);
+    console.log(`      - Candidate pairs (before prefilter): ${totalQuestionsBeforePrefilter}`);
+    console.log(`      - Candidate pairs (after prefilter): ${totalQuestionsAfterPrefilter}`);
+    console.log(`      - Candidate pairs (after caps): ${totalQuestionsAfterCaps}`);
     console.log('');
 
     // Step 5: Verdict Calculation (Phase 3)
@@ -399,6 +453,10 @@ function parseArgs() {
     questionId: null,
     limit: null,
     offset: null,
+    maxQuestionsPerArticle: DEFAULT_MAX_QUESTIONS_PER_ARTICLE,
+    maxQuestionsPerTopic: DEFAULT_MAX_QUESTIONS_PER_TOPIC,
+    questionMatchMinConfidence: DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE,
+    disableQuestionPrefilter: false,
   };
 
   // Parse all arguments, including those passed through npm
@@ -420,6 +478,14 @@ function parseArgs() {
       args.limit = parseInt(arg.split('=')[1], 10);
     } else if (arg.startsWith('--offset=')) {
       args.offset = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--max-questions-per-article=')) {
+      args.maxQuestionsPerArticle = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--max-questions-per-topic=')) {
+      args.maxQuestionsPerTopic = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--question-match-min-confidence=')) {
+      args.questionMatchMinConfidence = parseFloat(arg.split('=')[1]);
+    } else if (arg === '--no-question-prefilter') {
+      args.disableQuestionPrefilter = true;
     } else if (arg === '--topic-id' || arg === '--question-id' || arg === '--limit') {
       // Handle space-separated arguments (not used but for completeness)
       const index = allArgs.indexOf(arg);

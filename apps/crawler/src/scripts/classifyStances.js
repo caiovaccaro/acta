@@ -7,6 +7,7 @@
  *   npm run classify:stances
  *   npm run classify:stances -- --topic-id=<topic-id>
  *   npm run classify:stances -- --question-id=<question-id>
+ *   npm run classify:stances -- --include-inactive
  *   npm run classify:stances -- --limit=1000
  */
 
@@ -32,6 +33,18 @@ import {
   calculateAndStoreVerdicts,
 } from '@acta/core/analysis';
 
+const DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE = parseFloat(
+  process.env.QUESTION_MATCH_MIN_CONFIDENCE || '0.5'
+);
+const DEFAULT_MAX_QUESTIONS_PER_TOPIC = parseInt(
+  process.env.MAX_QUESTIONS_PER_TOPIC_DEFAULT || '20',
+  10
+);
+const DEFAULT_MAX_QUESTIONS_PER_ARTICLE = parseInt(
+  process.env.MAX_QUESTIONS_PER_ARTICLE_DEFAULT || '40',
+  10
+);
+
 /**
  * Main execution function
  */
@@ -46,9 +59,12 @@ async function main() {
     console.log('✅ Database connected\n');
 
     // Initialize LLM provider
-    const llmConfig = createLLMConfigFromEnv();
+    const llmConfig = createLLMConfigFromEnv('classification');
     const llmProvider = createLLMProvider(llmConfig);
     console.log(`✅ LLM Provider initialized: ${llmProvider.getName()}\n`);
+    console.log(
+      `⚙️  Question controls: prefilter=${args.disableQuestionPrefilter ? 'off' : 'on'} minConfidence=${args.questionMatchMinConfidence} maxPerTopic=${args.maxQuestionsPerTopic} maxPerArticle=${args.maxQuestionsPerArticle} includeInactive=${args.includeInactiveQuestions}`
+    );
 
     // Load topics and questions (only approved/active)
     const topics = await findAllTopics();
@@ -61,10 +77,14 @@ async function main() {
     }
 
     const questions = await prisma.question.findMany({
+      where: args.includeInactiveQuestions ? {} : { isActive: true },
       include: { topic: true },
       orderBy: { createdAt: 'desc' },
     });
-    console.log(`❓ Found ${questions.length} questions (including inactive)\n`);
+    console.log(
+      `❓ Found ${questions.length} question(s) ` +
+        `${args.includeInactiveQuestions ? '(including inactive)' : '(active only)'}\n`
+    );
 
     if (questions.length === 0) {
       console.log('⚠️  No active questions found. Run seed script first:');
@@ -250,6 +270,21 @@ async function main() {
 
     const matchedArticles = allMatchedArticles;
     const articleTopicMap = allArticleTopicMap;
+
+    // Preload questions per topic once to avoid per-article N+1 queries.
+    const uniqueTopicIds = Array.from(
+      new Set(
+        matchedArticles.flatMap((article) => articleTopicMap.get(article.id) || [])
+      )
+    );
+    const topicQuestionsEntries = await Promise.all(
+      uniqueTopicIds.map(async (topicId) => [
+        topicId,
+        await findQuestionsByTopicId(topicId, args.includeInactiveQuestions),
+      ])
+    );
+    const topicQuestionsMap = new Map(topicQuestionsEntries);
+    console.log(`🧠 Preloaded question sets for ${topicQuestionsMap.size} topics`);
     
     console.log(`\n🎯 Stance Classification`);
     console.log(`   📰 Processing ${matchedArticles.length} articles that matched topics (out of ${totalProcessed} total)`);
@@ -266,6 +301,9 @@ async function main() {
     let articlesSkippedNoQuestions = 0;
     let successCount = 0;
     let errorCount = 0;
+    let totalQuestionsBeforePrefilter = 0;
+    let totalQuestionsAfterPrefilter = 0;
+    let totalQuestionsAfterCaps = 0;
 
     // Process matched articles in batches
     const classificationBatchSize = args.classifyBatchSize || 10;
@@ -300,10 +338,10 @@ async function main() {
           // Get topics this article matched to
           const topicIds = articleTopicMap.get(article.id) || [];
           
-          // Get all questions for these topics
+          // Get all questions for these topics using preloaded topic-question map
           const relevantQuestions = [];
           for (const topicId of topicIds) {
-            const topicQuestions = await findQuestionsByTopicId(topicId, true); // Include inactive questions
+            const topicQuestions = topicQuestionsMap.get(topicId) || [];
             const limitedTopicQuestions =
               args.maxQuestionsPerTopic && args.maxQuestionsPerTopic > 0
                 ? topicQuestions.slice(0, args.maxQuestionsPerTopic)
@@ -315,8 +353,23 @@ async function main() {
           const uniqueQuestions = Array.from(
             new Map(relevantQuestions.map(q => [q.id, q])).values()
           );
+          totalQuestionsBeforePrefilter += uniqueQuestions.length;
 
-          const cappedQuestions = uniqueQuestions;
+          let filteredQuestions = uniqueQuestions;
+          if (!args.disableQuestionPrefilter && uniqueQuestions.length > 0) {
+            const { matchArticleToQuestions } = await import('@acta/core/analysis');
+            const matches = await matchArticleToQuestions(article, uniqueQuestions, {
+              minConfidence: args.questionMatchMinConfidence,
+            });
+            filteredQuestions = matches.map((match) => match.question);
+          }
+          totalQuestionsAfterPrefilter += filteredQuestions.length;
+
+          const cappedQuestions =
+            args.maxQuestionsPerArticle && args.maxQuestionsPerArticle > 0
+              ? filteredQuestions.slice(0, args.maxQuestionsPerArticle)
+              : filteredQuestions;
+          totalQuestionsAfterCaps += cappedQuestions.length;
           
           if (cappedQuestions.length === 0) {
             articlesSkippedNoQuestions++;
@@ -393,6 +446,9 @@ async function main() {
     console.log(`      - Total classifications attempted: ${totalClassificationsAttempted}`);
     console.log(`      - Total classifications stored: ${totalClassifications}`);
     console.log(`      - Errors: ${errorCount}`);
+    console.log(`      - Candidate pairs (before prefilter): ${totalQuestionsBeforePrefilter}`);
+    console.log(`      - Candidate pairs (after prefilter): ${totalQuestionsAfterPrefilter}`);
+    console.log(`      - Candidate pairs (after caps): ${totalQuestionsAfterCaps}`);
     console.log('');
 
     // Verdict Calculation
@@ -480,8 +536,11 @@ function parseArgs() {
     classifyStartBatch: null,
     classifyBatchSize: null,
     logArticles: true,
-    maxQuestionsPerArticle: Infinity,
-    maxQuestionsPerTopic: null,
+    maxQuestionsPerArticle: DEFAULT_MAX_QUESTIONS_PER_ARTICLE,
+    maxQuestionsPerTopic: DEFAULT_MAX_QUESTIONS_PER_TOPIC,
+    questionMatchMinConfidence: DEFAULT_QUESTION_MATCH_MIN_CONFIDENCE,
+    disableQuestionPrefilter: false,
+    includeInactiveQuestions: false,
   };
 
   const allArgs = process.argv.slice(2);
@@ -507,6 +566,12 @@ function parseArgs() {
       args.maxQuestionsPerArticle = parseInt(arg.split('=')[1], 10);
     } else if (arg.startsWith('--max-questions-per-topic=')) {
       args.maxQuestionsPerTopic = parseInt(arg.split('=')[1], 10);
+    } else if (arg.startsWith('--question-match-min-confidence=')) {
+      args.questionMatchMinConfidence = parseFloat(arg.split('=')[1]);
+    } else if (arg === '--no-question-prefilter') {
+      args.disableQuestionPrefilter = true;
+    } else if (arg === '--include-inactive') {
+      args.includeInactiveQuestions = true;
     } else if (arg === '--topic-id' || arg === '--question-id' || arg === '--limit') {
       const index = allArgs.indexOf(arg);
       if (index !== -1 && index + 1 < allArgs.length) {

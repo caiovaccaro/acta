@@ -4,9 +4,7 @@ import {
   findVerdictByQuestionAndMonth,
   findLatestVerdictByQuestion,
   findEvidenceBulletsByVerdictId,
-  deleteEvidenceBullet,
   createEvidenceBullets,
-  deleteEvidenceBulletsByVerdictId,
   updateVerdict,
 } from '@acta/db';
 import { getCurrentMonthPeriod, parseMonthPeriod } from '@acta/core';
@@ -78,9 +76,34 @@ function distributePointsByOutlet(points: PointForDebateDTO[]): PointForDebateDT
   return results;
 }
 
+const debateGenerationLocks = new Map<string, Promise<void>>();
+
+async function withDebateGenerationLock(
+  key: string,
+  task: () => Promise<void>
+): Promise<void> {
+  const running = debateGenerationLocks.get(key);
+  if (running) {
+    await running;
+    return;
+  }
+
+  const promise = (async () => {
+    try {
+      await task();
+    } finally {
+      debateGenerationLocks.delete(key);
+    }
+  })();
+
+  debateGenerationLocks.set(key, promise);
+  await promise;
+}
+
 /**
  * Get debate card data for a question
- * Checks for stored LLM-generated data first, only generates if missing
+ * Read-only retrieval of pre-generated debate card data.
+ * No on-demand LLM generation is performed in request path.
  */
 export async function getDebateCard(
   questionId: string,
@@ -158,14 +181,25 @@ export async function getDebateCard(
     }
   }
 
-  // Check for stored overview bullets
-  let overviewBullets: string[] = [];
-  if (verdict.overviewBullets && Array.isArray(verdict.overviewBullets)) {
-    overviewBullets = verdict.overviewBullets as string[];
-  } else if (monthStances.length > 0) {
-    // Generate and store overview bullets
-    try {
-      const llmProvider = getLLMProvider();
+  // Lazy-generate only missing stored content, once per question+month request burst.
+  const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+  try {
+    await withDebateGenerationLock(`${questionId}:${monthKey}`, async () => {
+      let latestVerdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
+      if (!latestVerdict || monthStances.length === 0) return;
+
+    const existingEvidence = await findEvidenceBulletsByVerdictId(latestVerdict.id);
+    const hasOverview =
+      Array.isArray(latestVerdict.overviewBullets) && latestVerdict.overviewBullets.length > 0;
+    const hasFeatured =
+      !!latestVerdict.featuredPerspective && typeof latestVerdict.featuredPerspective === 'object';
+    const hasDebatePoints = existingEvidence.some((eb) => eb.type === 'Unknown');
+
+    if (hasOverview && hasFeatured && hasDebatePoints) return;
+
+    const llmProvider = getLLMProvider();
+
+    if (!hasOverview) {
       const stancesForLLM = monthStances.slice(0, 10).map((stance) => {
         const attempt = (stance as any).articleAnalysisAttempt;
         const article = (stance as any).article;
@@ -185,53 +219,158 @@ export async function getDebateCard(
           topicName,
         },
         verdict: {
-          label: verdict.verdictLabel as string,
-          confidence: verdict.confidence,
+          label: latestVerdict.verdictLabel as string,
+          confidence: latestVerdict.confidence,
         },
         stances: stancesForLLM,
       });
-      overviewBullets = result.bullets;
 
-      // Store in verdict
-      await updateVerdict(verdict.id, {
+      await updateVerdict(latestVerdict.id, {
         overviewBullets: result.bullets,
       });
-    } catch (error) {
-      console.warn('LLM not available for overview bullets, using fallback:', error);
-      // Fallback to heuristic
-      const topArgumentsFor = monthStances
-        .filter((s) => {
-          const attempt = (s as any).articleAnalysisAttempt;
-          return attempt?.stance === 'YesItSeemsSo' || attempt?.stance === 'ProbablyYes';
-        })
-        .slice(0, 1);
-      const topArgumentsAgainst = monthStances
-        .filter((s) => {
-          const attempt = (s as any).articleAnalysisAttempt;
-          return attempt?.stance === 'NoItDoesntSeemSo' || attempt?.stance === 'ProbablyNot';
-        })
-        .slice(0, 1);
+      latestVerdict = (await findVerdictByQuestionAndMonth(questionId, monthDate)) || latestVerdict;
+    }
 
-      if (topArgumentsFor.length > 0 && (topArgumentsFor[0] as any).articleAnalysisAttempt?.reasoning) {
-        overviewBullets.push(`Supporters point to: ${(topArgumentsFor[0] as any).articleAnalysisAttempt.reasoning}`);
-      }
-      if (topArgumentsAgainst.length > 0 && (topArgumentsAgainst[0] as any).articleAnalysisAttempt?.reasoning) {
-        overviewBullets.push(`Opponents argue: ${(topArgumentsAgainst[0] as any).articleAnalysisAttempt.reasoning}`);
-      }
-      if (overviewBullets.length === 0) {
-        overviewBullets.push('Evidence is still being gathered; perspectives remain limited.');
+    if (!hasFeatured) {
+      const alignedStances = monthStances.filter((stance) => {
+        const attempt = (stance as any).articleAnalysisAttempt;
+        if (!attempt) return false;
+        const isYes =
+          latestVerdict.verdictLabel === 'YesItSeemsSo' ||
+          latestVerdict.verdictLabel === 'ProbablyYes';
+        const isNo =
+          latestVerdict.verdictLabel === 'NoItDoesntSeemSo' ||
+          latestVerdict.verdictLabel === 'ProbablyNot';
+        if (isYes) return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
+        if (isNo) return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
+        return true;
+      });
+
+      if (alignedStances.length > 0) {
+        const articlesForLLM = alignedStances.slice(0, 5).map((stance) => {
+          const attempt = (stance as any).articleAnalysisAttempt;
+          const article = (stance as any).article;
+          const outlet = article?.outlet;
+          return {
+            id: article.id,
+            title: article.title,
+            textContent: article.textContent,
+            outletName: outlet?.name || '',
+            stance: attempt?.stance || 'Unclear',
+            reasoning: attempt?.reasoning || '',
+            confidence: attempt?.confidence ?? 0.5,
+          };
+        });
+
+        const result = await llmProvider.generateFeaturedPerspective({
+          question: {
+            text: question.questionText,
+            topicName,
+          },
+          verdict: {
+            label: latestVerdict.verdictLabel as string,
+          },
+          articles: articlesForLLM,
+        });
+
+        const featuredStance = alignedStances.find((s) => {
+          const article = (s as any).article;
+          return article?.id === result.quote.articleId && article?.url;
+        });
+        const article = featuredStance ? (featuredStance as any).article : null;
+        if (article?.url) {
+          await updateVerdict(latestVerdict.id, {
+            featuredPerspective: {
+              text: result.quote.text,
+              articleId: result.quote.articleId,
+              articleTitle: result.quote.articleTitle,
+              outletName: result.quote.outletName,
+              articleUrl: article.url,
+            },
+          });
+        }
       }
     }
+
+      if (!hasDebatePoints) {
+      const opposingStances = monthStances.filter((stance) => {
+        const attempt = (stance as any).articleAnalysisAttempt;
+        if (!attempt) return false;
+        const isYes =
+          latestVerdict.verdictLabel === 'YesItSeemsSo' ||
+          latestVerdict.verdictLabel === 'ProbablyYes';
+        const isNo =
+          latestVerdict.verdictLabel === 'NoItDoesntSeemSo' ||
+          latestVerdict.verdictLabel === 'ProbablyNot';
+        if (isYes) return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
+        if (isNo) return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
+        return false;
+      });
+
+      const pointsToStore: Array<{
+        verdictId: string;
+        text: string;
+        articleId: string | null;
+        type: 'Unknown';
+        order: number;
+      }> = [];
+
+      for (const stance of opposingStances.slice(0, 5)) {
+        const attempt = (stance as any).articleAnalysisAttempt;
+        const article = (stance as any).article;
+        if (!attempt || !article?.url) continue;
+
+        const quoteResult = await llmProvider.extractQuotes({
+          article: {
+            id: article.id,
+            title: article.title,
+            textContent: article.textContent,
+            url: article.url,
+          },
+          question: {
+            text: question.questionText,
+            topicName,
+          },
+          stance: attempt.stance,
+          maxQuotes: 1,
+        });
+
+        if (quoteResult.quotes.length === 0) continue;
+        const quote = quoteResult.quotes[0];
+        const trimmedText = quote.text?.trim() || '';
+        if (trimmedText.length < 20 || isNonQuoteResponse(trimmedText)) continue;
+
+        pointsToStore.push({
+          verdictId: latestVerdict.id,
+          text: quote.text,
+          articleId: article.id,
+          type: 'Unknown',
+          order: pointsToStore.length,
+        });
+      }
+
+      if (pointsToStore.length > 0) {
+        await createEvidenceBullets(pointsToStore);
+      }
+      }
+    });
+  } catch (error) {
+    console.warn(`[getDebateCard] Lazy generation failed for ${questionId} (${monthKey}):`, error);
+  }
+
+  // Re-read after possible lazy generation so response uses persisted values.
+  verdict = (await findVerdictByQuestionAndMonth(questionId, monthDate)) || verdict;
+
+  // Use stored overview bullets only (no on-demand generation in API).
+  let overviewBullets: string[] = [];
+  if (verdict.overviewBullets && Array.isArray(verdict.overviewBullets)) {
+    overviewBullets = verdict.overviewBullets as string[];
   }
 
   // Check for stored quotes in EvidenceBullet (Why = majority, Dissent = opposing)
   let quotesFor: QuoteDTO[] = [];
   let quotesAgainst: QuoteDTO[] = [];
   const evidenceBullets = await findEvidenceBulletsByVerdictId(verdict.id);
-  const invalidEvidence = evidenceBullets.filter((eb) => isNonQuoteResponse(eb.text));
-  if (invalidEvidence.length > 0) {
-    await Promise.allSettled(invalidEvidence.map((eb) => deleteEvidenceBullet(eb.id)));
-  }
   const storedQuotesFor = evidenceBullets.filter((eb) => eb.type === 'Why');
   const storedQuotesAgainst = evidenceBullets.filter((eb) => eb.type === 'Dissent');
 
@@ -259,246 +398,6 @@ export async function getDebateCard(
       outletName: (eb as any).article?.outlet?.name || '',
       publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
     }));
-  } else if (monthStances.length > 0) {
-    // Generate quotes and store them (fallback - should be pre-generated)
-    // NOTE: Quotes should be pre-generated during pipeline via db:generate:debate-content
-    console.warn(`[debateService] Quotes not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
-    const isYesVerdict = verdict.verdictLabel === 'YesItSeemsSo' || verdict.verdictLabel === 'ProbablyYes';
-    const isNoVerdict = verdict.verdictLabel === 'NoItDoesntSeemSo' || verdict.verdictLabel === 'ProbablyNot';
-
-    const quotesToStore: Array<{
-      verdictId: string;
-      text: string;
-      articleId: string | null;
-      type: 'Why' | 'Dissent';
-      order: number;
-    }> = [];
-
-    try {
-      const llmProvider = getLLMProvider();
-      let quoteOrder = 0;
-
-      // Extract quotes from majority-aligned articles
-      const alignedStances = monthStances.filter((stance) => {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        if (!attempt) return false;
-        if (isYesVerdict) {
-          return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
-        }
-        if (isNoVerdict) {
-          return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
-        }
-        return true;
-      });
-
-      for (const stance of alignedStances.slice(0, 10)) {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        const article = (stance as any).article;
-        const outlet = article?.outlet;
-
-        if (!attempt || !article || !outlet) continue;
-
-        try {
-          const quoteResult = await llmProvider.extractQuotes({
-            article: {
-              id: article.id,
-              title: article.title,
-              textContent: article.textContent,
-              url: article.url,
-            },
-            question: {
-              text: question.questionText,
-              topicName,
-            },
-            stance: attempt.stance,
-            maxQuotes: 1, // One quote per article
-          });
-
-          if (quoteResult.quotes.length > 0) {
-            const quote = quoteResult.quotes[0];
-            const trimmedText = quote.text?.trim() || '';
-            // Additional validation: quote must be substantial and complete
-            // Check for incomplete escape patterns (ending with backslash, with or without quote)
-            const hasIncompleteEscape = trimmedText.endsWith('\\') || 
-                                        trimmedText.endsWith('\\ ') || 
-                                        trimmedText.endsWith(' \\') ||
-                                        trimmedText.endsWith('\\"') || 
-                                        trimmedText.endsWith('\\" ') || 
-                                        trimmedText.endsWith(' \\"') || 
-                                        trimmedText.endsWith(' \\" ') ||
-                                        trimmedText.slice(-10).match(/\\\s*"[\s]*$/) ||
-                                        trimmedText.slice(-10).match(/\\[\s]*$/);
-            if (
-              trimmedText.length >= 20 && // At least 20 characters
-              !hasIncompleteEscape && // Not ending with incomplete escape
-              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) && // Not a very short incomplete quote
-              !isNonQuoteResponse(trimmedText)
-            ) {
-              quotesToStore.push({
-                verdictId: verdict.id,
-                text: quote.text,
-                articleId: article.id,
-                type: 'Why',
-                order: quoteOrder++,
-              });
-              quotesFor.push({
-                id: `temp-${article.id}`,
-                text: quote.text,
-                articleId: article.id,
-                articleTitle: article.title,
-                articleUrl: article.url,
-                outletName: outlet.name,
-                publishedDate: article.publishedDate?.toISOString() || null,
-              });
-            }
-          }
-        } catch (error) {
-          // Skip this article if quote extraction fails
-          console.warn(`Failed to extract quote from article ${article.id}:`, error);
-        }
-      }
-
-      // Extract quotes from opposing articles
-      const opposingStances = monthStances.filter((stance) => {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        if (!attempt) return false;
-        if (isYesVerdict) {
-          return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
-        }
-        if (isNoVerdict) {
-          return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
-        }
-        return false;
-      });
-
-      for (const stance of opposingStances.slice(0, 5)) {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        const article = (stance as any).article;
-        const outlet = article?.outlet;
-
-        if (!attempt || !article || !outlet) continue;
-
-        try {
-          const quoteResult = await llmProvider.extractQuotes({
-            article: {
-              id: article.id,
-              title: article.title,
-              textContent: article.textContent,
-              url: article.url,
-            },
-            question: {
-              text: question.questionText,
-              topicName,
-            },
-            stance: attempt.stance,
-            maxQuotes: 1,
-          });
-
-          if (quoteResult.quotes.length > 0) {
-            const quote = quoteResult.quotes[0];
-            const trimmedText = quote.text?.trim() || '';
-            // Additional validation: quote must be substantial and complete
-            // Check for incomplete escape patterns (ending with backslash, with or without quote)
-            const hasIncompleteEscape = trimmedText.endsWith('\\') || 
-                                        trimmedText.endsWith('\\ ') || 
-                                        trimmedText.endsWith(' \\') ||
-                                        trimmedText.endsWith('\\"') || 
-                                        trimmedText.endsWith('\\" ') || 
-                                        trimmedText.endsWith(' \\"') || 
-                                        trimmedText.endsWith(' \\" ') ||
-                                        trimmedText.slice(-10).match(/\\\s*"[\s]*$/) ||
-                                        trimmedText.slice(-10).match(/\\[\s]*$/);
-            if (
-              trimmedText.length >= 20 && // At least 20 characters
-              !hasIncompleteEscape && // Not ending with incomplete escape
-              !(trimmedText.endsWith('"') && trimmedText.length < 50 && !trimmedText.slice(0, -1).match(/[.!?]$/)) && // Not a very short incomplete quote
-              !isNonQuoteResponse(trimmedText)
-            ) {
-              quotesToStore.push({
-                verdictId: verdict.id,
-                text: quote.text,
-                articleId: article.id,
-                type: 'Dissent',
-                order: quoteOrder++,
-              });
-              quotesAgainst.push({
-                id: `temp-${article.id}`,
-                text: quote.text,
-                articleId: article.id,
-                articleTitle: article.title,
-                articleUrl: article.url,
-                outletName: outlet.name,
-                publishedDate: article.publishedDate?.toISOString() || null,
-              });
-            }
-          }
-        } catch (error) {
-          console.warn(`Failed to extract quote from article ${article.id}:`, error);
-        }
-      }
-
-      // Store all quotes
-      if (quotesToStore.length > 0) {
-        await createEvidenceBullets(quotesToStore);
-        // Update quote IDs with actual stored IDs
-        const storedEvidence = await findEvidenceBulletsByVerdictId(verdict.id);
-        quotesFor = storedEvidence
-          .filter((eb) => eb.type === 'Why')
-          .map((eb) => ({
-            id: eb.id,
-            text: eb.text,
-            articleId: eb.articleId || '',
-            articleTitle: (eb as any).article?.title || '',
-            articleUrl: (eb as any).article?.url || '',
-            outletName: (eb as any).article?.outlet?.name || '',
-            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
-          }));
-        quotesAgainst = storedEvidence
-          .filter((eb) => eb.type === 'Dissent')
-          .map((eb) => ({
-            id: eb.id,
-            text: eb.text,
-            articleId: eb.articleId || '',
-            articleTitle: (eb as any).article?.title || '',
-            articleUrl: (eb as any).article?.url || '',
-            outletName: (eb as any).article?.outlet?.name || '',
-            publishedDate: (eb as any).article?.publishedDate?.toISOString() || null,
-          }));
-      }
-    } catch (error) {
-      console.warn('LLM not available for quote extraction, using reasoning fallback:', error);
-      // Fallback: use reasoning as quotes
-      const alignedStances = monthStances.filter((stance) => {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        if (!attempt || !attempt.reasoning) return false;
-        const isYes = verdict.verdictLabel === 'YesItSeemsSo' || verdict.verdictLabel === 'ProbablyYes';
-        const isNo = verdict.verdictLabel === 'NoItDoesntSeemSo' || verdict.verdictLabel === 'ProbablyNot';
-        if (isYes) {
-          return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
-        }
-        if (isNo) {
-          return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
-        }
-        return false;
-      });
-
-      for (const stance of alignedStances.slice(0, 5)) {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        const article = (stance as any).article;
-        const outlet = article?.outlet;
-        if (attempt?.reasoning && article && outlet) {
-          quotesFor.push({
-            id: `${article.id}-${attempt.id}`,
-            text: attempt.reasoning,
-            articleId: article.id,
-            articleTitle: article.title,
-            articleUrl: article.url,
-            outletName: outlet.name,
-            publishedDate: article.publishedDate?.toISOString() || null,
-          });
-        }
-      }
-    }
   }
 
   // Limit quotes
@@ -562,106 +461,6 @@ export async function getDebateCard(
         articleUrl: articleUrl,
       };
     }
-  } else if (monthStances.length > 0 && topQuotesFor.length > 0) {
-    // Generate and store featured perspective (fallback - should be pre-generated)
-    // NOTE: Featured perspective should be pre-generated during pipeline via db:generate:debate-content
-    console.warn(`[debateService] Featured perspective not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
-    try {
-      const llmProvider = getLLMProvider();
-      const alignedStances = monthStances.filter((stance) => {
-        const attempt = (stance as any).articleAnalysisAttempt;
-        if (!attempt) return false;
-        const isYes = verdict.verdictLabel === 'YesItSeemsSo' || verdict.verdictLabel === 'ProbablyYes';
-        const isNo = verdict.verdictLabel === 'NoItDoesntSeemSo' || verdict.verdictLabel === 'ProbablyNot';
-        if (isYes) {
-          return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
-        }
-        if (isNo) {
-          return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
-        }
-        return true;
-      });
-
-      if (alignedStances.length > 0) {
-        const articlesForLLM = alignedStances.slice(0, 5).map((stance) => {
-          const attempt = (stance as any).articleAnalysisAttempt;
-          const article = (stance as any).article;
-          const outlet = article?.outlet;
-          return {
-            id: article.id,
-            title: article.title,
-            textContent: article.textContent,
-            outletName: outlet?.name || '',
-            stance: attempt?.stance || 'Unclear',
-            reasoning: attempt?.reasoning || '',
-            // Use ?? instead of || because 0.0 is a valid confidence value
-            confidence: attempt?.confidence ?? 0.5,
-          };
-        });
-
-        const result = await llmProvider.generateFeaturedPerspective({
-          question: {
-            text: question.questionText,
-            topicName,
-          },
-          verdict: {
-            label: verdict.verdictLabel as string,
-          },
-          articles: articlesForLLM,
-        });
-
-        // Find the article to get the URL - ensure we always have it
-        const featuredArticle = alignedStances.find((s) => {
-          const article = (s as any).article;
-          return article?.id === result.quote.articleId && article?.url; // Only use articles with URLs
-        });
-        const article = featuredArticle ? (featuredArticle as any).article : null;
-
-        // If no article with URL found, try to find it in sources
-        let articleUrl = article?.url;
-        if (!articleUrl) {
-          const source = sources.find((s) => s.articleId === result.quote.articleId);
-          articleUrl = source?.articleUrl;
-        }
-
-        // Only create featured perspective if we have an article URL
-        if (articleUrl) {
-          featuredPerspective = {
-            id: `featured-${result.quote.articleId}`,
-            text: result.quote.text,
-            outletName: result.quote.outletName,
-            articleId: result.quote.articleId,
-            articleTitle: result.quote.articleTitle,
-            articleUrl: articleUrl,
-          };
-
-          // Store in verdict
-          await updateVerdict(verdict.id, {
-            featuredPerspective: {
-              text: result.quote.text,
-              articleId: result.quote.articleId,
-              articleTitle: result.quote.articleTitle,
-              outletName: result.quote.outletName,
-              articleUrl: articleUrl,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('LLM not available for featured perspective, using fallback:', error);
-      // Only use fallback if quote has articleUrl
-      const fqWithUrl = topQuotesFor.find((q) => q.articleUrl);
-      if (fqWithUrl) {
-        featuredPerspective = {
-          id: fqWithUrl.id,
-          text: fqWithUrl.text,
-          outletName: fqWithUrl.outletName,
-          articleId: fqWithUrl.articleId,
-          articleTitle: fqWithUrl.articleTitle,
-          articleUrl: fqWithUrl.articleUrl!,
-        };
-      }
-    }
   }
 
   // Get points for debate from stored EvidenceBullet (Unknown type) or generate from opposing arguments
@@ -686,93 +485,6 @@ export async function getDebateCard(
       }));
   }
   
-  // If no stored points for debate, generate them (fallback - should be pre-generated)
-  // NOTE: Points for debate should be pre-generated during pipeline via db:generate:debate-content
-  if (pointsForDebate.length === 0) {
-    console.warn(`[debateService] Points for debate not pre-generated for verdict ${verdict.id}. Generating on-demand. Run db:generate:debate-content to pre-generate.`);
-    // Generate points for debate from opposing arguments
-    const opposingStances = monthStances.filter((stance) => {
-      const attempt = (stance as any).articleAnalysisAttempt;
-      if (!attempt) return false;
-      const isYes = verdict.verdictLabel === 'YesItSeemsSo' || verdict.verdictLabel === 'ProbablyYes';
-      const isNo = verdict.verdictLabel === 'NoItDoesntSeemSo' || verdict.verdictLabel === 'ProbablyNot';
-      if (isYes) {
-        return attempt.stance === 'NoItDoesntSeemSo' || attempt.stance === 'ProbablyNot';
-      }
-      if (isNo) {
-        return attempt.stance === 'YesItSeemsSo' || attempt.stance === 'ProbablyYes';
-      }
-      return false;
-    });
-
-    // Generate points for debate using extractQuotes from opposing articles
-    const llmProvider = getLLMProvider();
-    for (const stance of opposingStances.slice(0, 5)) {
-      const attempt = (stance as any).articleAnalysisAttempt;
-      const article = (stance as any).article;
-      const outlet = article?.outlet;
-
-      if (!attempt || !article || !outlet) continue;
-
-      try {
-        const quoteResult = await llmProvider.extractQuotes({
-          article: {
-            id: article.id,
-            title: article.title,
-            textContent: article.textContent,
-            url: article.url,
-          },
-          question: {
-            text: question.questionText,
-            topicName,
-          },
-          stance: attempt.stance,
-          maxQuotes: 1,
-        });
-
-        if (quoteResult.quotes.length > 0) {
-          const quote = quoteResult.quotes[0];
-          // Only add if we have a valid quote and article URL
-          // Additional validation: quote must be substantial and complete
-          const trimmedText = quote.text?.trim() || '';
-          if (
-            trimmedText.length >= 20 && // At least 20 characters
-            trimmedText.length >= 3 && // At least 3 words
-            !trimmedText.endsWith('\\"') && // Not ending with incomplete escape
-            !(trimmedText.endsWith('"') && trimmedText.length < 50) && // Not a very short incomplete quote
-            !isNonQuoteResponse(trimmedText) &&
-            article.url
-          ) {
-            pointsForDebate.push({
-              id: `debate-${article.id}`,
-              text: quote.text,
-              articleId: article.id,
-              articleTitle: article.title,
-              articleUrl: article.url, // Always include article URL
-              outletName: outlet.name,
-              publishedDate: article.publishedDate?.toISOString() || null,
-            });
-          }
-        }
-      } catch (error) {
-        // Skip this article if quote extraction fails
-        console.warn(`Failed to extract quote for debate point from article ${article.id}:`, error);
-      }
-    }
-
-    // Store points for debate
-    if (pointsForDebate.length > 0) {
-      const pointsToStore = pointsForDebate.map((p, idx) => ({
-        verdictId: verdict.id,
-        text: p.text,
-        articleId: p.articleId,
-        type: 'Unknown' as const,
-        order: idx,
-      }));
-      await createEvidenceBullets(pointsToStore);
-    }
-  }
-
   // Build arguments (for legacy compatibility)
   const argumentsFor: ArgumentDTO[] = monthStances
     .filter((s) => {
@@ -822,7 +534,7 @@ export async function getDebateCard(
   }));
 
   // Get timeline events
-  const timelineEvents = await getTimelineEvents(undefined, questionId);
+  const timelineEvents = await getTimelineEvents(undefined, questionId, true);
   const timeline: TimelineEventDTO[] = timelineEvents.map((e) => ({
     id: e.id,
     date: e.date,

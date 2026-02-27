@@ -5,6 +5,8 @@
  * Usage:
  *   npm run db:summarize:verdicts
  *   npm run db:summarize:verdicts -- --questionId=<id>
+ *   npm run db:summarize:verdicts -- --month=YYYY-MM
+ *   npm run db:summarize:verdicts -- --force
  */
 
 import { config } from 'dotenv';
@@ -41,6 +43,8 @@ async function main() {
 
     const args = process.argv.slice(2);
     const questionIdArg = args.find((a) => a.startsWith('--questionId='));
+    const monthArg = args.find((a) => a.startsWith('--month='));
+    const force = args.includes('--force');
     let questionIds: string[] = [];
 
     if (questionIdArg) {
@@ -62,6 +66,18 @@ async function main() {
 
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
+
+    if (monthArg) {
+      const monthStr = monthArg.split('=')[1];
+      console.log(`📅 Restricting summarization to month: ${monthStr}`);
+    }
+    if (force) {
+      console.log('⚠️ Force mode enabled: existing reasoning will be overwritten');
+    } else {
+      console.log('🛡️ Safe mode: already summarized verdicts will be skipped');
+    }
+    console.log();
 
     for (const questionId of questionIds) {
       try {
@@ -81,8 +97,6 @@ async function main() {
         }
 
         // Process all verdicts for this question (or filter by month if specified)
-        const args = process.argv.slice(2);
-        const monthArg = args.find((a) => a.startsWith('--month='));
         let verdictsToProcess = question.verdicts;
 
         if (monthArg) {
@@ -99,6 +113,17 @@ async function main() {
 
         // Process each verdict
         for (const verdict of verdictsToProcess) {
+          if (!force && verdict.reasoning && verdict.reasoning.trim().length > 0) {
+            skippedCount += 1;
+            console.log(
+              `↪️  Skipped already summarized verdict for question "${question.questionText.slice(
+                0,
+                80
+              )}..." (month: ${verdict.month.toISOString().slice(0, 7)})`,
+            );
+            continue;
+          }
+
           // Fetch contributing article stances for the same month period as the verdict
           const verdictMonthPeriod = verdict.month;
         const stances = await findArticleStancesByQuestionAndMonth(
@@ -178,6 +203,7 @@ async function main() {
 
     console.log('\n📊 Summarization complete.');
     console.log(`   ✅ Successful: ${successCount}`);
+    console.log(`   ↪️ Skipped existing: ${skippedCount}`);
     console.log(`   ⚠️ Failed: ${errorCount}`);
   } catch (error) {
     console.error('❌ Fatal error in verdict summarization script:', error);
