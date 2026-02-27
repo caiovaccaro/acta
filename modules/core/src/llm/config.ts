@@ -24,6 +24,43 @@ export interface LLMConfig {
   };
 }
 
+export type LLMTaskType =
+  | 'default'
+  | 'classification'
+  | 'validation'
+  | 'convergence'
+  | 'generation';
+
+function resolveOpenAIModel(taskType: LLMTaskType): string {
+  const baseModel = process.env.OPENAI_MODEL || 'gpt-4-turbo-preview';
+  const cheapModel = process.env.OPENAI_MODEL_CHEAP;
+  const strongModel = process.env.OPENAI_MODEL_STRONG;
+
+  const taskSpecificModel =
+    (taskType === 'classification' && process.env.OPENAI_MODEL_CLASSIFICATION) ||
+    (taskType === 'validation' && process.env.OPENAI_MODEL_VALIDATION) ||
+    (taskType === 'convergence' && process.env.OPENAI_MODEL_CONVERGENCE) ||
+    (taskType === 'generation' && process.env.OPENAI_MODEL_GENERATION) ||
+    undefined;
+
+  if (taskSpecificModel) {
+    return taskSpecificModel;
+  }
+
+  if (
+    (taskType === 'classification' || taskType === 'validation' || taskType === 'convergence') &&
+    cheapModel
+  ) {
+    return cheapModel;
+  }
+
+  if (taskType === 'generation' && strongModel) {
+    return strongModel;
+  }
+
+  return baseModel;
+}
+
 /**
  * Creates an LLM provider based on configuration
  * @param config - LLM configuration
@@ -52,9 +89,10 @@ export function createLLMProvider(config: LLMConfig): LLMProvider {
 
 /**
  * Creates LLM configuration from environment variables
+ * @param taskType - Optional task type for model routing
  * @returns LLM configuration
  */
-export function createLLMConfigFromEnv(): LLMConfig {
+export function createLLMConfigFromEnv(taskType: LLMTaskType = 'default'): LLMConfig {
   const provider = (process.env.LLM_PROVIDER || 'openai') as 'openai' | 'anthropic' | 'local';
 
   const config: LLMConfig = {
@@ -69,7 +107,7 @@ export function createLLMConfigFromEnv(): LLMConfig {
 
     config.openai = {
       apiKey,
-      model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+      model: resolveOpenAIModel(taskType),
       maxRetries: process.env.OPENAI_MAX_RETRIES
         ? parseInt(process.env.OPENAI_MAX_RETRIES, 10)
         : 3,

@@ -37,9 +37,68 @@ type TopicInfo = {
   moderationStatus: string;
   questionCount: number;
   articleCount: number;
+  nameNormalized: string;
+  nameTokens: string[];
   normalized: string;
   tokens: string[];
 };
+
+function averageSimilarityToCluster(topic: TopicInfo, cluster: TopicInfo[]): number {
+  if (cluster.length <= 1) return 1;
+  let total = 0;
+  let count = 0;
+  for (const other of cluster) {
+    if (other.id === topic.id) continue;
+    const tokenScore = tokenOverlapScore(topic.tokens, other.tokens);
+    const fuzzyScore = jaroWinkler(topic.normalized, other.normalized);
+    total += (tokenScore + fuzzyScore) / 2;
+    count++;
+  }
+  return count > 0 ? total / count : 0;
+}
+
+function pickTargetTopic(cluster: TopicInfo[]): TopicInfo {
+  return cluster.reduce((best, current) => {
+    if (current.questionCount > best.questionCount) return current;
+    if (current.questionCount < best.questionCount) return best;
+
+    if (current.articleCount > best.articleCount) return current;
+    if (current.articleCount < best.articleCount) return best;
+
+    const currentApproved = current.moderationStatus === 'approved';
+    const bestApproved = best.moderationStatus === 'approved';
+    if (currentApproved && !bestApproved) return current;
+    if (!currentApproved && bestApproved) return best;
+
+    const currentSimilarity = averageSimilarityToCluster(current, cluster);
+    const bestSimilarity = averageSimilarityToCluster(best, cluster);
+    if (currentSimilarity > bestSimilarity) return current;
+    if (currentSimilarity < bestSimilarity) return best;
+
+    // Prefer shorter canonical labels over longer mixed-scope labels.
+    if (current.name.length < best.name.length) return current;
+    if (current.name.length > best.name.length) return best;
+
+    return current.name.localeCompare(best.name) < 0 ? current : best;
+  });
+}
+
+function tokenContainmentScore(aTokens: string[], bTokens: string[]): number {
+  const setA = new Set(aTokens.filter(Boolean));
+  const setB = new Set(bTokens.filter(Boolean));
+  if (setA.size === 0 || setB.size === 0) return 0;
+  const intersection = [...setA].filter((t) => setB.has(t)).length;
+  return intersection / Math.min(setA.size, setB.size);
+}
+
+function isStrongLexicalVariant(a: TopicInfo, b: TopicInfo): boolean {
+  const nameOverlap = tokenOverlapScore(a.nameTokens, b.nameTokens);
+  const nameContainment = tokenContainmentScore(a.nameTokens, b.nameTokens);
+  const nameFuzzy = jaroWinkler(a.nameNormalized, b.nameNormalized);
+
+  // Generic guardrail: one label is mostly a lexical expansion of the other.
+  return nameContainment >= 0.8 && nameOverlap >= 0.55 && nameFuzzy >= 0.86;
+}
 
 const STOPWORDS = new Set([
   'the',
@@ -275,7 +334,7 @@ async function confirmMergeWithLLM(params: {
   model: string;
   apiKey: string;
 }): Promise<{ equivalent: boolean; confidence: number; notes: string }> {
-  const prompt = `You are validating whether two topics are semantically equivalent and should be merged.
+  const prompt = `You are validating whether two topics should be merged into one canonical topic.
 
 Topic A: ${params.nameA}
 Description A: ${params.descA || '(none)'}
@@ -290,8 +349,28 @@ Return JSON:
 }
 
 Guidance:
-- Only say true if the topics are essentially the same.
-- If one is narrower, more specific, or a different scope, answer false.
+- "equivalent=true" when both topics refer to the same real-world subject/issue,
+  even if wording differs or one is slightly broader/narrower.
+- "equivalent=false" when they are only in the same broad parent area but likely
+  need to stay separate as distinct editorial buckets.
+- If both labels are generic variants of the same domain (e.g., "Sports Events",
+  "Sports and Events", "Sports Highlights"), prefer equivalent=true unless one clearly
+  introduces a distinct subdomain.
+
+Merge examples (true):
+- "Sports and Events" vs "Sports Events"
+- "Russia-Ukraine Conflict" vs "Ukraine Conflict"
+- "Economic Policies and Trends" vs "Economic Trends"
+
+Do NOT merge examples (false):
+- "Health and Wellness" vs "Health and Environment" (different subdomain intent)
+- "Global Affairs" vs "Global Elections" (same macro area, different focus)
+- "Social Media and Youth" vs "Social Justice and Human Rights" (different issue)
+
+Important:
+- Prefer true for near-duplicate lexical variants unless there is explicit
+  contradictory scope.
+- Confidence should reflect your certainty in the merge/no-merge decision.
 `;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -344,13 +423,15 @@ async function clusterTopicsWithLLM(params: {
     .map((t, i) => `${i + 1}. [${t.id}] ${t.name} — ${t.description || ''}`)
     .join('\n');
 
-  const prompt = `You are clustering topics that are semantically equivalent and should be merged.
+  const prompt = `You are clustering topics that should be merged into the same canonical topic.
 
 Topics:
 ${list}
 
-Return JSON with an array "clusters". Each cluster must include ONLY topics that are essentially the same.
-Do NOT merge if one topic is narrower, more specific, or a different scope.
+Return JSON with an array "clusters".
+Each cluster must include ONLY topics that refer to the same real-world subject/issue.
+It is okay if phrasing differs or one name is slightly broader/narrower.
+Do NOT cluster topics that are only related by broad parent domain.
 
 Return JSON:
 {
@@ -442,7 +523,7 @@ async function main() {
     await connectDatabase();
 
     const llmConfig = args.llmConfirm || args.llmCluster
-      ? createLLMConfigFromEnv()
+      ? createLLMConfigFromEnv('convergence')
       : null;
     const llmModel = llmConfig?.openai?.model || 'gpt-4-turbo-preview';
     const llmApiKey = llmConfig?.openai?.apiKey || '';
@@ -478,6 +559,8 @@ async function main() {
     }
 
     const topicInfos: TopicInfo[] = filteredTopics.map((t) => {
+      const nameNormalized = normalizeTopicText(t.name);
+      const nameTokens = nameNormalized.split(/\s+/).filter(Boolean);
       const normalized = normalizeTopicText(`${t.name} ${t.description || ''}`);
       const tokens = normalized.split(/\s+/).filter(Boolean);
       return {
@@ -487,6 +570,8 @@ async function main() {
         moderationStatus: t.moderationStatus,
         questionCount: t._count.questions,
         articleCount: t._count.topicArticles,
+        nameNormalized,
+        nameTokens,
         normalized,
         tokens,
       };
@@ -566,16 +651,7 @@ async function main() {
     for (const cluster of clusters.values()) {
       if (cluster.length < 2) continue;
 
-      const target = cluster.reduce((best, current) => {
-        if (current.questionCount > best.questionCount) return current;
-        if (current.questionCount === best.questionCount) {
-          if (current.articleCount > best.articleCount) return current;
-          if (current.articleCount === best.articleCount) {
-            return current.name.length >= best.name.length ? current : best;
-          }
-        }
-        return best;
-      });
+      const target = pickTargetTopic(cluster);
 
       let sources = cluster.filter((t) => t.id !== target.id);
       if (args.excludeSourceIds.size > 0) {
@@ -601,9 +677,18 @@ async function main() {
           }
           const tokenScore = tokenOverlapScore(target.tokens, source.tokens);
           const fuzzyScore = jaroWinkler(target.normalized, source.normalized);
+          const nameTokenScore = tokenOverlapScore(
+            target.nameTokens,
+            source.nameTokens
+          );
+          const nameFuzzyScore = jaroWinkler(
+            target.nameNormalized,
+            source.nameNormalized
+          );
           const shouldCheck = args.llmAlways
             ? true
-            : tokenScore < 0.95 && fuzzyScore < 0.97;
+            : (tokenScore < 0.95 && fuzzyScore < 0.97) &&
+              (nameTokenScore < 0.9 && nameFuzzyScore < 0.95);
 
           if (!shouldCheck) {
             verifiedSources.push(source);
@@ -621,6 +706,12 @@ async function main() {
           llmPairsChecked++;
 
           if (llmResult.equivalent && llmResult.confidence >= args.llmMinConfidence) {
+            verifiedSources.push(source);
+          } else if (isStrongLexicalVariant(target, source)) {
+            console.log(
+              `   ⚠️  Overriding LLM rejection (strong lexical variant): "${source.name}" ` +
+                `(conf ${(llmResult.confidence * 100).toFixed(0)}%)`
+            );
             verifiedSources.push(source);
           } else {
             console.log(

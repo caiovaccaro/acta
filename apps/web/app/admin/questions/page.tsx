@@ -21,9 +21,34 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import QuestionConvergenceModal from './components/QuestionConvergenceModal';
 
-async function fetchQuestions(topicId?: string | null) {
-  const url = topicId ? `/admin/api/questions?topicId=${topicId}` : '/admin/api/questions';
-  const res = await fetch(url);
+type TimeRange =
+  | 'this_week'
+  | 'last_2_weeks'
+  | 'current_month'
+  | 'last_month'
+  | 'last_3_months'
+  | 'all';
+type ActiveFilter = 'all' | 'active' | 'inactive';
+
+const PAGE_SIZE = 50;
+
+async function fetchQuestions(params: {
+  topicId?: string | null;
+  offset: number;
+  timeRange: TimeRange;
+  activeFilter: ActiveFilter;
+  search: string;
+}) {
+  const searchParams = new URLSearchParams({
+    limit: PAGE_SIZE.toString(),
+    offset: params.offset.toString(),
+    timeRange: params.timeRange,
+    activeFilter: params.activeFilter,
+  });
+  if (params.topicId) searchParams.set('topicId', params.topicId);
+  if (params.search.trim()) searchParams.set('search', params.search.trim());
+
+  const res = await fetch(`/admin/api/questions?${searchParams.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch questions');
   return res.json();
 }
@@ -130,6 +155,11 @@ function AdminQuestionsContent() {
   const searchParams = useSearchParams();
   const topicId = searchParams.get('topicId');
   const [selectedTopicId, setSelectedTopicId] = useState(topicId || '');
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [offset, setOffset] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isConvergenceModalOpen, setIsConvergenceModalOpen] = useState(false);
   const [orderedQuestions, setOrderedQuestions] = useState<any[]>([]);
@@ -140,9 +170,30 @@ function AdminQuestionsContent() {
     })
   );
 
-  const { data: questions, isLoading } = useQuery({
-    queryKey: ['admin-questions', selectedTopicId || null],
-    queryFn: () => fetchQuestions(selectedTopicId || null),
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      'admin-questions',
+      selectedTopicId || null,
+      timeRange,
+      activeFilter,
+      debouncedSearch,
+      offset,
+    ],
+    queryFn: () =>
+      fetchQuestions({
+        topicId: selectedTopicId || null,
+        offset,
+        timeRange,
+        activeFilter,
+        search: debouncedSearch,
+      }),
   });
 
   const { data: topics } = useQuery({
@@ -175,10 +226,23 @@ function AdminQuestionsContent() {
   });
 
   useEffect(() => {
-    if (questions) {
-      setOrderedQuestions(questions);
+    if (data?.questions) {
+      setOrderedQuestions(data.questions);
     }
-  }, [questions]);
+  }, [data?.questions]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [offset, selectedTopicId, timeRange, activeFilter, debouncedSearch]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [debouncedSearch]);
+
+  const questions = data?.questions || [];
+  const total = data?.total || 0;
+  const pageStart = total === 0 ? 0 : offset + 1;
+  const pageEnd = Math.min(offset + PAGE_SIZE, total);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -233,21 +297,77 @@ function AdminQuestionsContent() {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-semibold text-text-main mb-2">
-          Filter by Topic
-        </label>
-        <select
-          value={selectedTopicId}
-          onChange={(e) => setSelectedTopicId(e.target.value)}
-          className="px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
-        >
-          <option value="">All Topics</option>
-          {topics?.map((topic: any) => (
-            <option key={topic.id} value={topic.id}>
-              {topic.name}
-            </option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-text-main mb-2">
+              Filter by Topic
+            </label>
+            <select
+              value={selectedTopicId}
+              onChange={(e) => {
+                setSelectedTopicId(e.target.value);
+                setOffset(0);
+              }}
+              className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
+            >
+              <option value="">All Topics</option>
+              {topics?.map((topic: any) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-text-main mb-2">
+              Time Range
+            </label>
+            <select
+              value={timeRange}
+              onChange={(e) => {
+                setTimeRange(e.target.value as TimeRange);
+                setOffset(0);
+              }}
+              className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
+            >
+              <option value="this_week">This week</option>
+              <option value="last_2_weeks">Last 2 weeks</option>
+              <option value="current_month">Current month</option>
+              <option value="last_month">Last month</option>
+              <option value="last_3_months">Last 3 months</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-text-main mb-2">
+              Status
+            </label>
+            <select
+              value={activeFilter}
+              onChange={(e) => {
+                setActiveFilter(e.target.value as ActiveFilter);
+                setOffset(0);
+              }}
+              className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-text-main mb-2">
+              Search Question Title
+            </label>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Fuzzy search by question title..."
+              className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
+            />
+          </div>
+        </div>
       </div>
 
       {selectedIds.size > 0 && (
@@ -290,7 +410,7 @@ function AdminQuestionsContent() {
 
       {isLoading ? (
         <div className="text-text-muted">Loading questions...</div>
-      ) : questions && questions.length > 0 ? (
+      ) : questions.length > 0 ? (
         <div className="bg-white rounded-xl border border-border-light shadow-sm overflow-x-auto">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <SortableContext
@@ -434,8 +554,32 @@ function AdminQuestionsContent() {
         <div className="text-text-muted">No questions found</div>
       )}
 
+      {questions.length > 0 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-text-muted">
+            Showing {pageStart}-{pageEnd} of {total}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              disabled={offset === 0}
+              className="px-4 py-2 border border-border-light rounded-lg hover:bg-background-lighter disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              disabled={offset + PAGE_SIZE >= total}
+              className="px-4 py-2 border border-border-light rounded-lg hover:bg-background-lighter disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Convergence Modal */}
-      {isConvergenceModalOpen && questions && (
+      {isConvergenceModalOpen && (
         <QuestionConvergenceModal
           questions={questions.filter((q: any) => selectedIds.has(q.id))}
           isOpen={isConvergenceModalOpen}

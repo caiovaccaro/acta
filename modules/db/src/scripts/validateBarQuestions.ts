@@ -36,7 +36,7 @@ async function main() {
     console.log('✅ Database connected\n');
 
     // Initialize LLM provider
-    const llmConfig = createLLMConfigFromEnv();
+    const llmConfig = createLLMConfigFromEnv('validation');
     const llmProvider = createLLMProvider(llmConfig);
     console.log(`✅ LLM Provider initialized: ${llmProvider.getName()}\n`);
 

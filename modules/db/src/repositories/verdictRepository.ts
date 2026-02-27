@@ -26,6 +26,28 @@ export interface UpdateVerdictInput {
   featuredPerspective?: any; // Json? in Prisma schema
 }
 
+function getMonthBounds(month: Date): { start: Date; end: Date } {
+  const start = new Date(
+    month.getFullYear(),
+    month.getMonth(),
+    1,
+    0,
+    0,
+    0,
+    0
+  );
+  const end = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
+    1,
+    0,
+    0,
+    0,
+    0
+  );
+  return { start, end };
+}
+
 /**
  * Finds a verdict by ID
  * @param id - Verdict ID
@@ -55,13 +77,16 @@ export async function findVerdictByQuestionAndMonth(
   questionId: string,
   month: Date
 ): Promise<Verdict | null> {
-  return prisma.verdict.findUnique({
+  const { start, end } = getMonthBounds(month);
+  return prisma.verdict.findFirst({
     where: {
-      questionId_month: {
-        questionId,
-        month,
+      questionId,
+      month: {
+        gte: start,
+        lt: end,
       },
     },
+    orderBy: [{ updatedAt: 'desc' }],
     include: {
       question: {
         include: {
@@ -188,45 +213,53 @@ export async function createOrUpdateVerdict(
 ): Promise<Verdict> {
   // Clamp confidence to 0-100 to prevent values exceeding 100
   const clampedConfidence = Math.max(0, Math.min(100, input.confidence));
-  
-  // Use raw SQL to handle upsert with the composite unique constraint
-  // Use the constraint name explicitly to avoid ambiguity
-  const result = await prisma.$queryRaw<Array<{
-    id: string;
-    questionId: string;
-    month: Date;
-    verdictLabel: string;
-    confidence: number;
-    supportShare: number;
-    variance: number;
-    reasoning: string | null;
-    calculatedAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
-  }>>`
-    INSERT INTO "verdicts" ("id", "questionId", "month", "verdictLabel", "confidence", "supportShare", "variance", "reasoning", "calculatedAt", "createdAt", "updatedAt")
-    VALUES (gen_random_uuid(), ${input.questionId}::text, ${input.month}::timestamp, ${input.verdictLabel}::"VerdictLabel", ${clampedConfidence}::float, ${input.supportShare}::float, ${input.variance}::float, ${input.reasoning ?? null}::text, NOW(), NOW(), NOW())
-    ON CONFLICT ON CONSTRAINT "verdicts_questionId_month_key"
-    DO UPDATE SET
-      "verdictLabel" = EXCLUDED."verdictLabel"::"VerdictLabel",
-      "confidence" = EXCLUDED."confidence",
-      "supportShare" = EXCLUDED."supportShare",
-      "variance" = EXCLUDED."variance",
-      "reasoning" = EXCLUDED."reasoning",
-      "calculatedAt" = NOW(),
-      "updatedAt" = NOW()
-    RETURNING *
-  `;
+  const { start, end } = getMonthBounds(input.month);
 
-  if (!result || result.length === 0) {
-    throw new Error('Failed to create or update verdict');
+  // Resolve by calendar month window to avoid timestamp drift mismatches.
+  const existing = await prisma.verdict.findFirst({
+    where: {
+      questionId: input.questionId,
+      month: {
+        gte: start,
+        lt: end,
+      },
+    },
+    orderBy: [{ updatedAt: 'desc' }],
+  });
+
+  if (existing) {
+    const updated = await prisma.verdict.update({
+      where: { id: existing.id },
+      data: {
+        verdictLabel: input.verdictLabel,
+        confidence: clampedConfidence,
+        supportShare: input.supportShare,
+        variance: input.variance,
+        calculatedAt: new Date(),
+        ...(input.reasoning !== undefined ? { reasoning: input.reasoning } : {}),
+      },
+      include: {
+        question: {
+          include: {
+            topic: true,
+          },
+        },
+      },
+    });
+    return updated;
   }
 
-  const verdictData = result[0];
-
-  // Fetch the full verdict with relations
-  return prisma.verdict.findUniqueOrThrow({
-    where: { id: verdictData.id },
+  return prisma.verdict.create({
+    data: {
+      questionId: input.questionId,
+      month: start,
+      verdictLabel: input.verdictLabel,
+      confidence: clampedConfidence,
+      supportShare: input.supportShare,
+      variance: input.variance,
+      reasoning: input.reasoning ?? null,
+      calculatedAt: new Date(),
+    },
     include: {
       question: {
         include: {

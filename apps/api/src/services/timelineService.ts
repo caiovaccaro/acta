@@ -4,17 +4,72 @@ import {
   findArticleStancesByQuestionId,
   findTopicArticlesByTopicId,
   findTimelineEventsByTopicOrQuestion,
+  createTimelineEvents,
 } from '@acta/db';
 import { getLLMProvider } from '../utils/llmProvider';
 import type { TimelineEventDTO } from '@acta/shared';
+
+const timelineGenerationLocks = new Map<string, Promise<void>>();
+
+async function withTimelineGenerationLock(
+  key: string,
+  task: () => Promise<void>
+): Promise<void> {
+  const running = timelineGenerationLocks.get(key);
+  if (running) {
+    await running;
+    return;
+  }
+
+  const promise = (async () => {
+    try {
+      await task();
+    } finally {
+      timelineGenerationLocks.delete(key);
+    }
+  })();
+
+  timelineGenerationLocks.set(key, promise);
+  await promise;
+}
 
 /**
  * Fetch timeline events from database
  */
 export async function getTimelineEvents(
   topicId?: string,
-  questionId?: string
+  questionId?: string,
+  lazyGenerate: boolean = false
 ): Promise<TimelineEventDTO[]> {
+  if (lazyGenerate && (topicId || questionId)) {
+    const key = topicId ? `topic:${topicId}` : `question:${questionId}`;
+    try {
+      await withTimelineGenerationLock(key, async () => {
+        const existing = await findTimelineEventsByTopicOrQuestion(topicId, questionId);
+        if (existing.length > 0) return;
+
+        const generated = await generateTimelineEvents(topicId, questionId);
+        if (generated.length === 0) return;
+
+        const rows = generated.map((e, idx) => ({
+          topicId: topicId || null,
+          questionId: questionId || null,
+          date: new Date(e.date),
+          title: e.title,
+          description: e.description,
+          order: idx,
+        }));
+
+        await createTimelineEvents(rows);
+      });
+    } catch (error) {
+      console.warn(
+        `[timelineService] Lazy timeline generation failed for ${key}:`,
+        error
+      );
+    }
+  }
+
   const events = await findTimelineEventsByTopicOrQuestion(topicId, questionId);
   return events.map((e) => ({
     id: e.id,
