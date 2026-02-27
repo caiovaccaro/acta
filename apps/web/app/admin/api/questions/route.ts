@@ -62,8 +62,10 @@ function tokenOverlapScore(a: string, b: string): number {
   const aTokens = new Set(normalizeText(a).split(/\s+/).filter(Boolean));
   const bTokens = new Set(normalizeText(b).split(/\s+/).filter(Boolean));
   if (aTokens.size === 0 || bTokens.size === 0) return 0;
-  const intersection = [...aTokens].filter((token) => bTokens.has(token)).length;
-  const union = new Set([...aTokens, ...bTokens]).size;
+  const aTokenList = Array.from(aTokens);
+  const bTokenList = Array.from(bTokens);
+  const intersection = aTokenList.filter((token) => bTokens.has(token)).length;
+  const union = new Set([...aTokenList, ...bTokenList]).size;
   return intersection / union;
 }
 
