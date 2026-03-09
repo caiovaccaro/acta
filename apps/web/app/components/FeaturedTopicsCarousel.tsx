@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import useEmblaCarousel from 'embla-carousel-react';
 import type { TopicDTO } from '@acta/shared';
 
 interface FeaturedTopicsCarouselProps {
@@ -22,6 +23,29 @@ function chunkTopics(topics: TopicDTO[], chunkSize: number): TopicDTO[][] {
 export default function FeaturedTopicsCarousel({ topics }: FeaturedTopicsCarouselProps) {
   const slides = useMemo(() => chunkTopics(topics, 3), [topics]);
   const [page, setPage] = useState(0);
+
+  // Mobile carousel (Embla) state
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, dragFree: false });
+  const [mobileIndex, setMobileIndex] = useState(0);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    const onSelect = () => {
+      const idx = emblaApi.selectedScrollSnap();
+      setMobileIndex(idx);
+      setPage(idx);
+    };
+    emblaApi.on('select', onSelect);
+    onSelect();
+    return () => {
+      emblaApi.off('select', onSelect);
+    };
+  }, [emblaApi]);
+
+  const scrollToMobile = (index: number) => {
+    if (!emblaApi) return;
+    emblaApi.scrollTo(index);
+  };
 
   if (!topics.length) {
     return (
@@ -50,20 +74,35 @@ export default function FeaturedTopicsCarousel({ topics }: FeaturedTopicsCarouse
   return (
     <div className="w-full">
       <div className="md:hidden">
-        <div className="grid grid-cols-1 gap-4">
-          {currentSlide.map((topic, idx) => (
-            <Link
-              key={topic.id}
-              href={`/topics/${topic.id}`}
-              className="group relative flex min-h-[4.5rem] flex-col justify-end rounded-3xl p-4 transition-all hover:shadow-xl hover:-translate-y-1 overflow-hidden"
-              style={{ backgroundColor: CARD_COLORS[(page * 3 + idx) % CARD_COLORS.length] }}
-            >
-              <h3 className="text-base font-bold text-[#111621] tracking-tighter leading-tight line-clamp-2">
-                {topic.name}
-              </h3>
-            </Link>
-          ))}
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex touch-pan-x gap-3 px-1">
+            {slides.map((slideTopics, slideIndex) => (
+              <div
+                key={slideIndex}
+                className="min-w-0 flex-[0_0_100%]"
+              >
+                <div className="grid grid-cols-1 gap-4">
+                  {slideTopics.map((topic, idx) => (
+                    <Link
+                      key={topic.id}
+                      href={`/topics/${topic.id}`}
+                      className="group relative flex min-h-[4.5rem] flex-col justify-end rounded-3xl p-4 transition-all hover:shadow-xl hover:-translate-y-1 overflow-hidden"
+                      style={{
+                        backgroundColor:
+                          CARD_COLORS[(slideIndex * 3 + idx) % CARD_COLORS.length],
+                      }}
+                    >
+                      <h3 className="text-base font-bold text-[#111621] tracking-tighter leading-tight line-clamp-2">
+                        {topic.name}
+                      </h3>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
 
       <div className="hidden md:block">
