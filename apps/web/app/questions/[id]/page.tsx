@@ -40,6 +40,17 @@ export default function QuestionDetail() {
   const buildSourceLabel = (outletName?: string | null, publishedDate?: string | null) =>
     `${outletName || 'Unknown outlet'} — ${formatPublicationDate(publishedDate)}`;
 
+  const formatLastUpdated = (iso?: string) => {
+    if (!iso) return null;
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   const uniqueByOutlet = <T extends { outletName?: string | null }>(items: T[]) => {
     const seen = new Set<string>();
     return items.filter((item) => {
@@ -125,6 +136,15 @@ export default function QuestionDetail() {
               <p className="text-lg text-text-muted leading-relaxed">
                 <span className="font-bold text-text-main">{consensusPercentage}% consensus</span> based on the perspective of <span className="font-bold text-text-main">{verdict?.articleCount || 0}</span> journalists from <span className="font-bold text-text-main">{verdict?.outletCount || 0}</span> publications.
               </p>
+              {formatLastUpdated(verdict?.calculatedAt) && (
+                <p className="text-sm text-text-muted">
+                  Last updated{' '}
+                  <span className="font-semibold text-text-main">
+                    {formatLastUpdated(verdict?.calculatedAt)}
+                  </span>
+                  .
+                </p>
+              )}
 
               <div className="flex items-center -space-x-3 pl-1">
                 {uniqueOutlets.slice(0, 6).map((outlet, i) => (
