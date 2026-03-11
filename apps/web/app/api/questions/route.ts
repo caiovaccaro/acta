@@ -7,7 +7,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const featured = searchParams.get('featured');
     const featuredOnly = featured === 'true' || featured === '1';
-    const questions = await getAllQuestions({ featuredOnly });
+    const bucketParam = searchParams.get('bucket');
+    const bucket =
+      bucketParam === 'consensus' || bucketParam === 'under-debate'
+        ? bucketParam
+        : 'all';
+
+    const questions = await getAllQuestions({ featuredOnly, bucket });
     return NextResponse.json(questions);
   } catch (error) {
     console.error('Error fetching questions:', error);
