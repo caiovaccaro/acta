@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuestions } from '../lib/hooks/useQuestions';
 import { useTopics } from '../lib/hooks/useTopics';
 import QuestionCard from './components/QuestionCard';
@@ -7,7 +8,10 @@ import FeaturedTopicsCarousel from './components/FeaturedTopicsCarousel';
 import { HERO_LOGO_URLS } from '../lib/utils/outletLogos';
 
 export default function Home() {
-  const { data: questions, isLoading, error } = useQuestions({ featuredOnly: true });
+  const { data: consensusQuestions, isLoading: consensusLoading, error: consensusError } =
+    useQuestions({ bucket: 'consensus' });
+  const { data: underDebateQuestions, isLoading: underDebateLoading, error: underDebateError } =
+    useQuestions({ bucket: 'under-debate' });
   const {
     data: featuredTopics,
     isLoading: topicsLoading,
@@ -85,38 +89,91 @@ export default function Home() {
           )}
         </section>
 
-        {/* Featured Debates / Topics Section */}
+        {/* Consensus Reached Section */}
+        {consensusQuestions && consensusQuestions.length > 0 && (
+          <section className="py-8 sm:py-12">
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
+                  Consensus reached
+                </h2>
+                <p className="text-text-muted">
+                  Questions where our verdict leans clearly yes or no.
+                </p>
+              </div>
+            </div>
+            {consensusLoading && (
+              <div className="text-center py-8">
+                <p className="text-text-muted">Loading questions...</p>
+              </div>
+            )}
+            {consensusError && (
+              <div className="text-center py-8">
+                <p className="text-red-600">Error loading questions. Please try again later.</p>
+              </div>
+            )}
+            {!consensusLoading && !consensusError && (
+              <>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                  {consensusQuestions.slice(0, 9).map((question) => (
+                    <QuestionCard key={question.id} question={question} />
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-center">
+                  <Link
+                    href="/questions/consensus"
+                    className="text-sm font-semibold text-primary-blue hover:underline"
+                  >
+                    See all questions that reached consensus
+                  </Link>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {/* Under Debate Section (formerly Featured Debates) */}
         <section className="py-8 sm:py-12">
           <div className="flex items-end justify-between mb-12">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
-                Featured Debates
+                Under debate
               </h2>
               <p className="text-text-muted">
-                Select a debate to explore deep-dives and specific questions.
+                Questions where the evidence is mixed and the answer is still unclear.
               </p>
             </div>
           </div>
-          {isLoading && (
+          {underDebateLoading && (
             <div className="text-center py-12">
               <p className="text-text-muted">Loading questions...</p>
             </div>
           )}
-          {error && (
+          {underDebateError && (
             <div className="text-center py-12">
               <p className="text-red-600">Error loading questions. Please try again later.</p>
             </div>
           )}
-          {questions && questions.length > 0 && (
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {questions.map((question) => (
-                <QuestionCard key={question.id} question={question} />
-              ))}
-            </div>
+          {underDebateQuestions && underDebateQuestions.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {underDebateQuestions.slice(0, 9).map((question) => (
+                  <QuestionCard key={question.id} question={question} />
+                ))}
+              </div>
+              <div className="mt-6 flex justify-center">
+                <Link
+                  href="/questions/under-debate"
+                  className="text-sm font-semibold text-primary-blue hover:underline"
+                >
+                  See all questions under debate
+                </Link>
+              </div>
+            </>
           )}
-          {questions && questions.length === 0 && (
+          {underDebateQuestions && underDebateQuestions.length === 0 && !underDebateLoading && !underDebateError && (
             <div className="text-center py-12">
-              <p className="text-text-muted">No questions available yet.</p>
+              <p className="text-text-muted">No questions under debate yet.</p>
             </div>
           )}
         </section>
