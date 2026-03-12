@@ -29,6 +29,7 @@ model Outlet {
   ideology        Ideology
   credibilityScore Float   @default(0.5) // 0-1 scale
   rssFeeds        Json     // Array of RSS feed URLs
+  countryCode     String?  @db.VarChar(2)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -38,6 +39,7 @@ model Outlet {
 
   @@index([ideology])
   @@index([credibilityScore])
+  @@index([countryCode])
   @@map("outlets")
 }
 

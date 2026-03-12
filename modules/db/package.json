@@ -29,6 +29,7 @@
     "db:generate:featured-perspectives": "tsx src/scripts/generateFeaturedPerspectives.ts",
     "db:regenerate:overview-bullets": "tsx src/scripts/regenerateOverviewBullets.ts",
     "db:backfill:llm-content": "tsx src/scripts/backfillLlmContent.ts",
+    "db:backfill:outlet-countries": "tsx src/scripts/backfillOutletCountryCodes.ts",
     "db:retry:failed-crawls": "tsx src/scripts/retryFailedCrawls.ts",
     "db:inspect:crawl-requests": "tsx src/scripts/inspectCrawlRequests.ts",
     "db:analyze:funnel": "tsx src/scripts/analyzePipelineFunnel.ts",
