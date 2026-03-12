@@ -90,47 +90,50 @@ export default function Home() {
         </section>
 
         {/* Consensus Reached Section */}
-        {consensusQuestions && consensusQuestions.length > 0 && (
-          <section className="py-8 sm:py-12">
-            <div className="flex items-end justify-between mb-4">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
-                  Consensus reached
-                </h2>
-                <p className="text-text-muted">
-                  Questions where our verdict leans clearly yes or no.
-                </p>
-              </div>
+        <section className="py-8 sm:py-12">
+          <div className="flex items-end justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-left sm:text-3xl mb-2">
+                Consensus reached
+              </h2>
+              <p className="text-text-muted">
+                Questions where our verdict leans clearly yes or no.
+              </p>
             </div>
-            {consensusLoading && (
-              <div className="text-center py-8">
-                <p className="text-text-muted">Loading questions...</p>
+          </div>
+          {consensusLoading && (
+            <div className="text-center py-8">
+              <p className="text-text-muted">Loading questions...</p>
+            </div>
+          )}
+          {consensusError && (
+            <div className="text-center py-8">
+              <p className="text-red-600">Error loading questions. Please try again later.</p>
+            </div>
+          )}
+          {!consensusLoading && !consensusError && consensusQuestions && consensusQuestions.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {consensusQuestions.slice(0, 9).map((question) => (
+                  <QuestionCard key={question.id} question={question} />
+                ))}
               </div>
-            )}
-            {consensusError && (
-              <div className="text-center py-8">
-                <p className="text-red-600">Error loading questions. Please try again later.</p>
+              <div className="mt-6 flex justify-center">
+                <Link
+                  href="/questions/consensus"
+                  className="text-sm font-semibold text-primary-blue hover:underline"
+                >
+                  See all questions that reached consensus
+                </Link>
               </div>
-            )}
-            {!consensusLoading && !consensusError && (
-              <>
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                  {consensusQuestions.slice(0, 9).map((question) => (
-                    <QuestionCard key={question.id} question={question} />
-                  ))}
-                </div>
-                <div className="mt-6 flex justify-center">
-                  <Link
-                    href="/questions/consensus"
-                    className="text-sm font-semibold text-primary-blue hover:underline"
-                  >
-                    See all questions that reached consensus
-                  </Link>
-                </div>
-              </>
-            )}
-          </section>
-        )}
+            </>
+          )}
+          {!consensusLoading && !consensusError && consensusQuestions && consensusQuestions.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-text-muted">No questions have reached consensus yet.</p>
+            </div>
+          )}
+        </section>
 
         {/* Under Debate Section (formerly Featured Debates) */}
         <section className="py-8 sm:py-12">

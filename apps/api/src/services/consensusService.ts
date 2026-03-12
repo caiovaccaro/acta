@@ -5,7 +5,12 @@ import {
   findLatestVerdictByQuestion,
 } from '@acta/db';
 import { getCurrentMonthPeriod, parseMonthPeriod } from '@acta/core';
-import type { ConsensusThermometerDTO, OutletStanceDTO, Stance } from '@acta/shared';
+import type {
+  ConsensusThermometerDTO,
+  OutletStanceDTO,
+  Stance,
+  CountryOpinionDTO,
+} from '@acta/shared';
 
 /**
  * Get consensus thermometer data for a question
@@ -158,5 +163,174 @@ export async function getConsensusThermometer(
     outletStances,
     stanceSummary,
   };
+}
+
+/**
+ * Aggregate stances by outlet country for a world map view.
+ */
+export async function getQuestionCountryStances(
+  questionId: string,
+  month?: string
+): Promise<CountryOpinionDTO[]> {
+  const question = await findQuestionById(questionId);
+  if (!question) return [];
+
+  let monthDate = month
+    ? parseMonthPeriod(month)
+    : getCurrentMonthPeriod();
+
+  const verdict = await findVerdictByQuestionAndMonth(questionId, monthDate);
+  const currentVerdict = verdict || await findLatestVerdictByQuestion(questionId);
+  if (!verdict && currentVerdict) {
+    monthDate = currentVerdict.month;
+  }
+
+  const stances = await findArticleStancesByQuestionId(questionId);
+
+  const monthStances = stances.filter((stance) => {
+    const attempt = (stance as any).articleAnalysisAttempt;
+    if (!attempt) return false;
+    const attemptMonth = new Date(attempt.month);
+    return (
+      attemptMonth.getFullYear() === monthDate.getFullYear() &&
+      attemptMonth.getMonth() === monthDate.getMonth()
+    );
+  });
+
+  // Use month-filtered stances when available; otherwise use all stances so the map still shows data
+  const stancesToUse = monthStances.length > 0 ? monthStances : stances;
+
+  const countryMap = new Map<
+    string,
+    {
+      articleIds: Set<string>;
+      outletIds: Set<string>;
+      stanceCounts: Record<Stance, number>;
+      outletStanceCounts: Map<
+        string,
+        {
+          outletName: string;
+          stanceCounts: Record<Stance, number>;
+        }
+      >;
+    }
+  >();
+
+  for (const stance of stancesToUse) {
+    const article = (stance as any).article;
+    const outlet = article?.outlet;
+    const attempt = (stance as any).articleAnalysisAttempt;
+    if (!outlet || !attempt) continue;
+
+    const countryCode = outlet.countryCode;
+    if (!countryCode) continue;
+
+    const stanceLabel = attempt.stance as Stance;
+
+    let entry = countryMap.get(countryCode);
+    if (!entry) {
+      entry = {
+        articleIds: new Set<string>(),
+        outletIds: new Set<string>(),
+        stanceCounts: {
+          YesItSeemsSo: 0,
+          ProbablyYes: 0,
+          Unclear: 0,
+          ProbablyNot: 0,
+          NoItDoesntSeemSo: 0,
+        },
+        outletStanceCounts: new Map(),
+      };
+      countryMap.set(countryCode, entry);
+    }
+
+    entry.articleIds.add(article.id);
+    entry.outletIds.add(outlet.id);
+    entry.stanceCounts[stanceLabel] += 1;
+
+    const outletKey = outlet.id;
+    let outletEntry = entry.outletStanceCounts.get(outletKey);
+    if (!outletEntry) {
+      outletEntry = {
+        outletName: outlet.name,
+        stanceCounts: {
+          YesItSeemsSo: 0,
+          ProbablyYes: 0,
+          Unclear: 0,
+          ProbablyNot: 0,
+          NoItDoesntSeemSo: 0,
+        },
+      };
+      entry.outletStanceCounts.set(outletKey, outletEntry);
+    }
+    outletEntry.stanceCounts[stanceLabel] += 1;
+  }
+
+  const results: CountryOpinionDTO[] = [];
+
+  for (const [countryCode, data] of Array.from(countryMap.entries())) {
+    const articleCount = data.articleIds.size;
+    const outletCount = data.outletIds.size;
+
+    // Determine dominant stance
+    let dominant: Stance = 'Unclear';
+    let maxCount = -1;
+    let total = 0;
+
+    (Object.keys(data.stanceCounts) as Stance[]).forEach((stanceLabel) => {
+      const count = data.stanceCounts[stanceLabel];
+      total += count;
+      if (count > maxCount) {
+        maxCount = count;
+        dominant = stanceLabel;
+      }
+    });
+
+    if (total === 0) continue;
+
+    const dominanceRatio = maxCount > 0 ? maxCount / total : 0;
+
+    // Require at least one article and one outlet per country to show on the map
+    if (articleCount < 1 || outletCount < 1) continue;
+
+    // Require at least simple plurality; if too balanced, mark as Unclear
+    if (maxCount / total < 0.4) {
+      dominant = 'Unclear';
+    }
+
+    // Build per-outlet summaries for this country (for tooltips on the map)
+    const outlets = Array.from(data.outletStanceCounts.values()).map((outletEntry) => {
+      let outletDominant: Stance = 'Unclear';
+      let outletMax = -1;
+      let outletTotal = 0;
+      (Object.keys(outletEntry.stanceCounts) as Stance[]).forEach((stanceLabel) => {
+        const c = outletEntry.stanceCounts[stanceLabel];
+        outletTotal += c;
+        if (c > outletMax) {
+          outletMax = c;
+          outletDominant = stanceLabel;
+        }
+      });
+      if (outletTotal === 0) {
+        outletDominant = 'Unclear';
+      }
+      return {
+        outletName: outletEntry.outletName,
+        stance: outletDominant,
+        articleCount: outletTotal,
+      };
+    }).sort((a, b) => b.articleCount - a.articleCount);
+
+    results.push({
+      countryCode,
+      dominantStance: dominant,
+      articleCount,
+      outletCount,
+      dominanceRatio,
+      outlets,
+    });
+  }
+
+  return results;
 }
 
