@@ -42,7 +42,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, ideology, credibilityScore, rssFeeds } = body;
+    const { name, ideology, credibilityScore, rssFeeds, countryCode } = body;
 
     const outlet = await prisma.outlet.update({
       where: { id: params.id },
@@ -51,6 +51,7 @@ export async function PUT(
         ideology: ideology || 'Center',
         credibilityScore: credibilityScore ?? 0.5,
         rssFeeds: rssFeeds || [],
+        countryCode: countryCode ?? null,
       },
     });
 

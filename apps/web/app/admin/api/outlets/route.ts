@@ -6,7 +6,12 @@ export async function GET() {
   try {
     const outlets = await prisma.outlet.findMany({
       orderBy: { name: 'asc' },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        ideology: true,
+        credibilityScore: true,
+        countryCode: true,
         _count: {
           select: {
             articles: true,

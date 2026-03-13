@@ -76,7 +76,7 @@ export function QuestionWorldMap({ countries }: QuestionWorldMapProps) {
   } | null>(null);
 
   return (
-    <div className="rounded-xl border border-border-light bg-white px-3 pt-4 pb-5 md:px-4 md:pt-5 md:pb-6 shadow-sm">
+    <div className="relative rounded-xl border border-border-light bg-white px-3 pt-4 pb-5 md:px-4 md:pt-5 md:pb-6 shadow-sm">
       <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-baseline md:justify-between">
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-text-muted">
@@ -87,7 +87,7 @@ export function QuestionWorldMap({ countries }: QuestionWorldMapProps) {
           </p>
         </div>
       </div>
-      <div className="w-full max-h-[260px] md:max-h-[280px]">
+      <div className="relative z-0 w-full max-h-[260px] md:max-h-[330px] overflow-hidden">
         <ComposableMap
           projectionConfig={{ scale: 140 }}
           width={800}
@@ -148,7 +148,7 @@ export function QuestionWorldMap({ countries }: QuestionWorldMapProps) {
           </Geographies>
         </ComposableMap>
       </div>
-      <div className="mt-3 flex items-start gap-3 rounded-lg border border-border-light bg-white px-3 py-2 text-[11px] md:text-xs shadow-sm h-20 overflow-hidden">
+      <div className="flex items-start gap-3 rounded-lg border border-border-light bg-white px-3 py-2 text-[11px] md:text-xs shadow-sm h-20 overflow-hidden relative z-10">
         <div className="flex flex-col flex-1 overflow-hidden">
           {hovered ? (
             <>
