@@ -40,6 +40,7 @@ export default function AdminOutlets() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Ideology</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Credibility</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Country</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Articles</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Crawl Requests</th>
               </tr>
@@ -65,6 +66,9 @@ export default function AdminOutlets() {
                   </td>
                   <td className="px-6 py-4 text-text-muted">
                     {(outlet.credibilityScore * 100).toFixed(0)}%
+                  </td>
+                  <td className="px-6 py-4 text-text-muted">
+                    {outlet.countryCode || '—'}
                   </td>
                   <td className="px-6 py-4 text-text-muted">{outlet._count.articles}</td>
                   <td className="px-6 py-4 text-text-muted">{outlet._count.crawlRequests}</td>
