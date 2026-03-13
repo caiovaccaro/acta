@@ -8,9 +8,11 @@ import { useQuestion } from '../../../lib/hooks/useQuestion';
 import { useVerdict } from '../../../lib/hooks/useVerdict';
 import { useDebateCard } from '../../../lib/hooks/useDebateCard';
 import { useConsensusThermometer } from '../../../lib/hooks/useConsensusThermometer';
+import { useCountryStances } from '../../../lib/hooks/useCountryStances';
 import { getOutletLogoUrl } from '../../../lib/utils/outletLogos';
 import NextCause from '../../components/NextCause';
 import VerdictSlider from '../../components/VerdictSlider';
+import { QuestionWorldMap } from '../../components/QuestionWorldMap';
 
 export default function QuestionDetail() {
   const params = useParams();
@@ -20,6 +22,7 @@ export default function QuestionDetail() {
   const { data: verdict } = useVerdict(questionId || '', undefined);
   const { data: debateCard } = useDebateCard(questionId || '', undefined);
   const { data: consensus } = useConsensusThermometer(questionId || '', undefined);
+  const { data: countryStances } = useCountryStances(questionId || '', undefined);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -176,6 +179,11 @@ export default function QuestionDetail() {
                   </li>
                 ))}
               </ul>
+              {countryStances && countryStances.length > 0 && (
+                <div className="mt-6">
+                  <QuestionWorldMap countries={countryStances} />
+                </div>
+              )}
             </div>
           ) : (
             debateCard?.overview && (
@@ -184,6 +192,11 @@ export default function QuestionDetail() {
                 <div className="text-text-muted leading-relaxed text-base whitespace-pre-line">
                   {debateCard.overview}
                 </div>
+                {countryStances && countryStances.length > 0 && (
+                  <div className="mt-6">
+                    <QuestionWorldMap countries={countryStances} />
+                  </div>
+                )}
               </div>
             )
           )}

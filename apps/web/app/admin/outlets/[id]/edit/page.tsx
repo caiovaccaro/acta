@@ -35,6 +35,7 @@ export default function EditOutlet() {
   const [ideology, setIdeology] = useState('Center');
   const [credibilityScore, setCredibilityScore] = useState(0.5);
   const [rssFeeds, setRssFeeds] = useState('');
+  const [countryCode, setCountryCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,6 +45,7 @@ export default function EditOutlet() {
       setIdeology(outlet.ideology || 'Center');
       setCredibilityScore(outlet.credibilityScore || 0.5);
       setRssFeeds(Array.isArray(outlet.rssFeeds) ? outlet.rssFeeds.join('\n') : '');
+      setCountryCode(outlet.countryCode || '');
     }
   }, [outlet]);
 
@@ -59,6 +61,7 @@ export default function EditOutlet() {
         ideology,
         credibilityScore,
         rssFeeds: feedsArray,
+        countryCode: countryCode || null,
       });
       router.push('/admin/outlets');
     } catch (err) {
@@ -129,6 +132,19 @@ export default function EditOutlet() {
               value={credibilityScore}
               onChange={(e) => setCredibilityScore(parseFloat(e.target.value))}
               className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-text-main mb-2">
+              Country Code (ISO 3166-1 alpha-2, e.g. US, GB, DE)
+            </label>
+            <input
+              type="text"
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value.toUpperCase().slice(0, 2))}
+              className="w-full px-4 py-2 border border-border-light rounded-lg focus:ring-2 focus:ring-primary-blue focus:border-transparent uppercase"
+              maxLength={2}
             />
           </div>
 

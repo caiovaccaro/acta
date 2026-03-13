@@ -29,6 +29,28 @@ export interface OutletStanceDTO {
   weightedContribution: number; // This outlet's contribution to the verdict (weighted by credibility)
 }
 
+export interface CountryOutletSummaryDTO {
+  outletName: string;
+  stance: Stance;
+  articleCount: number;
+}
+
+export interface CountryOpinionDTO {
+  countryCode: string;
+  dominantStance: Stance;
+  articleCount: number;
+  outletCount: number;
+  /**
+   * How concentrated the dominant stance is for this country (0-1).
+   * 1.0 means all stances agree; lower values mean more mixed opinions.
+   */
+  dominanceRatio: number;
+  /**
+   * Per-outlet summaries for this country (used for tooltips on the world map).
+   */
+  outlets: CountryOutletSummaryDTO[];
+}
+
 
 
 
