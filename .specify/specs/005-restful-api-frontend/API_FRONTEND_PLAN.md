@@ -1,4 +1,4 @@
-> Historical plan. Public HTTP is Next.js `apps/web/app/api/*`, not a standalone Fastify server. See `apps/api/README.md`.
+> Historical plan from when a standalone Fastify server was considered. Public HTTP is Next.js `apps/web/app/api/*`. Fastify is not in the repo. See `apps/api/README.md`.
 
 # RESTful API & Frontend Integration Plan
 

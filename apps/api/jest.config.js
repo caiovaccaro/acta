@@ -22,7 +22,7 @@ export default {
       },
     ],
   },
-  testTimeout: 30000, // 30 seconds for integration tests
+  testTimeout: 30000,
   verbose: true,
 };
 

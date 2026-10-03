@@ -59,7 +59,6 @@
         "db:converge:similar-topics": "cd modules/db && npm run db:converge:similar-topics --",
         "db:deactivate:low-evidence-questions": "cd modules/db && npm run db:deactivate:low-evidence-questions --",
         "web:dev": "cd apps/web && npm run dev",
-        "api:dev": "cd apps/api && npm run dev",
         "test": "npm run test --workspaces",
         "test:web": "cd apps/web && npm test",
         "test:api": "cd apps/api && npm test",

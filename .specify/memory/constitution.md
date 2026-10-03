@@ -147,7 +147,7 @@ This ensures:
 - **Language**: TypeScript / Node.js 20+
 - **Monorepo**: npm workspaces
 - **Frontend**: Next.js 14 (public UI, `/api/*`, `/admin`)
-- **API services**: `@acta/api` (imported by Next.js; Fastify listener is unused in production)
+- **API services**: `@acta/api` (imported by Next.js)
 - **Crawler**: Crawlee for RSS and article extraction
 - **Database**: PostgreSQL + pgvector (Docker Compose locally; hosted Postgres in production)
 - **ORM**: Prisma
@@ -184,7 +184,7 @@ acta/
 
 **apps/web:**
 - Public site, admin UI at `/admin`, and HTTP API at `/api/*`
-- Import `@acta/api` services; do not call a separate Fastify process
+- Import `@acta/api` services
 - Styled with Tailwind
 
 ### Module Responsibilities
