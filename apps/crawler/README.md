@@ -21,20 +21,20 @@ The crawler operates in two phases:
 
 - Node.js 20+
 - PostgreSQL with pgvector (via Docker Compose)
-- pnpm
+- npm
 
 ### Installation
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Ensure database is running
 docker compose up -d
 
 # Run database migrations
 cd ../../modules/db
-pnpm db:migrate
+npm run db:migrate
 ```
 
 ### Environment Variables
@@ -57,21 +57,21 @@ STUCK_REQUEST_THRESHOLD_MINUTES=60 # Reset stuck requests after this many minute
 
 ```bash
 # From project root
-pnpm crawler:start
+npm run crawler:start
 
 # Or from crawler directory
 cd apps/crawler
-pnpm start
+npm start
 ```
 
 ### Export Data
 
 ```bash
 # Export articles to CSV/JSON
-pnpm crawler:export:articles
+npm run crawler:export:articles
 
 # Export RSS metadata (crawl requests) to CSV/JSON
-pnpm crawler:export:rss
+npm run crawler:export:rss
 ```
 
 ### Migration from File Storage
@@ -79,7 +79,7 @@ pnpm crawler:export:rss
 If you have existing data in Crawlee file storage:
 
 ```bash
-pnpm crawler:migrate:storage
+npm run crawler:migrate:storage
 ```
 
 ## Configuration
@@ -100,10 +100,10 @@ For periodic execution (e.g., cron jobs), set `MAX_ARTICLES_PER_RUN` to limit wo
 
 ```bash
 # Run integration tests
-pnpm test
+npm test
 
 # Watch mode
-pnpm test:watch
+npm run test:watch
 ```
 
 ## Project Structure
@@ -170,7 +170,7 @@ docker compose up -d
 Check database health:
 ```bash
 cd ../../modules/db
-pnpm db:health
+npm run db:health
 ```
 
 ### Stuck Requests
@@ -192,5 +192,5 @@ The crawler has been migrated from Crawlee file storage to PostgreSQL:
 - ✅ No file-based deduplication (handled by database)
 - ✅ Optional `pushData` for backward compatibility (no-op if not used)
 
-Old file storage is ignored but can be migrated using `pnpm crawler:migrate:storage`.
+Old file storage is ignored but can be migrated using `npm run crawler:migrate:storage`.
 

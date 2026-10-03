@@ -3,7 +3,7 @@
 **Feature**: Paywalled Publication Support  
 **Created**: 2025-01-27  
 **Status**: Draft  
-**Related**: `PAID_OUTLETS.md` (reference spec)
+**Related**: crawler outlet config in `apps/crawler/src/config/outlets.json`
 
 ## Overview
 
@@ -74,7 +74,7 @@ This specification defines the implementation of paywall support for RSS-driven 
    - `apiBase?: string`
    - `readerEndpoint?: string`
    - `rateLimit: { maxRPS: number, jitterMs: number }`
-   - `contentPolicy: 'excerpt-only' | 'full-text-licensed' | 'meta-only'`
+   - `contentPolicy: 'excerpt-only' | 'full-text' | 'meta-only'`
 
 2. **Environment Variables**:
    - `OUTLET_WSJ_LOGIN` (for Wall Street Journal)
@@ -156,7 +156,7 @@ interface OutletConfig {
   readerEndpoint?: string;
   ampParam?: string;
   printParam?: string;
-  contentPolicy: 'excerpt-only' | 'full-text-licensed' | 'meta-only';
+  contentPolicy: 'excerpt-only' | 'full-text' | 'meta-only';
   rateLimit: {
     maxRPS: number;
     jitterMs: number;
@@ -218,19 +218,16 @@ interface OutletConfig {
 
 ### Environment Setup
 
-Create `apps/crawler/.env` file with credentials:
+Create `apps/crawler/.env` with placeholders only. Never commit real credentials.
 
 ```bash
-# Wall Street Journal
-OUTLET_WSJ_LOGIN=REDACTED
-OUTLET_WSJ_PASSWORD=REDACTED
+OUTLET_WSJ_LOGIN=your-wsj-login
+OUTLET_WSJ_PASSWORD=your-wsj-password
 
-# The Telegraph
-OUTLET_TELEGRAPH_LOGIN=REDACTED
-OUTLET_TELEGRAPH_PASSWORD=REDACTED
+OUTLET_TELEGRAPH_LOGIN=your-telegraph-login
+OUTLET_TELEGRAPH_PASSWORD=your-telegraph-password
 
-# Session Encryption Key (change in production)
-SESSION_ENCRYPTION_KEY=dev-key-change-in-production
+SESSION_ENCRYPTION_KEY=generate-a-long-random-string
 ```
 
 ### Error Handling & Monitoring

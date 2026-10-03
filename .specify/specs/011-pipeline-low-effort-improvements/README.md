@@ -27,8 +27,6 @@ Add low-effort, near-term optimizations to the article analysis pipeline to redu
 - Large data model refactors.
 - Replacing generative model path for summary/content generation.
 
-## Related Pipeline Docs
+## Related pipeline docs
 
-- [`/Users/caiovaccaro/Documents/Sites/acta/PIPELINE_OPTIMIZATION.md`](/Users/caiovaccaro/Documents/Sites/acta/PIPELINE_OPTIMIZATION.md)
-- [`/Users/caiovaccaro/Documents/Sites/acta/PIPELINE_IMPROVEMENT_SUGGESTIONS.md`](/Users/caiovaccaro/Documents/Sites/acta/PIPELINE_IMPROVEMENT_SUGGESTIONS.md)
-- [`/Users/caiovaccaro/Documents/Sites/acta/.specify/specs/003-article-analysis-pipeline/README.md`](/Users/caiovaccaro/Documents/Sites/acta/.specify/specs/003-article-analysis-pipeline/README.md)
+- [Article analysis pipeline spec](../003-article-analysis-pipeline/README.md)

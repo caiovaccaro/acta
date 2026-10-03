@@ -110,7 +110,7 @@ try {
                 rssFeeds,
                 paywallType: 'None',
                 requiresAuth: false,
-                contentPolicy: 'full-text-licensed',
+                contentPolicy: 'full-text',
                 rateLimit: { maxRPS: 10, jitterMs: 100 },
             };
         });

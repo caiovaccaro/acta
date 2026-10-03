@@ -1,92 +1,81 @@
-# Acta Platform
+# Acta
 
 Data-driven consensus verdicts on complex topics.
 
-## Quick Start
+## Quick start
 
 ### Prerequisites
 
 - Node.js 20+
-- pnpm
-- Docker & Docker Compose
+- npm
+- Docker and Docker Compose
 
 ### Setup
 
-1. **Clone and install dependencies:**
+1. Clone and install:
+
    ```bash
-   pnpm install
+   npm install
    ```
 
-2. **Start PostgreSQL:**
+2. Start PostgreSQL:
+
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
-3. **Set up environment variables:**
-   Create a `.env` file in the project root:
+3. Copy `.env.example` to `.env` in the project root and fill in values. Local Docker defaults:
+
    ```env
    DATABASE_URL="postgresql://acta:acta_dev_password@localhost:5432/acta_dev?schema=public"
    NODE_ENV=development
-   ```
-   Admin auth requires these additional variables:
-   ```env
-   ADMIN_EMAIL="admin@acta.app"
+   ADMIN_EMAIL="admin@example.com"
    ADMIN_PASSWORD="change-me"
    ADMIN_SESSION_SECRET="change-this-to-a-long-random-string"
    ```
 
-4. **Set up database:**
+4. Generate the Prisma client and run migrations:
+
    ```bash
-   # Generate Prisma client
-   pnpm --filter @acta/db db:generate
-   
-   # Run migrations
-   pnpm --filter @acta/db db:migrate
+   npm run db:generate
+   npm run db:migrate
    ```
 
-5. **Start the app (web + API + admin):**
-   ```bash
-   pnpm run web:dev
-   ```
-   This runs the Next.js app: public site, API routes under `/api/*`, and admin UI at `/admin` (e.g. `/admin/topics`, `/admin/questions`, `/admin/verdicts`).
+5. Start the Next.js app (public site, `/api/*`, admin at `/admin`):
 
-6. **Crawler (optional, separate process):**
    ```bash
-   pnpm run crawler:start
+   npm run web:dev
    ```
 
-7. **Reactive discovery (optional):**
+6. Optional crawler:
+
+   ```bash
+   npm run crawler:start
+   ```
+
+7. Optional topic/question discovery (approve in admin before analysis):
+
    ```bash
    npm run db:discover:topics
    npm run db:discover:questions
-   # Then approve in admin UI before analysis
    ```
 
-## Project Structure
+## Layout
 
-- `apps/web` - Next.js app (public site, API routes, and admin UI)
-- `apps/crawler` - Crawler service
-- `apps/api` / `apps/admin` - Standalone packages (used by web; not run separately for local dev)
-- `modules/` - Shared modules (db, config, core, shared)
+- `apps/web` — Next.js public site, API routes, and admin UI
+- `apps/api` — API services imported by `apps/web` (not a separate local server)
+- `apps/crawler` — RSS crawl and article extraction
+- `modules/` — `db`, `core`, `config`, `shared`
 
-## Available Commands
+## Commands
 
-### App
-- `pnpm run web:dev` - Run web app (site + API + admin)
+- `npm run web:dev` — site + API + admin
+- `npm run crawler:start` — crawler
+- `npm run db:generate` / `npm run db:migrate` / `npm run db:studio`
+- `npm test` — workspace tests
 
-### Crawler
-- `pnpm run crawler:start` (or `pnpm start`) - Run crawler
-- `pnpm run crawler:export:rss` - Export RSS data
-- `pnpm run crawler:export:articles` - Export articles
+## Docs
 
-### Database
-- `pnpm --filter @acta/db db:generate` - Generate Prisma client
-- `pnpm --filter @acta/db db:migrate` - Run migrations
-- `pnpm --filter @acta/db db:studio` - Open Prisma Studio
-
-## Documentation
-
-See `documentation/` for:
-- PRD (Product Requirements Document)
-- Architecture overview
-- Technical specifications
+- `documentation/prd.md` — historical product brief
+- `documentation/architecture.md` — current layout
+- `documentation/tech_specs/` — crawler and related specs

@@ -91,7 +91,7 @@ The Web application MUST NOT access the database directly. All data access MUST 
 - Simplified frontend development
 
 ### VII. Monorepo Organization (NON-NEGOTIABLE)
-The project MUST be organized as a pnpm workspace monorepo with strict module boundaries:
+The project MUST be organized as an npm workspace monorepo with strict module boundaries:
 - **apps/**: Deployable runtimes (api, web, crawler)
 - **modules/**: Shared logic (db, core, config, shared)
 - **infra/**: Infrastructure configuration (docker, aws)
@@ -145,7 +145,7 @@ This ensures:
 
 ### Technology Stack
 - **Language**: TypeScript / Node.js 20+
-- **Monorepo**: pnpm workspaces
+- **Monorepo**: npm workspaces
 - **Frontend**: Next.js 14 + Tailwind + shadcn/ui
 - **Backend API**: Fastify
 - **Crawler**: Crawlee 3.0+ for web scraping and crawling
@@ -320,6 +320,6 @@ This constitution supersedes all other development practices and coding standard
 - Constitution changes MUST be committed with clear messages
 - Format: `docs: amend constitution to vX.Y.Z (description of changes)`
 - Constitution file MUST include Sync Impact Report in HTML comments
-- Changes affecting monorepo structure MUST update `documentation/structure.md`
+- Changes affecting monorepo structure MUST update `documentation/architecture.md`
 
 **Version**: 2.0.0 | **Ratified**: 2025-01-27 | **Last Amended**: 2025-01-27

@@ -201,7 +201,7 @@ This document outlines the plan to implement a hybrid approach that combines:
 ### Phase 5: Moderation Interface (Future - Optional for MVP)
 
 #### Task 5.1: Admin Interface for Topic Moderation
-- **File**: `apps/admin/src/pages/topics/moderation.tsx` (future)
+- **File**: `apps/web/app/admin/topics` (future)
 - **Functionality**:
   - List topics with `moderationStatus: 'pending'`
   - Show discovered topics with source articles
@@ -209,7 +209,7 @@ This document outlines the plan to implement a hybrid approach that combines:
   - Edit topic names/descriptions before approval
 
 #### Task 5.2: Admin Interface for Question Moderation
-- **File**: `apps/admin/src/pages/questions/moderation.tsx` (future)
+- **File**: `apps/web/app/admin/questions` (future)
 - **Functionality**:
   - List questions with `validationStatus: 'pending'` or `'needs_reformulation'`
   - Show discovered questions with source articles

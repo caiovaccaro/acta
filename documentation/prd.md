@@ -1,8 +1,10 @@
+> Historical Phase 1 product brief. It does not describe the current codebase. See `README.md` and `documentation/architecture.md`.
+
 PRD — Acta [Codename] (Phase 1 MVP)
 Mission
 Help people move from indecision to informed action.
 Modern news feeds overload users with causes, opinions, and moral noise. People want to act but don’t know what’s true, what matters most, or what’s effective.
-Actia gives users:
+Acta gives users:
 A clear answer — what the global consensus currently says.
 The confidence to act — one visible “verdict,” not fifty scattered takes.
 A way forward — credible actions that match their time, values, and means.

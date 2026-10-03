@@ -16,7 +16,7 @@ This module provides:
 
 - Node.js 18+ (LTS recommended)
 - Docker & Docker Compose (for local PostgreSQL)
-- pnpm (or npm)
+- npm
 
 ### 1. Start PostgreSQL
 
@@ -48,7 +48,7 @@ You can also create a `.env` file in `modules/db/` if running commands from that
 
 ```bash
 # From project root
-pnpm install
+npm install
 
 # Or from modules/db
 cd modules/db && npm install
@@ -58,7 +58,7 @@ cd modules/db && npm install
 
 ```bash
 # From project root
-pnpm --filter @acta/db db:generate
+npm run db:generate
 
 # Or from modules/db
 cd modules/db && npm run db:generate
@@ -68,7 +68,7 @@ cd modules/db && npm run db:generate
 
 ```bash
 # From project root
-pnpm --filter @acta/db db:migrate
+npm run db:migrate
 
 # Or from modules/db
 cd modules/db && npm run db:migrate

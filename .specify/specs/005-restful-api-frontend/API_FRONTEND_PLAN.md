@@ -14,7 +14,7 @@ This plan outlines the implementation of a RESTful API layer (`apps/api`) to ser
 - ✅ Database schema with Topics, Questions, Verdicts, Article Stances, Outlets, Articles
 - ✅ Analysis pipeline (`apps/crawler/src/scripts/runAnalysisPipeline.js`)
 - ✅ Verdict calculation (`modules/core/src/analysis/verdictService.ts`)
-- ✅ Admin UI (`apps/admin`) for moderation
+- ✅ Admin UI (`apps/web/app/admin`) for moderation
 - ✅ Repositories in `modules/db/src/repositories/`
 
 ### Frontend (Expected)
