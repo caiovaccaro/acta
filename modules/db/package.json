@@ -8,7 +8,6 @@
     "db:generate": "bash scripts/load-env-and-run.sh npx prisma generate",
     "db:migrate": "bash scripts/load-env-and-run.sh npx prisma migrate dev",
     "db:migrate:deploy": "bash scripts/load-env-and-run.sh npx prisma migrate deploy",
-    "db:migrate:production": "bash scripts/migrate-production-schema.sh",
     "db:studio": "bash scripts/load-env-and-run.sh npx prisma studio",
     "db:seed": "tsx src/seed.ts",
     "db:seed:topics": "tsx src/scripts/seedTopics.ts",
@@ -33,11 +32,6 @@
     "db:retry:failed-crawls": "tsx src/scripts/retryFailedCrawls.ts",
     "db:inspect:crawl-requests": "tsx src/scripts/inspectCrawlRequests.ts",
     "db:analyze:funnel": "tsx src/scripts/analyzePipelineFunnel.ts",
-    "db:sync:production": "tsx src/scripts/syncToProduction.ts",
-    "db:sync:from-production": "tsx src/scripts/syncFromProduction.ts",
-    "db:sync:from-production:preserve-crawler": "tsx src/scripts/syncFromProductionPreserveCrawler.ts",
-    "db:backup:local": "tsx src/scripts/backupLocal.ts",
-    "db:sync:schema-only": "tsx src/scripts/syncSchemaOnly.ts",
     "db:fix:verdict-confidence": "tsx src/scripts/fixVerdictConfidence.ts",
     "db:fix:orphans": "tsx src/scripts/fixOrphanRelations.ts",
     "db:dedupe:evidence-bullets": "tsx src/scripts/deduplicateEvidenceBullets.ts",
@@ -68,5 +62,5 @@
     "typescript": "^5.3.3"
   },
   "author": "Caio Vaccaro",
-  "license": "ISC"
+  "license": "AGPL-3.0-only"
 }

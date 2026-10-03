@@ -1,4 +1,6 @@
-# 🗄️ Acta Crawler + PostgreSQL Integration Spec
+> Historical crawler/Postgres intent doc. Local Postgres is Docker Compose; production is hosted Postgres (currently used by the Vercel web app).
+
+# Acta Crawler + PostgreSQL Integration Spec
 
 **Goal**  
 Integrate PostgreSQL into the existing local Crawlee-based crawler so that:
@@ -18,9 +20,9 @@ This document is **directional** and intentionally avoids concrete code. It desc
 - The architecture follows the monorepo pattern with:
   - `apps/crawler` for ingestion
   - `modules/db` (or equivalent) for database access
-- PostgreSQL will eventually run both:
-  - Locally (e.g. via Docker)
-  - In production (e.g. via AWS RDS)
+- PostgreSQL runs:
+  - Locally via Docker Compose
+  - In production as hosted Postgres
 
 ---
 

@@ -19,12 +19,10 @@
         "export:rss": "npm run crawler:export:rss",
         "export:articles": "npm run crawler:export:articles",
         "analyze:articles": "npm run crawler:analyze",
-        "db:studio": "cd modules/db && npm run db:studio",
         "db:generate": "cd modules/db && npm run db:generate",
         "db:migrate": "cd modules/db && npm run db:migrate",
         "db:migrate:deploy": "cd modules/db && npm run db:migrate:deploy",
-        "db:migrate:production": "cd modules/db && npm run db:migrate:production",
-        "db:push": "cd modules/db && npm run db:push",
+        "db:studio": "cd modules/db && npm run db:studio",
         "db:health": "cd modules/db && npm run db:health",
         "crawler:health": "cd apps/crawler && npm run health",
         "crawler:crawl-pending": "cd apps/crawler && npm run crawl-pending --",
@@ -50,11 +48,6 @@
         "db:backfill:llm-content": "cd modules/db && npm run db:backfill:llm-content --",
         "db:retry:failed-crawls": "cd modules/db && npm run db:retry:failed-crawls --",
         "db:inspect:crawl-requests": "cd modules/db && npm run db:inspect:crawl-requests --",
-        "db:sync:production": "cd modules/db && npm run db:sync:production --",
-        "db:sync:from-production": "cd modules/db && npm run db:sync:from-production --",
-        "db:sync:from-production:preserve-crawler": "cd modules/db && npm run db:sync:from-production:preserve-crawler --",
-        "db:backup:local": "cd modules/db && npm run db:backup:local --",
-        "db:sync:schema-only": "cd modules/db && npm run db:sync:schema-only --",
         "db:fix:verdict-confidence": "cd modules/db && npm run db:fix:verdict-confidence",
         "db:fix:orphans": "cd modules/db && npm run db:fix:orphans",
         "db:dedupe:evidence-bullets": "cd modules/db && npm run db:dedupe:evidence-bullets",
@@ -77,5 +70,5 @@
         "test:config": "cd modules/config && npm test"
     },
     "author": "Caio Vaccaro",
-    "license": "ISC"
+    "license": "AGPL-3.0-only"
 }

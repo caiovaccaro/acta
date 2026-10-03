@@ -92,9 +92,9 @@ The Web application MUST NOT access the database directly. All data access MUST 
 
 ### VII. Monorepo Organization (NON-NEGOTIABLE)
 The project MUST be organized as an npm workspace monorepo with strict module boundaries:
-- **apps/**: Deployable runtimes (api, web, crawler)
+- **apps/**: Deployable runtimes (web, crawler) plus `apps/api` services
 - **modules/**: Shared logic (db, core, config, shared)
-- **infra/**: Infrastructure configuration (docker, aws)
+- Local Postgres via `docker-compose.yml`
 
 Module imports MUST use workspace aliases (`@acta/<module>`) defined in `tsconfig.base.json`. Apps MUST NOT import from other apps directly - only through shared modules. This ensures:
 - Clear dependency graph
@@ -146,30 +146,26 @@ This ensures:
 ### Technology Stack
 - **Language**: TypeScript / Node.js 20+
 - **Monorepo**: npm workspaces
-- **Frontend**: Next.js 14 + Tailwind + shadcn/ui
-- **Backend API**: Fastify
-- **Crawler**: Crawlee 3.0+ for web scraping and crawling
-- **Database**: PostgreSQL (AWS RDS) + pgvector for semantic search
+- **Frontend**: Next.js 14 (public UI, `/api/*`, `/admin`)
+- **API services**: `@acta/api` (imported by Next.js; Fastify listener is unused in production)
+- **Crawler**: Crawlee for RSS and article extraction
+- **Database**: PostgreSQL + pgvector (Docker Compose locally; hosted Postgres in production)
 - **ORM**: Prisma
-- **Parsing**: Mozilla Readability (primary), Cheerio (fallback)
-- **Hosting**: AWS (RDS, EC2/Fargate) or Render/Fly.io
-- **Containerization**: Docker support required
+- **Hosting**: Vercel for the web app
 
 ### Monorepo Structure
 ```
 acta/
   apps/
-    api/          # Fastify backend API
-    web/          # Next.js frontend
-    crawler/      # Crawlee ingestion service
+    web/          # Next.js: site, /api/*, /admin
+    api/          # services used by apps/web
+    crawler/      # Crawlee ingestion
   modules/
     db/           # Prisma schema and repositories
     core/         # Domain logic (consensus, analysis, LLM)
     config/       # Configuration and environment
     shared/       # Shared DTOs and types
-  infra/
-    docker/       # Local development setup
-    aws/          # Terraform/CloudFormation
+  docker-compose.yml
 ```
 
 ### Application Responsibilities
@@ -182,26 +178,21 @@ acta/
 - Run periodically (cron / scheduled job)
 
 **apps/api:**
-- Serve REST endpoints: `/topics`, `/verdict`, `/consensus-thermometer`, `/debate`, `/transparency`, `/feedback`
-- Integrate with `modules/db` (Prisma repositories)
+- Export services used by Next.js route handlers
+- Integrate with `modules/db` (Prisma)
 - Use `modules/core` for consensus and analysis logic
-- Expose health checks and admin endpoints
-- Handle authentication and error handling
 
 **apps/web:**
-- Render Verdict Cards, Debate Cards, and Consensus Thermometers
-- Provide "Pick Your Cause" wizard flow
-- Consume API endpoints through typed apiClient
-- Styled with Tailwind + shadcn/ui
-- No direct database access
+- Public site, admin UI at `/admin`, and HTTP API at `/api/*`
+- Import `@acta/api` services; do not call a separate Fastify process
+- Styled with Tailwind
 
 ### Module Responsibilities
 
 **modules/db:**
-- Define all Prisma entities (Outlet, Article, Analysis, Consensus, Feedback)
-- Connect to PostgreSQL / RDS
+- Define Prisma entities in `schema.prisma`
+- Connect to PostgreSQL
 - Expose reusable repository methods
-- Integrate pgvector for semantic search
 - Handle migrations
 
 **modules/core:**

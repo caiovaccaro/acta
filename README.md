@@ -79,3 +79,7 @@ Data-driven consensus verdicts on complex topics.
 - `documentation/prd.md` — historical product brief
 - `documentation/architecture.md` — current layout
 - `documentation/tech_specs/` — crawler and related specs
+
+## License
+
+GNU Affero General Public License v3.0 only. See `LICENSE`.

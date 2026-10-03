@@ -1,3 +1,5 @@
+> Historical UX notes. They do not describe the current UI. See `README.md` and `documentation/architecture.md`.
+
 # ACTA – Complete UX/UI Product Design Prompt  
 *(Consensus Thermometer removed)*
 

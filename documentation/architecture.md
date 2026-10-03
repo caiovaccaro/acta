@@ -20,7 +20,7 @@ acta/
     api/       # service layer used by apps/web
     crawler/   # RSS + article extraction
   modules/
-    db/        # Prisma schema, repositories, operator scripts
+    db/        # Prisma schema, repositories, operator scripts (no dump/restore)
     core/      # analysis, verdicts, LLM
     config/
     shared/
