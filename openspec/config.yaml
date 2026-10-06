@@ -1,0 +1,35 @@
+schema: spec-driven
+
+context: |
+  Linear is the project-management source of truth and GitHub is the code-review
+  and merge-control source of truth. Every change maps to one Linear issue and
+  one implementation pull request.
+  The project is a hobby service with a hard USD 50 monthly operating ceiling.
+  Secrets and private notification addresses must never appear in tracked
+  artifacts, fixtures, logs, or reports.
+
+rules:
+  proposal:
+    - State the Linear issue identifier and rollback plan.
+    - State security and cost impact.
+    - State what is out of scope.
+  specs:
+    - Express every scenario with explicit GIVEN, WHEN, and THEN clauses.
+    - Include unit, integration, and end-to-end scenarios.
+    - Include failure, recovery, security, and cost behavior where relevant.
+  design:
+    - Document trust boundaries, failure modes, rollback, and test mapping.
+    - Include a data-flow or control-flow diagram for stateful or long-running changes.
+  tasks:
+    - Include explicit unit, integration, end-to-end, and regression test tasks.
+    - Include Linear synchronization and pre-PR verification tasks.
+    - Do not leave open questions unresolved before implementation begins.
+
+operations:
+  apply:
+    guidance:
+      - Work in dependency order and keep the Linear status current.
+      - Continue the implement-test-fix loop until all acceptance criteria pass or a definitive blocker is documented.
+  archive:
+    guidance:
+      - Archive only after merge and update the Linear issue with final evidence.

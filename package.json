@@ -66,8 +66,16 @@
         "test:core": "cd modules/core && npm test",
         "test:db": "cd modules/db && npm test",
         "test:shared": "cd modules/shared && npm test",
-        "test:config": "cd modules/config && npm test"
+        "test:config": "cd modules/config && npm test",
+        "test:governance:unit": "node --test scripts/governance/__tests__/unit.test.mjs scripts/governance/__tests__/adversarial.test.mjs scripts/governance/__tests__/policy.test.mjs",
+        "test:governance:integration": "node --test scripts/governance/__tests__/integration.test.mjs",
+        "test:governance:e2e": "node --test scripts/governance/__tests__/e2e.test.mjs",
+        "test:governance": "node --test scripts/governance/__tests__/*.test.mjs",
+        "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",
-    "license": "AGPL-3.0-only"
+    "license": "AGPL-3.0-only",
+    "devDependencies": {
+        "@fission-ai/openspec": "^1.14.1"
+    }
 }

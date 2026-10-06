@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-244",
+  "changeId": "p1-00-spec-test-pr-governance",
+  "openSpecCommand": "npx openspec validate p1-00-spec-test-pr-governance --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:governance:unit",
+    "integration": "node --test scripts/governance/__tests__/integration.test.mjs",
+    "e2e": "node --test scripts/governance/__tests__/e2e.test.mjs",
+    "regression": "npm test"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-00-spec-test-pr-governance/specs/change-governance/spec.md"
+  ],
+  "evidenceFiles": [
+    "openspec/config.yaml",
+    "openspec/changes/p1-00-spec-test-pr-governance/proposal.md",
+    "openspec/changes/p1-00-spec-test-pr-governance/design.md",
+    "openspec/changes/p1-00-spec-test-pr-governance/tasks.md",
+    "openspec/changes/p1-00-spec-test-pr-governance/specs/change-governance/spec.md",
+    "openspec/changes/p1-00-spec-test-pr-governance/verification.json"
+  ],
+  "trackedPaths": [
+    ".github",
+    "documentation/governance",
+    "openspec",
+    "scripts/governance",
+    "package.json",
+    "package-lock.json"
+  ],
+  "reportPath": "governance-reports/CAI-244.json"
+}
