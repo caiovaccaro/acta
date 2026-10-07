@@ -7,20 +7,16 @@
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 // Load environment variables if not already loaded (for Next.js compatibility)
 // In Next.js, env vars are loaded automatically, but we need this for other contexts
-if (!process.env.DATABASE_URL && typeof window === 'undefined') {
+if (!process.env.DATABASE_URL) {
   try {
-    // Try to find .env file in project root (go up from modules/db to root)
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = dirname(__filename);
-    const projectRoot = resolve(__dirname, '../../../');
-    const envPath = resolve(projectRoot, '.env');
-    config({ path: envPath });
-  } catch (error) {
+    const cwd = process.cwd();
+    config({ path: resolve(cwd, '.env') });
+    config({ path: resolve(cwd, '../../.env') });
+    config({ path: resolve(cwd, '../../../.env') });
+  } catch {
     // Silently fail - environment variables may be set elsewhere (e.g., Vercel)
   }
 }

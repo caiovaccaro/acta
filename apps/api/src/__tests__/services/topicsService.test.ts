@@ -15,9 +15,12 @@ describe('topicsService', () => {
         {
           id: 'topic-1',
           name: 'Test Topic',
+          description: null,
+          safetyNoteRequired: false,
+          createdAt: new Date('2024-01-01'),
           questions: [
-            { id: 'q1', isActive: true },
-            { id: 'q2', isActive: true },
+            { id: 'q1', isActive: true, questionText: 'Q1?', createdAt: new Date('2024-01-01') },
+            { id: 'q2', isActive: true, questionText: 'Q2?', createdAt: new Date('2024-01-02') },
           ],
         },
       ];
@@ -27,8 +30,10 @@ describe('topicsService', () => {
         mockTopics[0].questions
       );
       (db.findArticleStancesByQuestionId as jest.MockedFunction<any>).mockResolvedValue([
-        { id: 'stance-1' },
+        { id: 'stance-1', articleId: 'a1' },
       ]);
+      (db.findVerdictByQuestionAndMonth as jest.MockedFunction<any>).mockResolvedValue(null);
+      (db.findLatestVerdictByQuestion as jest.MockedFunction<any>).mockResolvedValue(null);
 
       const result = await getAllTopics(false);
 
@@ -59,7 +64,12 @@ describe('topicsService', () => {
       const mockTopic = {
         id: 'topic-1',
         name: 'Test Topic',
-        questions: [{ id: 'q1', isActive: true }],
+        description: null,
+        safetyNoteRequired: false,
+        createdAt: new Date('2024-01-01'),
+        questions: [
+          { id: 'q1', isActive: true, questionText: 'Q1?', createdAt: new Date('2024-01-01') },
+        ],
       };
 
       (db.findTopicById as jest.MockedFunction<any>).mockResolvedValue(mockTopic);
@@ -67,8 +77,10 @@ describe('topicsService', () => {
         mockTopic.questions
       );
       (db.findArticleStancesByQuestionId as jest.MockedFunction<any>).mockResolvedValue([
-        { id: 'stance-1' },
+        { id: 'stance-1', articleId: 'a1' },
       ]);
+      (db.findVerdictByQuestionAndMonth as jest.MockedFunction<any>).mockResolvedValue(null);
+      (db.findLatestVerdictByQuestion as jest.MockedFunction<any>).mockResolvedValue(null);
 
       const result = await getTopicById('topic-1');
 

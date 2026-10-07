@@ -24,7 +24,7 @@ describe('useQuestions', () => {
     renderHook(() => useQuestions());
 
     expect(mockUseQuery).toHaveBeenCalledWith({
-      queryKey: ['questions', false],
+      queryKey: ['questions', false, 'all'],
       queryFn: expect.any(Function),
       staleTime: 0,
     });

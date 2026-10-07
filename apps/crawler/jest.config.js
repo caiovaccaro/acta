@@ -10,6 +10,15 @@ export default {
     '^.+\\.jsx?$': ['babel-jest', {
       presets: [['@babel/preset-env', { targets: { node: 'current' } }]],
     }],
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        useESM: true,
+        tsconfig: {
+          module: 'ESNext',
+        },
+      },
+    ],
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   collectCoverage: true,
