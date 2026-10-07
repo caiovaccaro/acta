@@ -24,7 +24,7 @@ describe('useTopics', () => {
     renderHook(() => useTopics(false));
 
     expect(mockUseQuery).toHaveBeenCalledWith({
-      queryKey: ['topics', false],
+      queryKey: ['topics', false, false],
       queryFn: expect.any(Function),
       staleTime: 0,
     });
@@ -41,7 +41,7 @@ describe('useTopics', () => {
 
     expect(mockUseQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: ['topics', true],
+        queryKey: ['topics', true, false],
       })
     );
   });

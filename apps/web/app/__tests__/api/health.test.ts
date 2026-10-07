@@ -1,3 +1,9 @@
+jest.mock('@acta/db', () => ({
+  prisma: {
+    $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+  },
+}));
+
 // Mock Next.js server components
 jest.mock('next/server', () => ({
   NextResponse: {

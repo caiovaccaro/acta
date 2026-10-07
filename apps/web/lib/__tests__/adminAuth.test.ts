@@ -20,7 +20,8 @@ describe('adminAuth', () => {
 
   it('rejects tampered tokens', () => {
     const token = createSessionToken(email);
-    const tampered = token.replace(/\.$/, '.x');
+    const last = token.slice(-1);
+    const tampered = token.slice(0, -1) + (last === 'a' ? 'b' : 'a');
     const session = verifySessionToken(tampered);
     expect(session).toBeNull();
   });

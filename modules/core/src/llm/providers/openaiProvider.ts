@@ -704,7 +704,7 @@ Return JSON:
               }
               
               // Must contain at least one complete word (not just fragments)
-              const words = trimmed.split(/\s+/).filter(w => w.length > 0);
+              const words = trimmed.split(/\s+/).filter((w: string) => w.length > 0);
               if (words.length < 3) return false; // At least 3 words
               
               return true;

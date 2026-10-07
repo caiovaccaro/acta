@@ -38,9 +38,9 @@ describe('QuestionCard', () => {
     expect(screen.getByText('This is a test context blurb.')).toBeInTheDocument();
   });
 
-  it('renders verdict text', () => {
-    render(<QuestionCard question={mockQuestion} />);
-    expect(screen.getByText('Yes, it seems so.')).toBeInTheDocument();
+  it('renders a verdict slider when a verdict exists', () => {
+    const { container } = render(<QuestionCard question={mockQuestion} />);
+    expect(container.querySelector('.rounded-full')).toBeInTheDocument();
   });
 
   it('renders journalist and publication counts', () => {
@@ -62,10 +62,10 @@ describe('QuestionCard', () => {
     expect(screen.getByText('View Answer')).toBeInTheDocument();
   });
 
-  it('renders "View Topic" when no verdict', () => {
+  it('renders "Read More" when no verdict', () => {
     const questionWithoutVerdict = { ...mockQuestion, verdict: undefined };
     render(<QuestionCard question={questionWithoutVerdict} />);
-    expect(screen.getByText('View Topic')).toBeInTheDocument();
+    expect(screen.getByText('Read More')).toBeInTheDocument();
   });
 
   it('links to question page', () => {

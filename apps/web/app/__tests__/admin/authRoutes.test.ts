@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 // Mock Next.js server response
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -9,7 +12,7 @@ jest.mock('next/server', () => ({
   },
 }));
 
-import { ADMIN_SESSION_COOKIE, createSessionToken } from '../../lib/adminAuth';
+import { ADMIN_SESSION_COOKIE, createSessionToken } from '../../../lib/adminAuth';
 import { POST as login } from '../../admin/api/auth/login/route';
 import { POST as logout } from '../../admin/api/auth/logout/route';
 import { GET as session } from '../../admin/api/auth/session/route';
