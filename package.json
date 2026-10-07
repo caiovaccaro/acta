@@ -71,6 +71,11 @@
         "test:governance:integration": "node --test scripts/governance/__tests__/integration.test.mjs",
         "test:governance:e2e": "node --test scripts/governance/__tests__/e2e.test.mjs",
         "test:governance": "node --test scripts/governance/__tests__/*.test.mjs",
+        "config:validate:production": "npm run validate:production --workspace @acta/config",
+        "test:p1-01:unit": "npm test --workspace @acta/config -- --runInBand && node --test scripts/governance/__tests__/linux-ci-policy.test.mjs",
+        "test:p1-01:integration": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && npm test",
+        "test:p1-01:e2e": "NODE_ENV=production ADMIN_EMAIL='admin@example.invalid' ADMIN_PASSWORD='synthetic-password-123' ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' NEXT_TELEMETRY_DISABLED=1 npm run config:validate:production && NODE_ENV=production ADMIN_EMAIL='admin@example.invalid' ADMIN_PASSWORD='synthetic-password-123' ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' NEXT_TELEMETRY_DISABLED=1 npm run build --workspace @acta/web",
+        "test:p1-01:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",

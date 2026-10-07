@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-247",
+  "changeId": "p1-01-linux-ci-config-validation",
+  "openSpecCommand": "npx openspec validate p1-01-linux-ci-config-validation --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-01:unit",
+    "integration": "npm run test:p1-01:integration",
+    "e2e": "npm run test:p1-01:e2e",
+    "regression": "npm run test:p1-01:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-01-linux-ci-config-validation/specs/production-readiness/spec.md"
+  ],
+  "evidenceFiles": [
+    ".env.example",
+    ".github/workflows/linux-ci.yml",
+    "documentation/governance/linux-production-readiness.md",
+    "modules/config/package.json",
+    "modules/config/src/index.ts",
+    "modules/config/src/validateProduction.ts",
+    "modules/config/src/__tests__/index.test.ts",
+    "openspec/changes/p1-01-linux-ci-config-validation/proposal.md",
+    "openspec/changes/p1-01-linux-ci-config-validation/design.md",
+    "openspec/changes/p1-01-linux-ci-config-validation/tasks.md",
+    "openspec/changes/p1-01-linux-ci-config-validation/specs/production-readiness/spec.md",
+    "openspec/changes/p1-01-linux-ci-config-validation/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-247.md",
+    "scripts/governance/__tests__/linux-ci-policy.test.mjs",
+    "package.json",
+    "package-lock.json"
+  ],
+  "trackedPaths": [
+    ".env.example",
+    ".github/workflows/linux-ci.yml",
+    "documentation/governance/linux-production-readiness.md",
+    "modules/config",
+    "openspec/changes/p1-01-linux-ci-config-validation",
+    "scripts/governance/__tests__/fixtures/cai-247.md",
+    "scripts/governance/__tests__/linux-ci-policy.test.mjs",
+    "package.json",
+    "package-lock.json"
+  ],
+  "reportPath": "governance-reports/CAI-247.json"
+}

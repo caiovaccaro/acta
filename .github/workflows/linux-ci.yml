@@ -1,0 +1,68 @@
+name: Linux CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  linux-ci:
+    name: linux-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://acta:acta_test_password@127.0.0.1:5432/acta_test?schema=public
+      NODE_ENV: test
+      NEXT_TELEMETRY_DISABLED: "1"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: acta
+          POSTGRES_PASSWORD: acta_test_password
+          POSTGRES_DB: acta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U acta -d acta_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Check out reviewed commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify production configuration contract
+        env:
+          NODE_ENV: production
+          ADMIN_EMAIL: admin@example.invalid
+          ADMIN_PASSWORD: synthetic-password-123
+          ADMIN_SESSION_SECRET: synthetic-session-secret-1234567890
+        run: npm run config:validate:production
+
+      - name: Run unit verification
+        run: npm run test:p1-01:unit
+
+      - name: Run integration verification
+        run: npm run test:p1-01:integration
+
+      - name: Run end-to-end verification
+        run: npm run test:p1-01:e2e
+
+      - name: Run regression verification
+        run: npm run test:p1-01:regression
