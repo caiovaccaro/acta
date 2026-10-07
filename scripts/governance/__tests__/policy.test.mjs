@@ -22,6 +22,11 @@ test('pull-request template requires specification and test evidence', async () 
     'Integration:',
     'End-to-end:',
     'Regression:',
+    'One-time external spend (USD):',
+    'Recurring monthly cost change (USD):',
+    'Metered CI/API/LLM cost for this implementation (USD):',
+    'Total estimated implementation cost (USD):',
+    'Assumptions and excluded costs:',
   ]) {
     assert.ok(template.includes(field), `missing PR template field ${field}`);
   }

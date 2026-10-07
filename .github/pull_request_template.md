@@ -22,6 +22,14 @@ OpenSpec change: `p1-__-change-id`
 - End-to-end:
 - Regression:
 
+## Implementation cost
+
+- One-time external spend (USD):
+- Recurring monthly cost change (USD):
+- Metered CI/API/LLM cost for this implementation (USD):
+- Total estimated implementation cost (USD):
+- Assumptions and excluded costs:
+
 ## Review checklist
 
 - [ ] Linear and OpenSpec requirements/scenarios are synchronized.
