@@ -23,7 +23,7 @@
 ## 4. Integrated verification
 
 - [x] 4.1 Run unit, integration, E2E, and existing workspace regression suites until all pass
-- [ ] 4.2 Run strict OpenSpec validation and implementation verification, then produce a successful commit-bound `verify:pr-ready` report for `CAI-244`
+- [x] 4.2 Run strict OpenSpec validation and implementation verification, then produce a successful commit-bound `verify:pr-ready` report for `CAI-244`
 - [ ] 4.3 Verify a disposable GitHub test PR receives governance and adversarial results, apply/audit `main` branch protection, and attach evidence to `CAI-244`
 - [ ] 4.4 Synchronize final OpenSpec hashes and evidence into Linear, move `CAI-244` to In Review when its PR opens, and verify the issue mirror remains consistent
 
