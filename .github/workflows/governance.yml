@@ -47,7 +47,8 @@ jobs:
       - name: Prepare test database
         run: |
           npm run db:generate
-          npm run db:migrate:deploy
+          cd modules/db
+          npx prisma db push --skip-generate
 
       - name: Read pull-request references
         id: refs
