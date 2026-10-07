@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   extractScenarios,
+  redactCommandOutput,
   ReadinessError,
   validateIssueDescription,
   validateManifest,
@@ -67,5 +68,12 @@ test('requires every test class and evidence collection in a manifest', () => {
   assert.throws(
     () => validateManifest({ ...valid, tests: { ...valid.tests, e2e: '' } }),
     /e2e test command/,
+  );
+});
+
+test('redacts secret-bearing environment values from command diagnostics', () => {
+  assert.equal(
+    redactCommandOutput('failed with private-value', { LINEAR_API_KEY: 'private-value' }),
+    'failed with [REDACTED]',
   );
 });

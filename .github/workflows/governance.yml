@@ -63,7 +63,7 @@ jobs:
           --change=${{ steps.refs.outputs.change }}
 
       - name: Upload commit-bound report
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: governance-${{ github.event.pull_request.head.sha }}

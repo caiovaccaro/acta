@@ -164,6 +164,20 @@ export async function runCommand(command, { cwd, env = process.env } = {}) {
   return { stdout: result.stdout, stderr: result.stderr };
 }
 
+export function redactCommandOutput(output, env = process.env) {
+  let redacted = String(output ?? '');
+  for (const [name, value] of Object.entries(env)) {
+    if (
+      value
+      && value.length >= 8
+      && /(KEY|TOKEN|PASSWORD|SECRET|DATABASE_URL)/i.test(name)
+    ) {
+      redacted = redacted.replaceAll(value, '[REDACTED]');
+    }
+  }
+  return redacted.slice(-6_000);
+}
+
 export async function currentCommit(cwd) {
   const { stdout } = await runCommand('git rev-parse HEAD', { cwd });
   return stdout.trim();
@@ -229,9 +243,16 @@ export async function runReadiness({
       const result = await commandRunner(command, { cwd: repoRoot });
       commandResults.push({ name, command, status: 'passed', ...result });
     } catch (error) {
-      throw new ReadinessError(`${name} verification failed: ${command}`, {
+      const diagnostic = [
+        redactCommandOutput(error?.stdout),
+        redactCommandOutput(error?.stderr),
+      ].filter(Boolean).join('\n');
+      throw new ReadinessError(
+        `${name} verification failed: ${command}${diagnostic ? `\n${diagnostic}` : ''}`,
+        {
         cause: error instanceof Error ? error.message : String(error),
-      });
+        },
+      );
     }
   }
 
