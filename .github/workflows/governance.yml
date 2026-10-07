@@ -12,6 +12,23 @@ jobs:
     name: governance
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      DATABASE_URL: postgresql://acta:acta_test_password@localhost:5432/acta_test?schema=public
+      NODE_ENV: test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: acta
+          POSTGRES_PASSWORD: acta_test_password
+          POSTGRES_DB: acta_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U acta -d acta_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Check out reviewed commit
         uses: actions/checkout@v4
@@ -26,6 +43,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare test database
+        run: |
+          npm run db:generate
+          npm run db:migrate:deploy
 
       - name: Read pull-request references
         id: refs
