@@ -23,7 +23,7 @@
 
 - [x] 4.1 Run strict OpenSpec validation and confirm all three Given/When/Then scenarios remain synchronized with CAI-247
 - [x] 4.2 Run unit, integration, E2E, regression, clean-install, Prisma-generation, and production-web-build loops until all acceptance criteria pass
-- [ ] 4.3 Run `/opsx:verify` and commit-bound `verify:pr-ready` for CAI-247 and verify the report contains the reviewed commit and no sensitive values
+- [x] 4.3 Run `/opsx:verify` and commit-bound `verify:pr-ready` for CAI-247 and verify the report contains the reviewed commit and no sensitive values
 - [ ] 4.4 Synchronize final artifact hashes and implementation-cost evidence into Linear, move CAI-247 to In Progress during implementation and In Review only when the PR opens, and verify the issue mirror remains consistent
 - [ ] 4.5 Open the CAI-247 pull request only after all local gates pass, then verify Linux CI, governance, and adversarial-review checks all pass on its final head
 
