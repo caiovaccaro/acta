@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import { REQUIRED_CHECKS } from '../branch-protection.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../..');
 const workflowPath = path.join(root, '.github/workflows/linux-ci.yml');
@@ -26,6 +27,7 @@ test('Linux CI is read-only, bounded, secret-free, and cancellable', async () =>
   assert.match(workflow, /run:\s*npm ci/);
   assert.doesNotMatch(workflow, /\$\{\{\s*secrets\./);
   assert.doesNotMatch(workflow, /\b(?:OPENAI|TAVILY|RESEND)_[A-Z0-9_]+\b/);
+  assert.ok(REQUIRED_CHECKS.includes('linux-ci'));
 });
 
 test('Linux CI consumes every canonical P1-01 command', async () => {

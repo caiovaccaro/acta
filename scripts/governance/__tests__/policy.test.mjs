@@ -57,5 +57,7 @@ test('branch-protection audit rejects missing checks and accepts the desired pol
   assert.deepEqual(auditProtection(desired), []);
   const incomplete = structuredClone(desired);
   incomplete.required_status_checks.contexts = [REQUIRED_CHECKS[0]];
-  assert.match(auditProtection(incomplete).join('; '), /adversarial-review/);
+  const failures = auditProtection(incomplete).join('; ');
+  assert.match(failures, /adversarial-review/);
+  assert.match(failures, /linux-ci/);
 });
