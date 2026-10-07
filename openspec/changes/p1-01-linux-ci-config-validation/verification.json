@@ -14,6 +14,7 @@
   ],
   "evidenceFiles": [
     ".env.example",
+    ".github/pull_request_template.md",
     ".github/workflows/linux-ci.yml",
     "documentation/governance/branch-protection.md",
     "documentation/governance/linux-production-readiness.md",
@@ -35,6 +36,7 @@
   ],
   "trackedPaths": [
     ".env.example",
+    ".github/pull_request_template.md",
     ".github/workflows/linux-ci.yml",
     "documentation/governance/branch-protection.md",
     "documentation/governance/linux-production-readiness.md",
