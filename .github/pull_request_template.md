@@ -24,11 +24,13 @@ OpenSpec change: `p1-__-change-id`
 
 ## Implementation cost
 
-- One-time external spend (USD):
-- Recurring monthly cost change (USD):
-- Metered CI/API/LLM cost for this implementation (USD):
-- Total estimated implementation cost (USD):
-- Assumptions and excluded costs:
+- Measurement window (first implementation action through PR creation):
+- AI coding/agent usage (USD):
+- External API/LLM usage (USD):
+- CI compute and infrastructure usage (USD):
+- Total end-to-end implementation cost (USD):
+- Measurement source and confidence:
+- Excluded costs (for example, human labor or existing flat-rate subscriptions):
 
 ## Review checklist
 
