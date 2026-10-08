@@ -15,6 +15,16 @@ test('pull-request template requires specification and test evidence', async () 
   for (const field of [
     'Linear issue:',
     'OpenSpec change:',
+    '## What was done',
+    'Architecture and implementation:',
+    'Interfaces, data flow, or configuration changed:',
+    'Security, reliability, and cost controls:',
+    'Migration and rollback:',
+    '## What changes after merge',
+    'User-visible behavior:',
+    'Developer and CI behavior:',
+    'Operational behavior:',
+    'Intentionally unchanged or deferred:',
     'OpenSpec artifact hashes:',
     '`/opsx:verify` result:',
     'Commit-bound `verify:pr-ready` report:',
@@ -57,5 +67,7 @@ test('branch-protection audit rejects missing checks and accepts the desired pol
   assert.deepEqual(auditProtection(desired), []);
   const incomplete = structuredClone(desired);
   incomplete.required_status_checks.contexts = [REQUIRED_CHECKS[0]];
-  assert.match(auditProtection(incomplete).join('; '), /adversarial-review/);
+  const failures = auditProtection(incomplete).join('; ');
+  assert.match(failures, /adversarial-review/);
+  assert.match(failures, /linux-ci/);
 });

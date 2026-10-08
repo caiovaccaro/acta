@@ -1,6 +1,6 @@
 import { ReadinessError } from './readiness.mjs';
 
-export const REQUIRED_CHECKS = ['governance', 'adversarial-review'];
+export const REQUIRED_CHECKS = ['governance', 'adversarial-review', 'linux-ci'];
 
 export function desiredProtection() {
   return {

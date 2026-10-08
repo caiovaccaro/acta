@@ -4,6 +4,20 @@ Linear issue: CAI-___
 Linear URL: https://linear.app/caio-vaccaro/issue/CAI-___
 OpenSpec change: `p1-__-change-id`
 
+## What was done
+
+- Architecture and implementation:
+- Interfaces, data flow, or configuration changed:
+- Security, reliability, and cost controls:
+- Migration and rollback:
+
+## What changes after merge
+
+- User-visible behavior:
+- Developer and CI behavior:
+- Operational behavior:
+- Intentionally unchanged or deferred:
+
 ## Specification evidence
 
 - OpenSpec artifact hashes:

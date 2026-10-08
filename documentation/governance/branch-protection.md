@@ -6,6 +6,7 @@ Protect `main` with these exact status-check contexts:
 
 - `governance`
 - `adversarial-review`
+- `linux-ci`
 
 Require the branch to be current, require conversation resolution and linear
 history, include administrators, and disable force pushes and deletion.
@@ -42,9 +43,11 @@ The token is not required by pull-request workflows.
 5. Use the mocked provider test to verify a blocking adversarial finding fails;
    then run the live bounded provider check and verify `adversarial-review`
    passes only when no finding remains.
-6. Run the branch-protection audit and capture the PR/check URLs in the Linear
+6. Verify `linux-ci` installs from the lockfile, runs every canonical test
+   class, and builds the web app without production secrets.
+7. Run the branch-protection audit and capture the PR/check URLs in the Linear
    issue.
-7. Close the disposable PR without merging.
+8. Close the disposable PR without merging.
 
 Never weaken required checks to make this procedure pass.
 
@@ -60,6 +63,6 @@ Never weaken required checks to make this procedure pass.
 
 ## Rollback
 
-Before disabling either workflow, remove its required context from branch
+Before disabling any required workflow, remove its required context from branch
 protection through GitHub administration. Revert the governance commit only
 after merge safety has been restored through an equivalent control.
