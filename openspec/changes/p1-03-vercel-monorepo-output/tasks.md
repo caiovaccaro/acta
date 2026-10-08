@@ -23,7 +23,7 @@
 
 - [x] 4.1 Add the exact CAI-248 Linear fixture, verification manifest, and unit/integration/E2E/regression package commands and verify exactly three scenarios mirror the delta spec
 - [x] 4.2 Run strict OpenSpec validation, unit, integration, local E2E, regression, clean install, Prisma generation, production build, and actionlint in a fix loop until every available gate passes
-- [ ] 4.3 Commit the complete implementation, run `/opsx:verify` and commit-bound `verify:pr-ready`, and verify the report references the reviewed commit with no sensitive values
+- [x] 4.3 Commit the complete implementation, run `/opsx:verify` and commit-bound `verify:pr-ready`, and verify the report references the reviewed commit with no sensitive values
 - [ ] 4.4 Synchronize final implementation and cost evidence to CAI-248, open the comprehensive pull request, and verify the issue and PR reference the same change, tests, and external blockers
 - [ ] 4.5 Monitor Linux CI, governance, adversarial review, and Vercel preview on the final head; fix code or configuration failures and verify every accessible check passes without merging
 
