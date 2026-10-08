@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-248",
+  "changeId": "p1-03-vercel-monorepo-output",
+  "openSpecCommand": "npx openspec validate p1-03-vercel-monorepo-output --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-03:unit",
+    "integration": "npm run test:p1-03:integration",
+    "e2e": "npm run test:p1-03:e2e",
+    "regression": "npm run test:p1-03:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-03-vercel-monorepo-output/specs/vercel-deployment-readiness/spec.md"
+  ],
+  "evidenceFiles": [
+    "apps/web/next.config.js",
+    "documentation/deployment/vercel-monorepo.md",
+    "openspec/changes/p1-03-vercel-monorepo-output/proposal.md",
+    "openspec/changes/p1-03-vercel-monorepo-output/design.md",
+    "openspec/changes/p1-03-vercel-monorepo-output/tasks.md",
+    "openspec/changes/p1-03-vercel-monorepo-output/specs/vercel-deployment-readiness/spec.md",
+    "openspec/changes/p1-03-vercel-monorepo-output/verification.json",
+    "package.json",
+    "scripts/deployment/config.mjs",
+    "scripts/deployment/validate-config.mjs",
+    "scripts/deployment/smoke.mjs",
+    "scripts/deployment/__tests__/config.test.mjs",
+    "scripts/deployment/__tests__/smoke.test.mjs",
+    "scripts/governance/__tests__/fixtures/cai-248.md",
+    "scripts/governance/__tests__/vercel-deployment-policy.test.mjs",
+    "vercel.json"
+  ],
+  "trackedPaths": [
+    "apps/web/next.config.js",
+    "documentation/deployment/vercel-monorepo.md",
+    "openspec/changes/p1-03-vercel-monorepo-output",
+    "package.json",
+    "scripts/deployment",
+    "scripts/governance/__tests__/fixtures/cai-248.md",
+    "scripts/governance/__tests__/vercel-deployment-policy.test.mjs",
+    "vercel.json"
+  ],
+  "reportPath": "governance-reports/CAI-248.json"
+}

@@ -1,0 +1,90 @@
+# Vercel monorepo deployment
+
+## Supported contract
+
+The Vercel project root is the repository root. Both preview and production use:
+
+- install: `npm ci`
+- build: `npm run build:vercel`
+- framework: Next.js
+- output: `apps/web/.next`
+
+`apps/web/next.config.js` leaves `distDir` unset, so Next.js writes its standard
+app-local `.next` output. `npm run build:vercel` validates P1-01 production
+configuration and this path contract before Prisma generation or Next.js work.
+Any validation or build failure stops the candidate deployment; Vercel keeps
+the prior promoted deployment available.
+
+## Redacted deployment evidence
+
+GitHub's Vercel deployment status identifies:
+
+- PR #40 preview `dpl_Fb5oPrRhtht8c7KUSwRp7xFVhNjJ` as failed on 2026-10-07.
+- Main deployment `dpl_7vd36KepQnVuuihPfRCnof9RD6LC` as failed on 2026-10-08.
+- The preview status directs maintainers to
+  `npx vercel inspect dpl_Fb5oPrRhtht8c7KUSwRp7xFVhNjJ --logs`.
+
+Actual build logs were not accessible during CAI-248 implementation: the local
+CLI reported `Logged out`, no token or CLI auth file was available, the Vercel
+deployment API returned `403` with `missingToken`, and the web inspector showed
+the login boundary. Therefore no actual-log root cause is claimed. The tracked
+configuration independently proves one defect: Vercel expected
+`apps/web/.next` while Next.js was configured to write `../../.next` from the
+web app (repository-root `.next`). Authorized log inspection remains required
+to determine whether this mismatch, non-production `NODE_ENV`, or an earlier
+build error was decisive.
+
+Never copy tokens, environment values, private URLs, or unredacted response
+bodies into this document, OpenSpec artifacts, governance reports, or PR text.
+
+## Local reproduction
+
+From a clean checkout:
+
+```sh
+npm ci
+npm run db:generate
+NODE_ENV=production \
+DATABASE_URL='postgresql://fixture:fixture@127.0.0.1:5432/acta' \
+ADMIN_EMAIL='admin@example.invalid' \
+ADMIN_PASSWORD='synthetic-password-123' \
+ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' \
+NEXT_TELEMETRY_DISABLED=1 \
+npm run build:vercel
+```
+
+Canonical verification:
+
+```sh
+npm run test:p1-03:unit
+npm run test:p1-03:integration
+npm run test:p1-03:e2e
+npm run test:p1-03:regression
+npx openspec validate p1-03-vercel-monorepo-output --strict --no-interactive
+```
+
+## Preview smoke
+
+Use public representative record IDs; do not pass credentials or cookies:
+
+```sh
+npm run deploy:smoke -- \
+  --base-url=https://preview.example.vercel.app \
+  --topic-id=PUBLIC_TOPIC_ID \
+  --question-id=PUBLIC_QUESTION_ID
+```
+
+The command performs exactly five GET requests: `/api/health`, `/`, the topic,
+the question, and `/admin/login`. It checks public statuses and markers only.
+Run it once per candidate preview to remain within Vercel Hobby limits.
+
+## Recovery
+
+1. Inspect the candidate deployment logs with authorized read-only Vercel
+   access and record only decisive redacted lines.
+2. Reproduce with the canonical integration command.
+3. Correct environment or output configuration and push a new commit.
+4. Wait for the new preview, run the five-route smoke, then allow promotion.
+
+Do not promote around a failed build or smoke run. No database migration or
+pipeline schedule is part of this recovery.
