@@ -6,6 +6,7 @@ import {
   SmokeError,
   smokeDeployment,
   validateBaseUrl,
+  vercelCurlFetch,
 } from '../smoke.mjs';
 
 const markers = new Map([
@@ -110,6 +111,7 @@ test('CLI accepts only public route inputs', () => {
       topicId: 'topic-1',
       questionId: 'question-1',
       timeoutMs: 10_000,
+      transport: 'fetch',
     },
   );
   assert.throws(
@@ -120,5 +122,32 @@ test('CLI accepts only public route inputs', () => {
       '--password=secret',
     ]),
     /Unsupported argument: --password/,
+  );
+});
+
+test('Vercel transport uses CLI protection bypass without credential arguments', async () => {
+  let invocation;
+  const response = await vercelCurlFetch(
+    new URL('https://preview.example.com/api/health'),
+    { method: 'GET' },
+    async (...args) => {
+      invocation = args;
+      return { stdout: '{"status":"ok"}\n200' };
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), '{"status":"ok"}');
+  assert.equal(invocation[0], 'npx');
+  assert.deepEqual(invocation[1].slice(0, 3), ['vercel', 'curl', 'https://preview.example.com/api/health']);
+  assert.ok(!invocation[1].some((value) => /token|secret|password/i.test(value)));
+  assert.throws(
+    () => parseSmokeArgs([
+      '--base-url=https://preview.example.com',
+      '--topic-id=topic-1',
+      '--question-id=question-1',
+      '--transport=other',
+    ]),
+    /transport must be fetch or vercel/,
   );
 });

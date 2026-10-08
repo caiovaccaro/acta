@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
 const MAX_BODY_BYTES = 1_000_000;
 const DEFAULT_TIMEOUT_MS = 10_000;
+const execFileAsync = promisify(execFile);
 
 export class SmokeError extends Error {
   constructor(message) {
@@ -15,7 +18,7 @@ export class SmokeError extends Error {
 
 export function parseSmokeArgs(argv) {
   const values = {};
-  const allowed = new Set(['base-url', 'topic-id', 'question-id', 'timeout-ms']);
+  const allowed = new Set(['base-url', 'topic-id', 'question-id', 'timeout-ms', 'transport']);
   for (const token of argv) {
     if (!token.startsWith('--') || !token.includes('=')) {
       throw new SmokeError(`Unsupported argument: ${token}`);
@@ -31,14 +34,19 @@ export function parseSmokeArgs(argv) {
     if (!values[required]) throw new SmokeError(`--${required}=<value> is required`);
   }
   const timeoutMs = Number(values['timeout-ms'] ?? DEFAULT_TIMEOUT_MS);
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 30_000) {
-    throw new SmokeError('--timeout-ms must be an integer from 100 to 30000');
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 600_000) {
+    throw new SmokeError('--timeout-ms must be an integer from 100 to 600000');
+  }
+  const transport = values.transport ?? 'fetch';
+  if (!['fetch', 'vercel'].includes(transport)) {
+    throw new SmokeError('--transport must be fetch or vercel');
   }
   return {
     baseUrl: values['base-url'],
     topicId: values['topic-id'],
     questionId: values['question-id'],
     timeoutMs,
+    transport,
   };
 }
 
@@ -124,9 +132,46 @@ export async function smokeDeployment(options, fetchImpl = globalThis.fetch) {
   return results;
 }
 
+export async function vercelCurlFetch(url, init = {}, run = execFileAsync) {
+  if (init.method && init.method !== 'GET') {
+    throw new SmokeError('Vercel smoke transport supports GET only');
+  }
+  try {
+    const { stdout } = await run(
+      'npx',
+      [
+        'vercel',
+        'curl',
+        url.toString(),
+        '--',
+        '--silent',
+        '--show-error',
+        '--write-out',
+        '\\n%{http_code}',
+      ],
+      {
+        encoding: 'utf8',
+        maxBuffer: MAX_BODY_BYTES + 1024,
+        signal: init.signal,
+      },
+    );
+    const separator = stdout.lastIndexOf('\n');
+    const status = Number(stdout.slice(separator + 1));
+    if (separator < 0 || !Number.isInteger(status)) {
+      throw new SmokeError('Vercel smoke transport returned an invalid response');
+    }
+    return new Response(stdout.slice(0, separator), { status });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    if (error instanceof SmokeError) throw error;
+    throw new SmokeError('Vercel smoke transport failed; verify CLI authentication and deployment access');
+  }
+}
+
 async function main() {
   const options = parseSmokeArgs(process.argv.slice(2));
-  const results = await smokeDeployment(options);
+  const fetchImpl = options.transport === 'vercel' ? vercelCurlFetch : globalThis.fetch;
+  const results = await smokeDeployment(options, fetchImpl);
   for (const result of results) {
     process.stdout.write(`PASS ${result.name} (${result.status})\n`);
   }

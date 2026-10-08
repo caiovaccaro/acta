@@ -24,15 +24,18 @@ GitHub's Vercel deployment status identifies:
 - The preview status directs maintainers to
   `npx vercel inspect dpl_Fb5oPrRhtht8c7KUSwRp7xFVhNjJ --logs`.
 
-Actual build logs were not accessible during CAI-248 implementation: the local
-CLI reported `Logged out`, no token or CLI auth file was available, the Vercel
-deployment API returned `403` with `missingToken`, and the web inspector showed
-the login boundary. Therefore no actual-log root cause is claimed. The tracked
-configuration independently proves one defect: Vercel expected
-`apps/web/.next` while Next.js was configured to write `../../.next` from the
-web app (repository-root `.next`). Authorized log inspection remains required
-to determine whether this mismatch, non-production `NODE_ENV`, or an earlier
-build error was decisive.
+Authorized inspection of failed deployment
+`dpl_Fb5oPrRhtht8c7KUSwRp7xFVhNjJ` produced these decisive redacted lines:
+
+```text
+Error: The Next.js output directory "apps/web/.next" was not found at "/vercel/path0/apps/web/.next".
+The "Output Directory" setting in your project is misconfigured.
+```
+
+The root cause was an output-contract mismatch: `vercel.json` expected
+`apps/web/.next`, while `apps/web/next.config.js` set `distDir: '../../.next'`
+and wrote the output to the repository-root `.next`. The app now uses Next.js's
+standard app-local output, and the validator prevents this drift from recurring.
 
 Never copy tokens, environment values, private URLs, or unredacted response
 bodies into this document, OpenSpec artifacts, governance reports, or PR text.
@@ -65,7 +68,8 @@ npx openspec validate p1-03-vercel-monorepo-output --strict --no-interactive
 
 ## Preview smoke
 
-Use public representative record IDs; do not pass credentials or cookies:
+Use public representative record IDs; do not pass application credentials or
+cookies:
 
 ```sh
 npm run deploy:smoke -- \
@@ -74,9 +78,29 @@ npm run deploy:smoke -- \
   --question-id=PUBLIC_QUESTION_ID
 ```
 
+For a preview protected by Vercel Authentication, use the authenticated local
+Vercel CLI as the transport. This accepts no token argument and never prints the
+CLI's deployment-protection bypass:
+
+```sh
+npm run deploy:smoke -- \
+  --base-url=https://preview.example.vercel.app \
+  --topic-id=PUBLIC_TOPIC_ID \
+  --question-id=PUBLIC_QUESTION_ID \
+  --transport=vercel \
+  --timeout-ms=600000
+```
+
 The command performs exactly five GET requests: `/api/health`, `/`, the topic,
 the question, and `/admin/login`. It checks public statuses and markers only.
 Run it once per candidate preview to remain within Vercel Hobby limits.
+
+CAI-248 preview `dpl_9zaS3Zhos2UnZSaPSWHATXePJdmq` reached `Ready` on
+2026-10-08. The protected-transport smoke passed all five routes with HTTP 200
+using topic `c880a14b-ad3c-4438-b08e-4349b4e2910a` and question
+`a7961122-ce49-469b-a20e-224f44b4cd1c`; `/api/health` also reported the
+database connected. No application credential, bypass token, or cookie was
+recorded.
 
 ## Recovery
 

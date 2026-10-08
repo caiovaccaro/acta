@@ -2,7 +2,7 @@
 
 ## 1. Deployment evidence and contract
 
-- [ ] 1.1 Retrieve the failed PR #40 or main Vercel deployment logs, record redacted root-cause evidence, and verify the deployment ID and decisive log lines are documented without tokens or secrets
+- [x] 1.1 Retrieve the failed PR #40 or main Vercel deployment logs, record redacted root-cause evidence, and verify the deployment ID and decisive log lines are documented without tokens or secrets
 - [x] 1.2 Implement a side-effect-free validator for Vercel, Next.js, and build-environment settings and verify unit cases reject non-production `NODE_ENV`, output mismatch, and unsafe build ordering
 - [x] 1.3 Adopt the app-local `apps/web/.next` contract for preview and production and verify tracked Vercel and Next.js configuration pass the validator
 - [x] 1.4 Integrate P1-01 production readiness before Prisma and Next.js work and verify an invalid environment exits before either build step starts
@@ -17,7 +17,7 @@
 
 - [x] 3.1 Implement the supplied-base-URL smoke CLI for health, homepage, topic, question, and admin login with HTTPS, timeout, body-size, status, and marker checks and verify the interface accepts no credential input
 - [x] 3.2 Add fixture-server E2E coverage and verify exactly five unauthenticated GET requests pass while wrong status, marker, timeout, and unsafe URL cases fail
-- [ ] 3.3 Run the smoke CLI against the Vercel preview with explicit representative IDs and verify all five public routes return their expected status and marker within Hobby limits
+- [x] 3.3 Run the smoke CLI against the Vercel preview with explicit representative IDs and verify all five public routes return their expected status and marker within Hobby limits
 
 ## 4. Canonical verification and review
 
