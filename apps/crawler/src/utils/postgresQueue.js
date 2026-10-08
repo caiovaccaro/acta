@@ -4,11 +4,37 @@
  */
 
 import {
+    claimPendingCrawlRequests,
     findPendingCrawlRequests,
     markCrawlRequestsInProgress,
     findCrawlRequestByUrl,
 } from '@acta/db';
-import { loadOutlets } from '../config/crawlerConfig.js';
+
+export function claimedCrawlRequestsToCrawlerRequests(
+    claimedRequests,
+    outletConfigs = [],
+) {
+    const outletMap = new Map(outletConfigs.map((outlet) => [outlet.name, outlet]));
+    return claimedRequests.map((request) => ({
+        url: request.url,
+        label: 'article',
+        userData: {
+            crawlRequestId: request.id,
+            outletId: request.outletId,
+            source: request.outletName,
+            outletConfig: outletMap.get(request.outletName) ?? null,
+        },
+    }));
+}
+
+export async function claimPendingArticles(
+    outletIds,
+    limit,
+    outletConfigs = [],
+) {
+    const claimed = await claimPendingCrawlRequests(outletIds, limit);
+    return claimedCrawlRequestsToCrawlerRequests(claimed, outletConfigs);
+}
 
 /**
  * Gets pending crawl requests from PostgreSQL and converts them to Crawlee request format
@@ -56,6 +82,7 @@ export async function getPendingCrawlRequestsFromDB(batchSize = 100, outletId = 
     console.log(`✅ Fetched ${pendingRequests.length} pending crawl requests from PostgreSQL`);
     
     // Load outlet configurations to match with requests
+    const { loadOutlets } = await import('../config/crawlerConfig.js');
     const outlets = loadOutlets();
     const outletMap = new Map(outlets.map(o => [o.name, o]));
     

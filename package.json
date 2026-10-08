@@ -9,7 +9,7 @@
         "modules/*"
     ],
     "scripts": {
-        "crawler:start": "cd apps/crawler && npm start",
+        "crawler:start": "cd apps/crawler && npm start --",
         "crawler:export:rss": "cd apps/crawler && npm run export:rss",
         "crawler:export:articles": "cd apps/crawler && npm run export:articles",
         "crawler:analyze": "cd apps/crawler && npm run analyze:articles --",
@@ -76,6 +76,10 @@
         "test:p1-01:integration": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && npm test",
         "test:p1-01:e2e": "NODE_ENV=production ADMIN_EMAIL='admin@example.invalid' ADMIN_PASSWORD='synthetic-password-123' ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' NEXT_TELEMETRY_DISABLED=1 npm run config:validate:production && NODE_ENV=production ADMIN_EMAIL='admin@example.invalid' ADMIN_PASSWORD='synthetic-password-123' ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' NEXT_TELEMETRY_DISABLED=1 npm run build --workspace @acta/web",
         "test:p1-01:regression": "npm test",
+        "test:p1-02:unit": "npm test --workspace @acta/crawler -- --runInBand --runTestsByPath src/__tests__/crawlerOptions.test.js src/__tests__/postgresQueue.test.js && node --test scripts/governance/__tests__/crawler-production-policy.test.mjs",
+        "test:p1-02:integration": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && npm test --workspace @acta/crawler -- --runInBand --runTestsByPath src/__tests__/integration.test.js",
+        "test:p1-02:e2e": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && node --import tsx --test apps/crawler/src/__tests__/crawlerSlice.e2e.test.js",
+        "test:p1-02:regression": "npm test --workspace @acta/crawler -- --runInBand",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",
