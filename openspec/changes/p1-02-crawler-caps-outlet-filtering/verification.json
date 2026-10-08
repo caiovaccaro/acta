@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-246",
+  "changeId": "p1-02-crawler-caps-outlet-filtering",
+  "openSpecCommand": "npx openspec validate p1-02-crawler-caps-outlet-filtering --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-02:unit",
+    "integration": "npm run test:p1-02:integration",
+    "e2e": "npm run test:p1-02:e2e",
+    "regression": "npm run test:p1-02:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/specs/bounded-crawler-slices/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "apps/crawler/README.md",
+    "apps/crawler/jest.config.js",
+    "apps/crawler/package.json",
+    "apps/crawler/src/__tests__/crawlerOptions.test.js",
+    "apps/crawler/src/__tests__/crawlerSlice.e2e.test.js",
+    "apps/crawler/src/__tests__/integration.test.js",
+    "apps/crawler/src/__tests__/postgresQueue.test.js",
+    "apps/crawler/src/config/crawlerConfig.js",
+    "apps/crawler/src/config/crawlerOptions.js",
+    "apps/crawler/src/jobs/crawlerRun.js",
+    "apps/crawler/src/jobs/refreshFeeds.js",
+    "apps/crawler/src/scripts/runCrawler.js",
+    "apps/crawler/src/utils/postgresQueue.js",
+    "documentation/governance/crawler-slice-runbook.md",
+    "modules/db/src/repositories/crawlRequestRepository.ts",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/proposal.md",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/design.md",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/tasks.md",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/specs/bounded-crawler-slices/spec.md",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering/verification.json",
+    "package.json",
+    "package-lock.json",
+    "scripts/governance/__tests__/crawler-production-policy.test.mjs",
+    "scripts/governance/__tests__/fixtures/cai-246.md"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "apps/crawler",
+    "documentation/governance/crawler-slice-runbook.md",
+    "modules/db/src/repositories/crawlRequestRepository.ts",
+    "openspec/changes/p1-02-crawler-caps-outlet-filtering",
+    "package.json",
+    "package-lock.json",
+    "scripts/governance/__tests__/crawler-production-policy.test.mjs",
+    "scripts/governance/__tests__/fixtures/cai-246.md"
+  ],
+  "reportPath": "governance-reports/CAI-246.json"
+}
