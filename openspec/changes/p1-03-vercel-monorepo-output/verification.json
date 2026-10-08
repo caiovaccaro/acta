@@ -28,6 +28,7 @@
     "scripts/deployment/__tests__/smoke.test.mjs",
     "scripts/governance/__tests__/fixtures/cai-248.md",
     "scripts/governance/__tests__/vercel-deployment-policy.test.mjs",
+    "scripts/governance/run-adversarial-review.mjs",
     "vercel.json"
   ],
   "trackedPaths": [
@@ -38,6 +39,7 @@
     "scripts/deployment",
     "scripts/governance/__tests__/fixtures/cai-248.md",
     "scripts/governance/__tests__/vercel-deployment-policy.test.mjs",
+    "scripts/governance/run-adversarial-review.mjs",
     "vercel.json"
   ],
   "reportPath": "governance-reports/CAI-248.json"
