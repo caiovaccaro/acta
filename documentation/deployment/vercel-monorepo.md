@@ -93,7 +93,9 @@ npm run deploy:smoke -- \
 
 The command performs exactly five GET requests: `/api/health`, `/`, the topic,
 the question, and `/admin/login`. It checks public statuses and markers only.
-Run it once per candidate preview to remain within Vercel Hobby limits.
+The Vercel transport runs those bounded requests concurrently so CLI
+authentication latency cannot multiply across routes. Run it once per candidate
+preview to remain within Vercel Hobby limits.
 
 CAI-248 preview `dpl_9zaS3Zhos2UnZSaPSWHATXePJdmq` reached `Ready` on
 2026-10-08. The protected-transport smoke passed all five routes with HTTP 200

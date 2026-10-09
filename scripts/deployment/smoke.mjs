@@ -101,8 +101,7 @@ async function readBoundedBody(response) {
 
 export async function smokeDeployment(options, fetchImpl = globalThis.fetch) {
   const baseUrl = validateBaseUrl(options.baseUrl);
-  const results = [];
-  for (const route of smokeRoutes(options)) {
+  const verifyRoute = async (route) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     try {
@@ -119,7 +118,7 @@ export async function smokeDeployment(options, fetchImpl = globalThis.fetch) {
       if (!body.includes(route.marker)) {
         throw new SmokeError(`${route.name} did not contain its expected public marker`);
       }
-      results.push({ name: route.name, status: response.status });
+      return { name: route.name, status: response.status };
     } catch (error) {
       if (error?.name === 'AbortError') {
         throw new SmokeError(`${route.name} timed out`);
@@ -128,6 +127,14 @@ export async function smokeDeployment(options, fetchImpl = globalThis.fetch) {
     } finally {
       clearTimeout(timeout);
     }
+  };
+  const routes = smokeRoutes(options);
+  if (options.parallel) {
+    return Promise.all(routes.map(verifyRoute));
+  }
+  const results = [];
+  for (const route of routes) {
+    results.push(await verifyRoute(route));
   }
   return results;
 }
@@ -171,7 +178,10 @@ export async function vercelCurlFetch(url, init = {}, run = execFileAsync) {
 async function main() {
   const options = parseSmokeArgs(process.argv.slice(2));
   const fetchImpl = options.transport === 'vercel' ? vercelCurlFetch : globalThis.fetch;
-  const results = await smokeDeployment(options, fetchImpl);
+  const results = await smokeDeployment(
+    { ...options, parallel: options.transport === 'vercel' },
+    fetchImpl,
+  );
   for (const result of results) {
     process.stdout.write(`PASS ${result.name} (${result.status})\n`);
   }
