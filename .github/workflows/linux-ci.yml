@@ -97,5 +97,14 @@ jobs:
       - name: Run pipeline coordination end-to-end verification
         run: npm run test:p1-05:e2e
 
+      - name: Run stable cursor unit verification
+        run: npm run test:p1-06:unit
+
+      - name: Run stable cursor integration verification
+        run: npm run test:p1-06:integration
+
+      - name: Run stable cursor end-to-end verification
+        run: npm run test:p1-06:e2e
+
       - name: Run regression verification
         run: npm run test:p1-01:regression
