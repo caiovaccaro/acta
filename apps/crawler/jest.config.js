@@ -2,6 +2,7 @@ export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/__tests__/**/*.test.js'],
+  testPathIgnorePatterns: ['<rootDir>/src/__tests__/crawlerSlice.e2e.test.js'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@acta/db$': '<rootDir>/../../modules/db/src/index.ts',

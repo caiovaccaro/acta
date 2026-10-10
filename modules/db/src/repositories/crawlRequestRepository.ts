@@ -6,13 +6,17 @@
 import { prisma } from '../index';
 import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer';
 import type { CrawlRequest } from '@prisma/client';
-import { CrawlStatus } from '@prisma/client';
+import { CrawlStatus, Prisma } from '@prisma/client';
 
 /**
  * Maximum number of retry attempts before giving up on a crawl request
  * Default: 3 attempts (initial attempt + 2 retries)
  */
 export const MAX_RETRY_ATTEMPTS = 3;
+
+export type ClaimedCrawlRequest = CrawlRequest & {
+  outletName: string;
+};
 
 export interface CreateCrawlRequestInput {
   url: string;
@@ -99,7 +103,6 @@ export async function createOrUpdateCrawlRequest(
         where: { id: existing.id },
         data: {
           status: CrawlStatus.pending,
-          attempts: existing.attempts + 1,
           errorMessage: null,
         },
       });
@@ -174,6 +177,56 @@ export async function findPendingCrawlRequests(
 }
 
 /**
+ * Atomically claims the oldest eligible requests for selected outlets.
+ *
+ * PostgreSQL row locks prevent concurrent workers from claiming the same rows.
+ * An empty outlet selection or zero limit is an exact no-write boundary.
+ */
+export async function claimPendingCrawlRequests(
+  outletIds: string[],
+  limit: number,
+  maxAttempts: number = MAX_RETRY_ATTEMPTS
+): Promise<ClaimedCrawlRequest[]> {
+  if (!Number.isSafeInteger(limit) || limit < 0) {
+    throw new Error('Claim limit must be a non-negative safe integer');
+  }
+  if (limit === 0 || outletIds.length === 0) {
+    return [];
+  }
+
+  const uniqueOutletIds = Array.from(new Set(outletIds));
+  return prisma.$transaction(async (transaction) => {
+    return transaction.$queryRaw<ClaimedCrawlRequest[]>(Prisma.sql`
+      WITH candidates AS (
+        SELECT request.id
+        FROM "crawl_requests" AS request
+        WHERE request.status = 'pending'::"CrawlStatus"
+          AND request.attempts < ${maxAttempts}
+          AND request."outletId" IN (${Prisma.join(uniqueOutletIds)})
+        ORDER BY request."createdAt" ASC, request.id ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT ${limit}
+      ),
+      claimed AS (
+        UPDATE "crawl_requests" AS request
+        SET
+          status = 'in_progress'::"CrawlStatus",
+          attempts = request.attempts + 1,
+          "errorMessage" = NULL,
+          "updatedAt" = NOW()
+        FROM candidates
+        WHERE request.id = candidates.id
+        RETURNING request.*
+      )
+      SELECT claimed.*, outlet.name AS "outletName"
+      FROM claimed
+      JOIN "outlets" AS outlet ON outlet.id = claimed."outletId"
+      ORDER BY claimed."createdAt" ASC, claimed.id ASC
+    `);
+  });
+}
+
+/**
  * Updates crawl request status
  * @param id - CrawlRequest ID
  * @param status - New status
@@ -206,18 +259,16 @@ export async function updateCrawlRequestStatus(
     errorMessage: errorMessage ?? null,
   };
   
-  if (status === CrawlStatus.in_progress || status === CrawlStatus.failed) {
-    const newAttempts = current.attempts + 1;
+  if (status === CrawlStatus.in_progress) {
     updateData.attempts = { increment: 1 };
-    
-    // If marking as failed and we've exceeded retry limit, ensure it stays failed
-    if (status === CrawlStatus.failed && hasExceededRetryLimit(newAttempts, maxAttempts)) {
-      // Add note to error message about retry limit
-      const retryLimitMessage = ` (Max retries exceeded: ${newAttempts}/${maxAttempts})`;
-      updateData.errorMessage = errorMessage 
-        ? `${errorMessage}${retryLimitMessage}`
-        : retryLimitMessage;
-    }
+  } else if (
+    status === CrawlStatus.failed
+    && hasExceededRetryLimit(current.attempts, maxAttempts)
+  ) {
+    const retryLimitMessage = ` (Max retries exceeded: ${current.attempts}/${maxAttempts})`;
+    updateData.errorMessage = errorMessage
+      ? `${errorMessage}${retryLimitMessage}`
+      : retryLimitMessage;
   }
   
   return prisma.crawlRequest.update({
