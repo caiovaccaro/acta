@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-252",
+  "changeId": "p1-05-pipeline-run-stage-lease-models",
+  "openSpecCommand": "npx openspec validate p1-05-pipeline-run-stage-lease-models --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-05:unit",
+    "integration": "npm run test:p1-05:migrations && npm run test:p1-05:integration",
+    "e2e": "npm run test:p1-05:e2e",
+    "regression": "npm run test:p1-05:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/specs/pipeline-run-coordination/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261010170000_add_pipeline_coordination/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/sanitizeError.ts",
+    "modules/db/src/pipeline/stateMachine.ts",
+    "modules/db/src/repositories/pipelineLeaseRepository.ts",
+    "modules/db/src/repositories/pipelineRunRepository.ts",
+    "modules/db/src/__tests__/pipelineStateMachine.test.ts",
+    "modules/db/src/__tests__/pipelineLease.integration.test.ts",
+    "modules/db/src/__tests__/pipelineLease.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/competingPipelineRunner.ts",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/proposal.md",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/design.md",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/tasks.md",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/specs/pipeline-run-coordination/spec.md",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-252.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
+    "scripts/testing/verify-p1-05-migrations.mjs",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261010170000_add_pipeline_coordination",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline",
+    "modules/db/src/repositories/pipelineLeaseRepository.ts",
+    "modules/db/src/repositories/pipelineRunRepository.ts",
+    "modules/db/src/__tests__/pipelineStateMachine.test.ts",
+    "modules/db/src/__tests__/pipelineLease.integration.test.ts",
+    "modules/db/src/__tests__/pipelineLease.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/competingPipelineRunner.ts",
+    "openspec/changes/p1-05-pipeline-run-stage-lease-models",
+    "scripts/governance/__tests__/fixtures/cai-252.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
+    "scripts/testing/verify-p1-05-migrations.mjs",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-252.json"
+}
