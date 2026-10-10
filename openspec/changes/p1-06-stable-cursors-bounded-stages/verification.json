@@ -30,6 +30,7 @@
     "openspec/changes/p1-06-stable-cursors-bounded-stages/specs/stable-stage-cursors/spec.md",
     "openspec/changes/p1-06-stable-cursors-bounded-stages/verification.json",
     "scripts/governance/__tests__/fixtures/cai-250.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
     "package.json"
   ],
   "trackedPaths": [
@@ -46,6 +47,7 @@
     "modules/db/src/__tests__/fixtures/resumeCursorRunner.ts",
     "openspec/changes/p1-06-stable-cursors-bounded-stages",
     "scripts/governance/__tests__/fixtures/cai-250.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
     "package.json"
   ],
   "reportPath": "governance-reports/CAI-250.json"
