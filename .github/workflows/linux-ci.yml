@@ -64,5 +64,17 @@ jobs:
       - name: Run end-to-end verification
         run: npm run test:p1-01:e2e
 
-      - name: Run regression verification
+      - name: Verify production database safety contract
+        run: npm run test:p1-04:unit
+
+      - name: Verify logical backup and disposable restore
+        run: npm run test:p1-04:integration
+
+      - name: Verify Vercel data-check fixtures
+        run: npm run test:p1-04:e2e
+
+      - name: Run established regression verification
         run: npm run test:p1-01:regression
+
+      - name: Run CAI-245 regression verification
+        run: npm run test:p1-04:regression
