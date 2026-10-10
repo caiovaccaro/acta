@@ -9,7 +9,7 @@ performs no database or network writes.
 
 ```bash
 npm run crawler:start -- --max-articles=25
-npm run crawler:start -- --max-articles=10 --outlets "BBC" "Reuters"
+npm run crawler:start -- --max-articles=10 --outlets "BBC" "The Guardian"
 npm run crawler:start -- --max-articles=0 --outlets "BBC"
 ```
 
@@ -65,6 +65,23 @@ ALLOW_LINEAR_FIXTURE=1 npm run verify:pr-ready -- \
 The integration and E2E commands generate Prisma and push the schema to the
 database identified by `DATABASE_URL`. Use only a disposable local or CI
 database.
+
+### Live free-outlet smoke
+
+After the fixture gates pass, verify the production command against one real
+free feed and a disposable database:
+
+```bash
+NODE_ENV=production \
+DATABASE_URL="$DISPOSABLE_DATABASE_URL" \
+npm run crawler:start -- --outlets BBC --max-articles=2
+```
+
+On 2026-10-10, the command fetched the configured BBC RSS feed, discovered 25
+items, claimed and persisted exactly 2 articles through Cheerio/Readability,
+failed 0, and left 23 pending. A direct database check confirmed 2 articles, 2
+done requests, and 23 pending requests. This smoke makes real network requests;
+it is intentionally bounded and is not a deterministic CI gate.
 
 ## Failure recovery
 
