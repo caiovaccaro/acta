@@ -92,6 +92,11 @@
         "test:p1-06:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_CURSOR_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineCursor.integration.test.ts",
         "test:p1-06:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_CURSOR_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineCursor.e2e.test.ts",
         "test:p1-06:regression": "npm test",
+        "pipeline:run-slice": "npx tsx scripts/pipeline/run-slice.ts",
+        "test:p1-07:unit": "npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineSlice.test.ts",
+        "test:p1-07:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_SLICE_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineSlice.integration.test.ts",
+        "test:p1-07:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_SLICE_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineSlice.e2e.test.ts",
+        "test:p1-07:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",

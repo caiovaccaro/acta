@@ -90,5 +90,14 @@ jobs:
       - name: Run stable cursor end-to-end verification
         run: npm run test:p1-06:e2e
 
+      - name: Run pipeline slice unit verification
+        run: npm run test:p1-07:unit
+
+      - name: Run pipeline slice integration verification
+        run: npm run test:p1-07:integration
+
+      - name: Run pipeline slice end-to-end verification
+        run: npm run test:p1-07:e2e
+
       - name: Run regression verification
         run: npm run test:p1-01:regression

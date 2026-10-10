@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-249",
+  "changeId": "p1-07-pipeline-run-slice",
+  "openSpecCommand": "npx openspec validate p1-07-pipeline-run-slice --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-07:unit",
+    "integration": "npm run test:p1-07:integration",
+    "e2e": "npm run test:p1-07:e2e",
+    "regression": "npm run test:p1-07:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-07-pipeline-run-slice/specs/pipeline-run-slice/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/sliceAdapters.ts",
+    "modules/db/src/pipeline/sliceConfig.ts",
+    "modules/db/src/pipeline/sliceDecision.ts",
+    "modules/db/src/pipeline/sliceStages.ts",
+    "modules/db/src/repositories/pipelineRunRepository.ts",
+    "modules/db/src/__tests__/pipelineSlice.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.integration.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/killedSliceRunner.ts",
+    "openspec/changes/p1-07-pipeline-run-slice/proposal.md",
+    "openspec/changes/p1-07-pipeline-run-slice/design.md",
+    "openspec/changes/p1-07-pipeline-run-slice/tasks.md",
+    "openspec/changes/p1-07-pipeline-run-slice/specs/pipeline-run-slice/spec.md",
+    "openspec/changes/p1-07-pipeline-run-slice/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-249.md",
+    "scripts/pipeline/run-slice.ts",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/sliceAdapters.ts",
+    "modules/db/src/pipeline/sliceConfig.ts",
+    "modules/db/src/pipeline/sliceDecision.ts",
+    "modules/db/src/pipeline/sliceStages.ts",
+    "modules/db/src/repositories/pipelineRunRepository.ts",
+    "modules/db/src/__tests__/pipelineSlice.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.integration.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/killedSliceRunner.ts",
+    "openspec/changes/p1-07-pipeline-run-slice",
+    "scripts/governance/__tests__/fixtures/cai-249.md",
+    "scripts/pipeline/run-slice.ts",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-249.json"
+}
