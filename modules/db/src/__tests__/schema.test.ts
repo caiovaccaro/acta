@@ -449,5 +449,37 @@ describe('Database Schema Tests', () => {
       await prisma.outlet.delete({ where: { id: outlet.id } });
     });
   });
+
+  describe('Pipeline coordination models', () => {
+    it('should persist a guarded run, stage checkpoint, and singleton lease', async () => {
+      const run = await prisma.pipelineRun.create({
+        data: { trigger: 'manual' },
+      });
+      expect(run.status).toBe('queued');
+
+      const stage = await prisma.pipelineStageRun.create({
+        data: {
+          pipelineRunId: run.id,
+          stage: 'schema-regression',
+          cursor: { createdAt: '2026-10-10T00:00:00.000Z', id: 'schema' },
+        },
+      });
+      expect(stage.status).toBe('pending');
+
+      const lease = await prisma.pipelineLease.create({
+        data: {
+          resource: `schema-regression-${run.id}`,
+          ownerToken: 'schema-owner',
+          pipelineRunId: run.id,
+          generation: 1,
+        },
+      });
+      expect(lease.generation).toBe(1);
+
+      await prisma.pipelineLease.delete({ where: { resource: lease.resource } });
+      await prisma.pipelineStageRun.delete({ where: { id: stage.id } });
+      await prisma.pipelineRun.delete({ where: { id: run.id } });
+    });
+  });
 });
 

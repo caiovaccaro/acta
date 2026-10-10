@@ -64,5 +64,38 @@ jobs:
       - name: Run end-to-end verification
         run: npm run test:p1-01:e2e
 
+      - name: Start disposable pipeline PostgreSQL
+        run: |
+          docker run --name acta-cai-252-postgres \
+            -e POSTGRES_USER=acta \
+            -e POSTGRES_PASSWORD=acta \
+            -e POSTGRES_DB=acta_cai252 \
+            -p 127.0.0.1:55435:5432 \
+            -d postgres:16
+          for _ in $(seq 1 30); do
+            if docker exec acta-cai-252-postgres pg_isready -U acta -d acta_cai252 >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker exec acta-cai-252-postgres pg_isready -U acta -d acta_cai252
+
+      - name: Verify pipeline coordination migrations
+        run: npm run test:p1-05:migrations
+
+      - name: Prepare pipeline lease test schema
+        env:
+          DATABASE_URL: postgresql://acta:acta@127.0.0.1:55435/acta_cai252
+        run: npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma
+
+      - name: Run pipeline coordination unit verification
+        run: npm run test:p1-05:unit
+
+      - name: Run pipeline coordination integration verification
+        run: npm run test:p1-05:integration
+
+      - name: Run pipeline coordination end-to-end verification
+        run: npm run test:p1-05:e2e
+
       - name: Run regression verification
         run: npm run test:p1-01:regression
