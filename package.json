@@ -80,6 +80,13 @@
         "test:p1-02:integration": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && npm test --workspace @acta/crawler -- --runInBand --runTestsByPath src/__tests__/integration.test.js",
         "test:p1-02:e2e": "npm run db:generate && (cd modules/db && npx prisma db push --skip-generate) && node --import tsx --test apps/crawler/src/__tests__/crawlerSlice.e2e.test.js",
         "test:p1-02:regression": "npm test --workspace @acta/crawler -- --runInBand",
+        "deploy:validate": "node scripts/deployment/validate-config.mjs",
+        "deploy:smoke": "node scripts/deployment/smoke.mjs",
+        "build:vercel": "npm run config:validate:production && npm run deploy:validate && npm run build --workspace @acta/web",
+        "test:p1-03:unit": "node --test scripts/deployment/__tests__/config.test.mjs scripts/governance/__tests__/vercel-deployment-policy.test.mjs",
+        "test:p1-03:integration": "NODE_ENV=production DATABASE_URL='postgresql://fixture:fixture@127.0.0.1:5432/acta' ADMIN_EMAIL='admin@example.invalid' ADMIN_PASSWORD='synthetic-password-123' ADMIN_SESSION_SECRET='synthetic-session-secret-1234567890' NEXT_TELEMETRY_DISABLED=1 npm run build:vercel",
+        "test:p1-03:e2e": "node --test scripts/deployment/__tests__/smoke.test.mjs",
+        "test:p1-03:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",

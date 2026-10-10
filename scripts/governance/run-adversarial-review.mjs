@@ -65,9 +65,8 @@ async function main() {
   ].join('\n');
   if (process.env.GITHUB_STEP_SUMMARY) {
     await appendFile(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`, 'utf8');
-  } else {
-    process.stdout.write(`${summary}\n`);
   }
+  process.stdout.write(`${summary}\n`);
 
   if (review.verdict !== 'pass' || review.findings.length > 0) {
     throw new ReadinessError(
