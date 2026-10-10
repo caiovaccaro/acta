@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from '@jest/globals';
 import type { PipelineRunStatus } from '@prisma/client';
 import {
@@ -7,6 +9,11 @@ import {
   PIPELINE_RUN_STATUSES,
 } from '../pipeline/stateMachine';
 import { sanitizePipelineError } from '../pipeline/sanitizeError';
+
+const schema = readFileSync(
+  path.resolve(process.cwd(), 'prisma/schema.prisma'),
+  'utf8',
+);
 
 const allowed = new Set([
   'queued->running',
@@ -49,6 +56,19 @@ describe('pipeline run state machine', () => {
       ).toBe(true);
     },
   );
+});
+
+describe('pipeline coordination schema contract', () => {
+  it('declares run, stage, lease, and audit models with required indexes', () => {
+    expect(schema).toContain('model PipelineRun');
+    expect(schema).toContain('model PipelineStageRun');
+    expect(schema).toContain('model PipelineLease');
+    expect(schema).toContain('model PipelineLeaseEvent');
+    expect(schema).toContain('@@unique([pipelineRunId, stage])');
+    expect(schema).toContain('@@index([status, nextEligibleAt])');
+    expect(schema).toContain('@@index([expiresAt])');
+    expect(schema).toContain('@@map("pipeline_lease_events")');
+  });
 });
 
 describe('pipeline error sanitization', () => {
