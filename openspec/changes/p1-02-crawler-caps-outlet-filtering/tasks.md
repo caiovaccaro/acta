@@ -27,6 +27,7 @@
 - [x] 4.4 Run `/opsx:verify` and commit-bound `verify:pr-ready` for CAI-246 and verify the report names the reviewed commit without sensitive values
 - [x] 4.5 Record implementation duration plus unavailable task-attributed Cursor usage, external API cost, and incremental infrastructure cost; synchronize final evidence to Linear; and verify CAI-246 is ready for review
 - [x] 4.6 Open the CAI-246 pull request only after local gates pass, then verify Linux CI, governance, and adversarial-review checks all pass on its final head
+- [x] 4.7 Run the production crawler command against a real configured free RSS feed and disposable PostgreSQL, then verify persisted completions stay within the cap and remaining work stays retryable
 
 ## Workflow follow-up
 
