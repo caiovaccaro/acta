@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cd modules/db && npm run db:generate && cd ../../apps/web && npm run build",
+  "buildCommand": "npm run build:vercel",
   "outputDirectory": "apps/web/.next",
   "framework": "nextjs",
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "devCommand": "cd apps/web && npm run dev"
 }
 

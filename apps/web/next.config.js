@@ -12,8 +12,6 @@ const nextConfig = {
     // your project has ESLint errors. Only use this if you know what you're doing.
     ignoreDuringBuilds: false,
   },
-  // Output to root .next for Vercel monorepo compatibility
-  distDir: '../../.next',
 }
 
 module.exports = nextConfig
