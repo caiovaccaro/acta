@@ -84,9 +84,9 @@
         "test:p1-03:e2e": "node --test scripts/deployment/__tests__/smoke.test.mjs",
         "test:p1-03:regression": "npm test",
         "test:p1-05:unit": "DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineStateMachine.test.ts",
-        "test:p1-05:migrations": "node scripts/testing/verify-p1-05-migrations.mjs",
-        "test:p1-05:integration": "DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineLease.integration.test.ts",
-        "test:p1-05:e2e": "DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineLease.e2e.test.ts",
+        "test:p1-05:migrations": "node scripts/testing/ensure-pipeline-postgres.mjs && node scripts/testing/verify-p1-05-migrations.mjs",
+        "test:p1-05:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineLease.integration.test.ts",
+        "test:p1-05:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_PIPELINE_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/pipelineLease.e2e.test.ts",
         "test:p1-05:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
