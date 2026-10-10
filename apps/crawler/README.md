@@ -45,9 +45,8 @@ Create a `.env` file in the project root:
 DATABASE_URL="postgresql://acta:acta_dev_password@localhost:5432/acta_dev?schema=public"
 NODE_ENV=development
 
-# Optional: Batch processing configuration
-BATCH_SIZE=100                    # Articles per batch (default: 100)
-MAX_ARTICLES_PER_RUN=null         # Max articles per run (null = all, for periodic jobs)
+# Required when --max-articles is not passed
+MAX_ARTICLES_PER_RUN=25           # Finite non-negative article extraction cap
 STUCK_REQUEST_THRESHOLD_MINUTES=60 # Reset stuck requests after this many minutes
 ```
 
@@ -56,12 +55,18 @@ STUCK_REQUEST_THRESHOLD_MINUTES=60 # Reset stuck requests after this many minute
 ### Run Crawler
 
 ```bash
-# From project root
-npm run crawler:start
+# From project root; the cap is mandatory
+npm run crawler:start -- --max-articles=25
+
+# Select canonical outlet names exactly
+npm run crawler:start -- --max-articles=10 --outlets "BBC" "Reuters"
+
+# Validate a zero-work slice without database or network writes
+npm run crawler:start -- --max-articles=0 --outlets "BBC"
 
 # Or from crawler directory
 cd apps/crawler
-npm start
+npm start -- --max-articles=25
 ```
 
 ### Export Data
@@ -88,13 +93,18 @@ npm run crawler:migrate:storage
 
 Edit `apps/crawler/src/config/outlets.json` to add or modify RSS feeds.
 
-### Batch Processing
+### Bounded slices
 
-Control batch size and run limits via environment variables:
-- `BATCH_SIZE`: Number of articles processed per batch (default: 100)
-- `MAX_ARTICLES_PER_RUN`: Maximum articles to process in a single run (default: null = all)
+Every production run requires a finite, non-negative cap from
+`--max-articles` or `MAX_ARTICLES_PER_RUN`; there is no unlimited fallback.
+`--outlets` accepts comma-separated or repeated canonical names and matches
+case-insensitively but exactly. Invalid names fail before writes. The command
+prints one JSON result with selected outlets plus discovered, claimed,
+completed, failed, and remaining counts.
 
-For periodic execution (e.g., cron jobs), set `MAX_ARTICLES_PER_RUN` to limit work per run.
+The production command uses static HTTP and Cheerio. It does not install or
+launch Playwright/Chromium and does not support authenticated, paywalled, or
+JavaScript-rendered extraction.
 
 ## Testing
 
@@ -112,7 +122,7 @@ npm run test:watch
 apps/crawler/
 ├── src/
 │   ├── jobs/              # Main job orchestration
-│   │   ├── refreshFeeds.js # Main entry point
+│   │   ├── crawlerRun.js   # Bounded slice orchestration
 │   │   ├── database.js     # DB setup/teardown
 │   │   ├── crawler.js      # Crawler initialization
 │   │   ├── phases.js       # Processing phases

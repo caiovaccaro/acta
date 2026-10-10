@@ -3,9 +3,9 @@
     "version": "0.0.1",
     "type": "module",
     "description": "Acta RSS news crawler - automated ingestion and processing of news articles",
-    "main": "src/jobs/refreshFeeds.js",
+    "main": "src/scripts/runCrawler.js",
     "scripts": {
-        "start": "node ../../node_modules/tsx/dist/cli.mjs src/jobs/refreshFeeds.js",
+        "start": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/runCrawler.js",
         "export:rss": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/exportRss.js",
         "export:articles": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/exportArticles.js",
         "migrate:storage": "node ../../node_modules/tsx/dist/cli.mjs src/scripts/migrateFromFileStorage.js",
@@ -25,8 +25,7 @@
         "@mozilla/readability": "^0.6.0",
         "crawlee": "^3.0.0",
         "dotenv": "^17.2.3",
-        "jsdom": "^27.1.0",
-        "playwright": "^1.40.0"
+        "jsdom": "^27.1.0"
     },
     "devDependencies": {
         "@babel/preset-env": "^7.23.0",
