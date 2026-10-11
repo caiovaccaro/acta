@@ -4,11 +4,7 @@
  */
 
 import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { resolve } from 'path';
 
 /**
  * Gets crawler configuration from environment variables
@@ -37,7 +33,7 @@ export function getCrawlerConfig() {
  * @returns {Array} Array of outlet objects with url, source, paywall info, etc.
  */
 export function loadOutlets() {
-    const outletsPath = resolve(__dirname, './outlets.json');
+    const outletsPath = resolve(process.cwd(), 'src/config/outlets.json');
     const outletsConfig = JSON.parse(readFileSync(outletsPath, 'utf-8'));
     return outletsConfig.outlets;
 }
