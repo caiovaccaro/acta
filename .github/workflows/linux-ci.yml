@@ -90,3 +90,15 @@ jobs:
 
       - name: Run CAI-245 regression verification
         run: npm run test:p1-04:regression
+
+      - name: Verify pipeline coordination migrations
+        run: npm run test:p1-05:migrations
+
+      - name: Run pipeline coordination unit verification
+        run: npm run test:p1-05:unit
+
+      - name: Run pipeline coordination integration verification
+        run: npm run test:p1-05:integration
+
+      - name: Run pipeline coordination end-to-end verification
+        run: npm run test:p1-05:e2e
