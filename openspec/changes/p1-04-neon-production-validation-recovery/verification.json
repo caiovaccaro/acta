@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-245",
+  "changeId": "p1-04-neon-production-validation-recovery",
+  "openSpecCommand": "npx openspec validate p1-04-neon-production-validation-recovery --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-04:unit",
+    "integration": "npm run test:p1-04:integration",
+    "e2e": "npm run test:p1-04:e2e",
+    "regression": "npm run test:p1-04:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-04-neon-production-validation-recovery/specs/production-database-safety/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "apps/web/app/api/health/route.ts",
+    "documentation/operations/neon-recovery.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery/proposal.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery/design.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery/tasks.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery/specs/production-database-safety/spec.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery/verification.json",
+    "scripts/database/production-contract.mjs",
+    "scripts/database/deploy-migrations.mjs",
+    "scripts/database/restore-verify.sh",
+    "scripts/database/test-restore-integration.sh",
+    "scripts/database/vercel-data-check.mjs",
+    "scripts/database/__tests__/production-contract.test.mjs",
+    "scripts/database/__tests__/vercel-data-check.test.mjs",
+    "scripts/governance/__tests__/database-production-policy.test.mjs",
+    "scripts/governance/__tests__/fixtures/cai-245.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "apps/web/app/api/health/route.ts",
+    "documentation/operations/neon-recovery.md",
+    "openspec/changes/p1-04-neon-production-validation-recovery",
+    "scripts/database",
+    "scripts/governance/__tests__/database-production-policy.test.mjs",
+    "scripts/governance/__tests__/fixtures/cai-245.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-245.json"
+}
