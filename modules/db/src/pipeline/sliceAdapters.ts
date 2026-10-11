@@ -89,7 +89,8 @@ export function createFixtureStageAdapters(options: {
         });
         const claimed = remaining.slice(0, unitCap);
         let lastId: string | undefined;
-        for (const [index, id] of claimed.entries()) {
+        for (let index = 0; index < claimed.length; index += 1) {
+          const id = claimed[index];
           lastId = id;
           await context.checkpoint({ createdAt: '2026-10-10T12:00:00.000Z', id }, {
             processed: index + 1,
