@@ -76,5 +76,17 @@ jobs:
       - name: Run established regression verification
         run: npm run test:p1-01:regression
 
+      - name: Run bounded crawler unit verification
+        run: npm run test:p1-02:unit
+
+      - name: Run bounded crawler integration verification
+        run: npm run test:p1-02:integration
+
+      - name: Run bounded crawler end-to-end verification
+        run: npm run test:p1-02:e2e
+
+      - name: Run bounded crawler regression verification
+        run: npm run test:p1-02:regression
+
       - name: Run CAI-245 regression verification
         run: npm run test:p1-04:regression
