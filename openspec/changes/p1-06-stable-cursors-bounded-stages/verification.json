@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-250",
+  "changeId": "p1-06-stable-cursors-bounded-stages",
+  "openSpecCommand": "npx openspec validate p1-06-stable-cursors-bounded-stages --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-06:unit",
+    "integration": "npm run test:p1-06:integration",
+    "e2e": "npm run test:p1-06:e2e",
+    "regression": "npm run test:p1-06:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/specs/stable-stage-cursors/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/cursor.ts",
+    "modules/db/src/pipeline/deadline.ts",
+    "modules/db/src/pipeline/limits.ts",
+    "modules/db/src/pipeline/stageUnit.ts",
+    "modules/db/src/__tests__/pipelineCursor.test.ts",
+    "modules/db/src/__tests__/pipelineCursor.integration.test.ts",
+    "modules/db/src/__tests__/pipelineCursor.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/resumeCursorRunner.ts",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/proposal.md",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/design.md",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/tasks.md",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/specs/stable-stage-cursors/spec.md",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-250.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/cursor.ts",
+    "modules/db/src/pipeline/deadline.ts",
+    "modules/db/src/pipeline/limits.ts",
+    "modules/db/src/pipeline/stageUnit.ts",
+    "modules/db/src/__tests__/pipelineCursor.test.ts",
+    "modules/db/src/__tests__/pipelineCursor.integration.test.ts",
+    "modules/db/src/__tests__/pipelineCursor.e2e.test.ts",
+    "modules/db/src/__tests__/fixtures/resumeCursorRunner.ts",
+    "openspec/changes/p1-06-stable-cursors-bounded-stages",
+    "scripts/governance/__tests__/fixtures/cai-250.md",
+    "scripts/testing/ensure-pipeline-postgres.mjs",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-250.json"
+}

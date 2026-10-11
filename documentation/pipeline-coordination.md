@@ -72,3 +72,21 @@ tables and audit records in place. Any destructive cleanup requires a separate
 reviewed migration.
 
 The models add negligible storage and query cost and no paid service calls.
+
+## Stable cursors and bounded units
+
+CAI-250 adds the cursor contract later stages persist on `PipelineStageRun.cursor`.
+Work is selected with a `(createdAt, id)` keyset, not a numeric offset. A unit
+cap is required. The cursor advances only after that unit commits. Deleted
+earlier rows do not skip later ids, and equal timestamps stay ordered by id.
+
+```sh
+npm run test:p1-06:unit
+npm run test:p1-06:integration
+npm run test:p1-06:e2e
+npm run test:p1-06:regression
+```
+
+The database tests reuse disposable PostgreSQL on host port 55435. Production
+unit caps remain mandatory; missing caps fail closed before any claim.
+
