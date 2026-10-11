@@ -64,13 +64,35 @@ jobs:
       - name: Run end-to-end verification
         run: npm run test:p1-01:e2e
 
+      - name: Verify production database safety contract
+        run: npm run test:p1-04:unit
+
+      - name: Verify logical backup and disposable restore
+        run: npm run test:p1-04:integration
+
+      - name: Verify Vercel data-check fixtures
+        run: npm run test:p1-04:e2e
+
+      - name: Run established regression verification
+        run: npm run test:p1-01:regression
+
+      - name: Run bounded crawler unit verification
+        run: npm run test:p1-02:unit
+
+      - name: Run bounded crawler integration verification
+        run: npm run test:p1-02:integration
+
+      - name: Run bounded crawler end-to-end verification
+        run: npm run test:p1-02:e2e
+
+      - name: Run bounded crawler regression verification
+        run: npm run test:p1-02:regression
+
+      - name: Run CAI-245 regression verification
+        run: npm run test:p1-04:regression
+
       - name: Verify pipeline coordination migrations
         run: npm run test:p1-05:migrations
-
-      - name: Prepare pipeline lease test schema
-        env:
-          DATABASE_URL: postgresql://acta:acta@127.0.0.1:55435/acta_cai252
-        run: npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma
 
       - name: Run pipeline coordination unit verification
         run: npm run test:p1-05:unit
@@ -98,6 +120,3 @@ jobs:
 
       - name: Run pipeline slice end-to-end verification
         run: npm run test:p1-07:e2e
-
-      - name: Run regression verification
-        run: npm run test:p1-01:regression
