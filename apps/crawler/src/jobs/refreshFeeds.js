@@ -208,7 +208,7 @@ console.log('\n✅ Phase 1 complete: RSS feeds processed\n');
 console.log('📄 Phase 2: Preparing articles for content extraction...');
 // Get outlet IDs for selected outlets if filtering is active
 const selectedOutletIds = outletNames && outletNames.length > 0
-    ? pilotOutlets.map(o => {
+    ? outletsToProcess.map(o => {
         // We need to get the outlet ID from the database
         // For now, we'll fetch by name in enqueuePendingArticles, but let's get IDs here
         return null; // Will be resolved in enqueuePendingArticles
@@ -220,7 +220,7 @@ let outletIdsForFiltering = null;
 if (outletNames && outletNames.length > 0) {
     const { findOutletByName } = await import('@acta/db');
     outletIdsForFiltering = [];
-    for (const outlet of pilotOutlets) {
+    for (const outlet of outletsToProcess) {
         const dbOutlet = await findOutletByName(outlet.name);
         if (dbOutlet) {
             outletIdsForFiltering.push(dbOutlet.id);
@@ -234,7 +234,7 @@ if (articleRequests.length > 0) {
     // Filter articles by selected outlets if outlet filtering was specified
     let filteredArticleRequests = articleRequests;
     if (outletNames && outletNames.length > 0) {
-        const selectedOutletNames = pilotOutlets.map(o => o.name);
+        const selectedOutletNames = outletsToProcess.map(o => o.name);
         filteredArticleRequests = articleRequests.filter(request => {
             const outletName = request.userData?.source || 'unknown';
             return selectedOutletNames.includes(outletName);

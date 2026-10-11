@@ -6,13 +6,11 @@ export async function GET() {
   try {
     // Check database connection
     let dbStatus = 'unknown';
-    let dbError = null;
     try {
       await prisma.$queryRaw`SELECT 1`;
       dbStatus = 'connected';
-    } catch (error) {
+    } catch {
       dbStatus = 'error';
-      dbError = error instanceof Error ? error.message : String(error);
     }
 
     const health = {
@@ -23,7 +21,6 @@ export async function GET() {
       database: {
         status: dbStatus,
         urlPresent: !!process.env.DATABASE_URL,
-        error: dbError,
       },
     };
 
