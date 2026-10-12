@@ -71,7 +71,7 @@ export async function searchTavilyBasic(
 
   const fetchImpl = config.fetchImpl ?? fetch;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 8_000);
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 8000);
   try {
     const response = await fetchImpl(config.endpoint ?? DEFAULT_ENDPOINT, {
       method: 'POST',
