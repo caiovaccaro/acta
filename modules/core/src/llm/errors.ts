@@ -56,3 +56,13 @@ export class LLMUsagePersistError extends LLMProviderError {
   }
 }
 
+export class LLMBudgetExceededError extends LLMProviderError {
+  constructor(
+    message: string = 'Monthly LLM budget reservation would exceed the application ceiling',
+    cause?: unknown,
+  ) {
+    super(message, cause, false);
+    this.name = 'LLMBudgetExceededError';
+  }
+}
+

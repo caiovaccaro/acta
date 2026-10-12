@@ -5,6 +5,7 @@ import {
   LLMRateLimitError,
   LLMInvalidKeyError,
   LLMUsagePersistError,
+  LLMBudgetExceededError,
 } from '../../llm/errors';
 
 // Mock OpenAI
@@ -222,6 +223,22 @@ describe('OpenAIProvider', () => {
         LLMUsagePersistError,
       );
       expect(client.chat.completions.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not send a paid request when reservation is rejected', async () => {
+      const ledgerProvider = new OpenAIProvider({
+        apiKey: 'test-api-key',
+        onReserve: async () => {
+          throw new LLMBudgetExceededError();
+        },
+      });
+      const client = (ledgerProvider as any).client;
+      client.chat.completions.create.mockResolvedValue(mockCompletion());
+
+      await expect(ledgerProvider.classifyStance(stanceParams)).rejects.toBeInstanceOf(
+        LLMBudgetExceededError,
+      );
+      expect(client.chat.completions.create).not.toHaveBeenCalled();
     });
   });
 });

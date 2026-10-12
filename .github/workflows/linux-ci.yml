@@ -129,3 +129,12 @@ jobs:
 
       - name: Run LLM usage ledger end-to-end verification
         run: npm run test:p1-08:e2e
+
+      - name: Run LLM budget reservation unit verification
+        run: npm run test:p1-09:unit
+
+      - name: Run LLM budget reservation integration verification
+        run: npm run test:p1-09:integration
+
+      - name: Run LLM budget reservation end-to-end verification
+        run: npm run test:p1-09:e2e

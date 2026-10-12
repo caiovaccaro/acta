@@ -23,6 +23,18 @@ export const TAVILY_STAGES: readonly PipelineStageName[] = [
   'tavily_corroboration',
 ];
 
+export const PAID_LLM_STAGES: readonly PipelineStageName[] = [
+  'topic_discovery',
+  'question_discovery',
+  'question_validation',
+  'stance_classification',
+  'content_generation',
+];
+
+export function isPaidLlmStage(stage: PipelineStageName): boolean {
+  return (PAID_LLM_STAGES as readonly string[]).includes(stage);
+}
+
 export function isPipelineStageName(value: string): value is PipelineStageName {
   return (PIPELINE_STAGES as readonly string[]).includes(value);
 }
