@@ -1,4 +1,4 @@
-import { formatMicrosAsUsd, parseDecimalToMicros } from './usageLedger';
+import { formatMicrosAsUsd, LEDGER_ZERO, parseDecimalToMicros } from './usageLedger';
 
 export const APPLICATION_LLM_MONTHLY_CEILING_USD = '30.000000';
 
@@ -62,7 +62,7 @@ export function resolveMonthlyCeilingUsd(raw?: string | null): string {
     return APPLICATION_LLM_MONTHLY_CEILING_USD;
   }
   const requested = parseDecimalToMicros(raw);
-  if (requested <= 0n) {
+  if (requested <= LEDGER_ZERO) {
     throw new Error('Monthly LLM ceiling must be positive');
   }
   const cap = parseDecimalToMicros(APPLICATION_LLM_MONTHLY_CEILING_USD);
@@ -77,7 +77,7 @@ export function remainingBudgetUsd(input: {
   const remaining = parseDecimalToMicros(input.ceilingUsd)
     - parseDecimalToMicros(input.settledUsd)
     - parseDecimalToMicros(input.reservedUsd);
-  return formatMicrosAsUsd(remaining < 0n ? 0n : remaining);
+  return formatMicrosAsUsd(remaining < LEDGER_ZERO ? LEDGER_ZERO : remaining);
 }
 
 export function canReserve(input: {
