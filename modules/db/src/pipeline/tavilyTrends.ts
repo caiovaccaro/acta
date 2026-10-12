@@ -21,7 +21,8 @@ export function createTavilyTrendsAdapter(options: {
       let stored = 0;
       let searches = 0;
       let degraded: string | null = null;
-      for (const group of groups) {
+      for (let index = 0; index < groups.length; index += 1) {
+        const group = groups[index];
         const used = await countTavilySearches(now, options.db);
         const result = await searchTavilyBasic({
           query: group.query,
@@ -29,11 +30,15 @@ export function createTavilyTrendsAdapter(options: {
           usedThisMonth: used.usedThisMonth,
         }, options.client ?? { apiKey: process.env.TAVILY_API_KEY });
         searches += 1;
+        let status: string = 'success';
+        if (!result.ok) {
+          status = result.reason;
+        }
         await recordTavilySearchLog({
           now,
           queryGroup: group.id,
           query: group.query,
-          status: result.ok ? 'success' : result.reason,
+          status,
           resultCount: result.signals.length,
           pipelineRunId: context.runId,
         }, options.db);
