@@ -5,7 +5,6 @@
  */
 
 export * from './llm/index';
-export * from './tavily/queryGroups';
 export * from './tavily/normalize';
 export * from './tavily/client';
 export * from './analysis/index';
