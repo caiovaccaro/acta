@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-259",
+  "changeId": "p1-16-moderation-shadow-evaluation",
+  "openSpecCommand": "npx openspec validate p1-16-moderation-shadow-evaluation --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-16:unit",
+    "integration": "npm run test:p1-16:integration",
+    "e2e": "npm run test:p1-16:e2e",
+    "regression": "npm run test:p1-16:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-16-moderation-shadow-evaluation/specs/moderation-shadow-evaluation/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/moderation/evaluation.ts",
+    "modules/core/src/__tests__/moderation/evaluation.test.ts",
+    "modules/db/src/pipeline/shadowEvaluation.ts",
+    "modules/db/src/__tests__/shadowEvaluation.integration.test.ts",
+    "modules/db/src/__tests__/shadowEvaluation.e2e.test.ts",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/proposal.md",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/design.md",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/tasks.md",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/specs/moderation-shadow-evaluation/spec.md",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/evaluation-report.md",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-259.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/moderation/evaluation.ts",
+    "modules/core/src/__tests__/moderation/evaluation.test.ts",
+    "modules/db/src/pipeline/shadowEvaluation.ts",
+    "modules/db/src/__tests__/shadowEvaluation.integration.test.ts",
+    "modules/db/src/__tests__/shadowEvaluation.e2e.test.ts",
+    "openspec/changes/p1-16-moderation-shadow-evaluation",
+    "scripts/governance/__tests__/fixtures/cai-259.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-259.json"
+}
