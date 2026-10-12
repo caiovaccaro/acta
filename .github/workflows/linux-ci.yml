@@ -210,3 +210,12 @@ jobs:
 
       - name: Run auto-approval end-to-end verification
         run: npm run test:p1-17:e2e
+
+      - name: Run soak unit verification
+        run: npm run test:p1-18:unit
+
+      - name: Run soak integration verification
+        run: npm run test:p1-18:integration
+
+      - name: Run soak end-to-end verification
+        run: npm run test:p1-18:e2e

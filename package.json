@@ -150,6 +150,10 @@
         "test:p1-17:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_AUTO_APPROVE_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/autoApproval.integration.test.ts",
         "test:p1-17:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_AUTO_APPROVE_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/autoApproval.e2e.test.ts",
         "test:p1-17:regression": "npm test",
+        "test:p1-18:unit": "npm test --workspace @acta/core -- --runInBand src/__tests__/operations/soak.test.ts",
+        "test:p1-18:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_SOAK_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/soak.integration.test.ts",
+        "test:p1-18:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_SOAK_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/soak.e2e.test.ts",
+        "test:p1-18:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",
