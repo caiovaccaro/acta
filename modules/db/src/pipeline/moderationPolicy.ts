@@ -25,7 +25,6 @@ export function createShadowModerationAdapter(options: {
       return {
         kind: 'completed',
         metrics: {
-          receipt: { sent: false, reason: 'email_out_of_scope' },
           moderation: {
             mode: 'shadow',
             policyVersion: result.decisions[0]?.policyVersion ?? 'acta-moderation-policy/v1',

@@ -55,7 +55,7 @@ export function createDefaultStageAdapters(): StageAdapterMap {
         if (stage === 'finalize') {
           return {
             kind: 'completed',
-            metrics: { receipt: { sent: false, reason: 'email_out_of_scope' } },
+            metrics: { receipt: { deferred: true } },
           };
         }
         return { kind: 'completed', metrics: { processed: 0, eligible: false } };

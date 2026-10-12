@@ -165,3 +165,12 @@ jobs:
 
       - name: Run moderation policy end-to-end verification
         run: npm run test:p1-12:e2e
+
+      - name: Run operational email unit verification
+        run: npm run test:p1-13:unit
+
+      - name: Run operational email integration verification
+        run: npm run test:p1-13:integration
+
+      - name: Run operational email end-to-end verification
+        run: npm run test:p1-13:e2e

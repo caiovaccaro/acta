@@ -130,6 +130,10 @@
         "test:p1-12:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_MODERATION_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/moderationPolicy.integration.test.ts",
         "test:p1-12:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_MODERATION_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/moderationPolicy.e2e.test.ts",
         "test:p1-12:regression": "npm test",
+        "test:p1-13:unit": "npm test --workspace @acta/core -- --runInBand src/__tests__/notifications/templates.test.ts src/__tests__/notifications/resend.test.ts",
+        "test:p1-13:integration": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_NOTIFICATION_DB_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/notifications.integration.test.ts",
+        "test:p1-13:e2e": "node scripts/testing/ensure-pipeline-postgres.mjs && npm run db:generate && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' npx prisma db push --skip-generate --schema modules/db/prisma/schema.prisma && DATABASE_URL='postgresql://acta:acta@127.0.0.1:55435/acta_cai252' RUN_NOTIFICATION_E2E_TESTS=1 npm test --workspace @acta/db -- --runInBand src/__tests__/notifications.e2e.test.ts",
+        "test:p1-13:regression": "npm test",
         "verify:pr-ready": "node scripts/governance/verify-pr-ready.mjs"
     },
     "author": "Caio Vaccaro",

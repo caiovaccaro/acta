@@ -187,13 +187,29 @@ CAI-255 evaluates every Level 1 topic auto-approval condition in shadow mode.
 Decisions store the policy version, mode, and per-condition evidence. Safety
 tokens, missing evidence, near-duplicates, and budget failure stay pending.
 `AUTO_APPROVE_TOPICS=true` still cannot mutate `moderationStatus` in this change.
-The default finalize adapter writes proposals beside the email-out-of-scope
-receipt.
+The default finalize adapter writes proposals without sending email. Receipt
+delivery is a post-commit step in CAI-256.
 
 ```sh
 npm run test:p1-12:unit
 npm run test:p1-12:integration
 npm run test:p1-12:e2e
 npm run test:p1-12:regression
+```
+
+## Operational and moderation email
+
+CAI-256 sends one owner receipt after every finished slice and a moderation
+digest when pending topics exist. Delivery uses Resend with
+`PIPELINE_EMAIL_FROM` / `PIPELINE_EMAIL_TO` secrets, never stored in the
+repository. Attempts are recorded on `pipeline_notifications` without
+destinations or bodies. A Resend timeout cannot change a committed run
+status.
+
+```sh
+npm run test:p1-13:unit
+npm run test:p1-13:integration
+npm run test:p1-13:e2e
+npm run test:p1-13:regression
 ```
 

@@ -80,6 +80,7 @@ model PipelineRun {
   trendSignals      TrendSignal[]
   tavilySearchLogs  TavilySearchLog[]
   moderationPolicyDecisions ModerationPolicyDecision[]
+  notifications     PipelineNotification[]
 
   @@index([status, nextEligibleAt])
   @@index([heartbeatAt])
@@ -259,6 +260,40 @@ model ModerationPolicyDecision {
   @@index([subjectType, subjectId, createdAt])
   @@index([pipelineRunId, createdAt])
   @@map("moderation_policy_decisions")
+}
+
+enum PipelineNotificationKind {
+  success
+  pause
+  failure
+  budget
+  moderation_digest
+}
+
+enum PipelineNotificationStatus {
+  accepted
+  rejected
+  timeout
+  network
+  missing_config
+  disabled
+}
+
+model PipelineNotification {
+  id                String                       @id @default(uuid())
+  pipelineRunId     String?
+  kind              PipelineNotificationKind
+  status            PipelineNotificationStatus
+  subject           String                       @db.VarChar(200)
+  providerMessageId String?                      @db.VarChar(80)
+  errorCode         String?                      @db.VarChar(64)
+  createdAt         DateTime                     @default(now())
+
+  pipelineRun PipelineRun? @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineRunId, createdAt])
+  @@index([kind, createdAt])
+  @@map("pipeline_notifications")
 }
 
 model Outlet {

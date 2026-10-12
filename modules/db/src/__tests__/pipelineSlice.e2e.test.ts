@@ -91,7 +91,7 @@ describeDatabase('killed pipeline slice resume E2E', () => {
     expect(runs[0].summary).toMatchObject({
       backlogRemaining: true,
       budget: { enforced: true },
-      receipt: { sent: false, reason: 'email_out_of_scope' },
+      receipt: { sent: false, kind: 'success', reason: 'missing_config' },
     });
   });
 });
