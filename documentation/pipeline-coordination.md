@@ -164,3 +164,20 @@ npm run test:p1-10:e2e
 npm run test:p1-10:regression
 ```
 
+## Tavily work prioritization
+
+CAI-258 matches stored trend signals to approved topics, queued crawl requests,
+and extracted articles using exact URL, title/domain, and topic alias rules.
+Ambiguous and unmatched signals stay unlinked. Work is scored 40/30/15/15 and
+claimed 70% from the priority pool and 30% from the oldest-work pool. Unused
+capacity flows to the other pool. The effective cap is the lower of the
+configured cap and `floor(remainingUsd / 0.05)`. Slice summaries report both
+caps. Unmatched Tavily URLs are never inserted as evidence.
+
+```sh
+npm run test:p1-11:unit
+npm run test:p1-11:integration
+npm run test:p1-11:e2e
+npm run test:p1-11:regression
+```
+

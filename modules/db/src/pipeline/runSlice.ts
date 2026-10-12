@@ -25,6 +25,12 @@ import {
 } from './sliceAdapters';
 import { createTavilyTrendsAdapter } from './tavilyTrends';
 import {
+  createPriorityAnalysisAdapter,
+  createPriorityExtractionAdapter,
+  createTavilyPriorityAdapter,
+} from './tavilyPriority';
+import { effectiveStageCap, type EffectiveCap } from '../../../core/src/tavily/priority';
+import {
   parseSliceConfig,
   resolveLeaseMs,
   resolvePipelineResource,
@@ -61,6 +67,10 @@ export interface SliceSummary {
     paused: boolean;
   };
   ledger: { estimatedCostUsd: string; requestCount: number };
+  caps: {
+    newArticles: EffectiveCap;
+    analysisArticles: EffectiveCap;
+  };
   receipt: { sent: false; reason: 'email_out_of_scope' };
   errorCode?: string | null;
   errorMessage?: string | null;
@@ -101,6 +111,10 @@ function emptySummary(status: SliceSummary['status'], error?: {
       paused: false,
     },
     ledger: { estimatedCostUsd: '0.000000', requestCount: 0 },
+    caps: {
+      newArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
+      analysisArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
+    },
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...error,
   };
@@ -140,6 +154,9 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
   const adapters = options.adapters ?? {
     ...createDefaultStageAdapters(),
     tavily_trends: createTavilyTrendsAdapter({ db, client: { apiKey: env.TAVILY_API_KEY } }),
+    tavily_priority: createTavilyPriorityAdapter({ db }),
+    article_extraction: createPriorityExtractionAdapter({ db }),
+    stance_classification: createPriorityAnalysisAdapter({ db }),
   };
   const resource = options.resource ?? resolvePipelineResource(env);
   const leaseMs = options.leaseMs ?? resolveLeaseMs(env);
@@ -222,6 +239,17 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
     let budgetPaused = false;
     const stageRows = existing?.stageRuns ?? [];
     let currentStage = firstIncompleteStage(stageRows);
+    const ceilingUsd = resolveMonthlyCeilingUsd(env.ACTA_LLM_MONTHLY_CEILING_USD);
+    const remaining = await remainingMonthlyBudget({ ceilingUsd }, db).catch(() => ({
+      ceilingUsd,
+      remainingUsd: ceilingUsd,
+      settledUsd: '0.000000',
+      reservedUsd: '0.000000',
+    }));
+    const sliceCaps = {
+      newArticles: effectiveStageCap(config.maxNewArticles, remaining.remainingUsd),
+      analysisArticles: effectiveStageCap(config.maxAnalysisArticles, remaining.remainingUsd),
+    };
 
     while (currentStage) {
       const decision = evaluateSliceAction({
@@ -239,6 +267,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
           decisionStatus: decision.runStatus,
           trigger: config.trigger,
           backlogRemaining,
+          caps: sliceCaps,
           errorCode: decision.errorCode,
           errorMessage: decision.errorCode,
         });
@@ -270,8 +299,8 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
             cursor: started.cursor,
             deadlineAt,
             limits: {
-              maxNewArticles: config.maxNewArticles,
-              maxAnalysisArticles: config.maxAnalysisArticles,
+              maxNewArticles: sliceCaps.newArticles.effective,
+              maxAnalysisArticles: sliceCaps.analysisArticles.effective,
             },
             heartbeat: async () => {
               if (!(await pulse())) {
@@ -345,6 +374,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
           decisionStatus: 'failed_recoverable',
           trigger: config.trigger,
           backlogRemaining,
+          caps: sliceCaps,
           errorCode: 'LEASE_LOST',
           errorMessage: 'Lease lost after checkpoint',
         });
@@ -371,6 +401,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
         decisionStatus: budgetPaused ? 'paused_budget' : after.runStatus,
         trigger: config.trigger,
         backlogRemaining,
+        caps: sliceCaps,
         errorCode: budgetPaused ? 'PAUSED_BUDGET' : after.errorCode,
         errorMessage: outcome.errorMessage ?? (budgetPaused ? 'PAUSED_BUDGET' : after.errorCode),
         env,
@@ -385,6 +416,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       decisionStatus: budgetPaused ? 'paused_budget' : 'completed',
       trigger: config.trigger,
       backlogRemaining,
+      caps: sliceCaps,
       errorCode: budgetPaused ? 'PAUSED_BUDGET' : undefined,
       env,
     });
@@ -421,6 +453,7 @@ async function finishSlice(input: {
   decisionStatus: PipelineRunStatus | 'lease_not_acquired';
   trigger: SliceConfig['trigger'];
   backlogRemaining: boolean;
+  caps?: SliceSummary['caps'];
   errorCode?: string | null;
   errorMessage?: string | null;
   env?: NodeJS.ProcessEnv;
@@ -462,6 +495,10 @@ async function finishSlice(input: {
       paused: input.decisionStatus === 'paused_budget',
     },
     ledger,
+    caps: input.caps ?? {
+      newArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
+      analysisArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
+    },
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...sanitized,
   };

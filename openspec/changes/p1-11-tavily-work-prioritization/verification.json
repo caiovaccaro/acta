@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-258",
+  "changeId": "p1-11-tavily-work-prioritization",
+  "openSpecCommand": "npx openspec validate p1-11-tavily-work-prioritization --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-11:unit",
+    "integration": "npm run test:p1-11:integration",
+    "e2e": "npm run test:p1-11:e2e",
+    "regression": "npm run test:p1-11:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-11-tavily-work-prioritization/specs/tavily-work-prioritization/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/tavily/priority.ts",
+    "modules/core/src/__tests__/tavily/priority.test.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/priorityClaim.ts",
+    "modules/db/src/pipeline/tavilyPriority.ts",
+    "modules/db/src/repositories/crawlRequestRepository.ts",
+    "modules/db/src/__tests__/priority.integration.test.ts",
+    "modules/db/src/__tests__/priority.e2e.test.ts",
+    "openspec/changes/p1-11-tavily-work-prioritization/proposal.md",
+    "openspec/changes/p1-11-tavily-work-prioritization/design.md",
+    "openspec/changes/p1-11-tavily-work-prioritization/tasks.md",
+    "openspec/changes/p1-11-tavily-work-prioritization/specs/tavily-work-prioritization/spec.md",
+    "openspec/changes/p1-11-tavily-work-prioritization/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-258.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/tavily/priority.ts",
+    "modules/core/src/__tests__/tavily/priority.test.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/priorityClaim.ts",
+    "modules/db/src/pipeline/tavilyPriority.ts",
+    "modules/db/src/repositories/crawlRequestRepository.ts",
+    "modules/db/src/__tests__/priority.integration.test.ts",
+    "modules/db/src/__tests__/priority.e2e.test.ts",
+    "openspec/changes/p1-11-tavily-work-prioritization",
+    "scripts/governance/__tests__/fixtures/cai-258.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-258.json"
+}

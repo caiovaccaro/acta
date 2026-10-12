@@ -5,7 +5,7 @@
 
 import { prisma } from '../index';
 import { normalizeUrl, isValidUrl } from '../utils/urlNormalizer';
-import type { CrawlRequest } from '@prisma/client';
+import type { CrawlRequest, PrismaClient } from '@prisma/client';
 import { CrawlStatus, Prisma } from '@prisma/client';
 
 /**
@@ -224,6 +224,44 @@ export async function claimPendingCrawlRequests(
       ORDER BY claimed."createdAt" ASC, claimed.id ASC
     `);
   });
+}
+
+export async function claimCrawlRequestsByIds(
+  ids: string[],
+  db: PrismaClient = prisma,
+  maxAttempts: number = MAX_RETRY_ATTEMPTS,
+): Promise<string[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+  const claimed: string[] = [];
+  await db.$transaction(async (transaction) => {
+    for (const id of ids) {
+      const rows = await transaction.$queryRaw<Array<{ id: string }>>`
+        WITH candidate AS (
+          SELECT request.id
+          FROM "crawl_requests" AS request
+          WHERE request.id = ${id}
+            AND request.status = 'pending'::"CrawlStatus"
+            AND request.attempts < ${maxAttempts}
+          FOR UPDATE SKIP LOCKED
+        )
+        UPDATE "crawl_requests" AS request
+        SET
+          status = 'in_progress'::"CrawlStatus",
+          attempts = request.attempts + 1,
+          "errorMessage" = NULL,
+          "updatedAt" = NOW()
+        FROM candidate
+        WHERE request.id = candidate.id
+        RETURNING request.id
+      `;
+      if (rows[0]) {
+        claimed.push(rows[0].id);
+      }
+    }
+  });
+  return claimed;
 }
 
 /**
