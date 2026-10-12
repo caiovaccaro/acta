@@ -63,7 +63,8 @@ export async function evaluatePendingTopicsShadow(options: {
     select: { id: true, domain: true, title: true, matchedTopicId: true },
   });
   const decisions: TopicPolicyDecision[] = [];
-  for (const topic of pending) {
+  for (let index = 0; index < pending.length; index += 1) {
+    const topic = pending[index];
     const tavily = signals
       .filter((signal) => signal.matchedTopicId === topic.id || signal.title)
       .map((signal) => ({ id: signal.id, domain: signal.domain, title: signal.title }));
