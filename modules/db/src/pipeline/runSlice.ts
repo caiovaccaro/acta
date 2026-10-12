@@ -565,6 +565,7 @@ async function deliverReceiptSafely(input: {
   try {
     return await deliverSliceNotifications(input);
   } catch {
+    // Email is post-commit. Never retry, never re-enter run transitions.
     return { sent: false, reason: 'network' };
   }
 }

@@ -22,8 +22,9 @@ require terminal monitoring.
 
 ### Modified Capabilities
 
-- `pipeline-run-slice`: Slice summaries report real receipt delivery instead of
-  `email_out_of_scope`.
+- `pipeline-run-slice`: Slice summaries report real receipt delivery. The
+  previous placeholder reason `email_out_of_scope` is replaced by
+  `missing_config`, `disabled`, `rejected`, `timeout`, or `network`.
 
 ## Impact
 
@@ -35,4 +36,5 @@ require terminal monitoring.
 - **Cost:** Mocked Resend in tests. Production stays on Resend's free
   transactional tier.
 - **Rollback:** Revert application code. Leave the additive table.
-- **Out of scope:** End-user newsletters.
+- **Out of scope:** End-user newsletters. Retries, backoff, and
+  intermediate emails. Skipping email never disables budget enforcement.

@@ -9,8 +9,14 @@ const FORBIDDEN_SNIPPETS = [
   'apiKey',
   'api_key',
   'DATABASE_URL',
+  'DIRECT_DATABASE_URL',
+  'OPENAI_API_KEY',
+  'TAVILY_API_KEY',
   'RESEND_API_KEY',
   'PIPELINE_EMAIL_TO',
+  'PIPELINE_EMAIL_FROM',
+  'ADMIN_PASSWORD',
+  'ADMIN_SESSION_SECRET',
   'textContent',
 ];
 

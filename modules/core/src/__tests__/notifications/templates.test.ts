@@ -77,12 +77,17 @@ describe('notification templates', () => {
 
   it('redacts secrets and sensitive payload fragments from rendered notifications', () => {
     const rendered = renderReceipt(view({
-      errorMessage: 'provider sk-secretvalue RESEND_API_KEY=re_live PIPELINE_EMAIL_TO=hidden textContent=article',
+      errorMessage: 'provider sk-secretvalue OPENAI_API_KEY=sk-live TAVILY_API_KEY=tvly-secret RESEND_API_KEY=re_live PIPELINE_EMAIL_FROM=from PIPELINE_EMAIL_TO=hidden ADMIN_PASSWORD=pw textContent=article',
     }));
     expect(rendered.text).not.toContain('sk-secretvalue');
     expect(rendered.text).not.toContain('re_live');
+    expect(rendered.text).not.toContain('tvly-secret');
     expect(rendered.text).not.toContain('PIPELINE_EMAIL_TO');
+    expect(rendered.text).not.toContain('PIPELINE_EMAIL_FROM');
+    expect(rendered.text).not.toContain('OPENAI_API_KEY');
+    expect(rendered.text).not.toContain('TAVILY_API_KEY');
     expect(rendered.text).not.toContain('RESEND_API_KEY');
+    expect(rendered.text).not.toContain('ADMIN_PASSWORD');
     expect(rendered.text).not.toContain('textContent');
     expect(rendered.text).toContain('[redacted]');
   });

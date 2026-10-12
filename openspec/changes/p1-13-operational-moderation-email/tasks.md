@@ -9,7 +9,7 @@
 ## 2. Persistence and slice coverage
 
 - [x] 2.1 Add `PipelineNotification` and record attempts after run status commits
-- [x] 2.2 Add integration coverage for Resend acceptance, rejection, and timeout
+- [x] 2.2 Add integration coverage for Resend acceptance, rejection, timeout, network, and digest isolation
 - [x] 2.3 Add a receipt E2E for success and forced terminal failure
 - [x] 2.4 Add CAI-256 scripts, Linear fixture, verification manifest, and Linux CI steps
 

@@ -84,10 +84,28 @@ export async function deliverSliceNotifications(input: {
   }, input.db);
 
   if (view.topicsPending > 0) {
-    const digest = renderModerationDigest(view);
-    const digestSend = await sendResendEmail(digest, sendConfig);
-    await recordPipelineNotification({
+    await deliverDigestSafely({
+      view,
+      sendConfig,
       pipelineRunId: input.summary.runId,
+      db: input.db,
+    });
+  }
+
+  return result;
+}
+
+async function deliverDigestSafely(input: {
+  view: ReceiptView;
+  sendConfig: ResendClientConfig;
+  pipelineRunId: string | null;
+  db: PrismaClient;
+}): Promise<void> {
+  const digest = renderModerationDigest(input.view);
+  try {
+    const digestSend = await sendResendEmail(digest, input.sendConfig);
+    await recordPipelineNotification({
+      pipelineRunId: input.pipelineRunId,
       kind: digest.kind,
       receipt: digestSend.ok
         ? { sent: true, kind: digest.kind }
@@ -95,9 +113,14 @@ export async function deliverSliceNotifications(input: {
       subject: digest.subject,
       providerMessageId: digestSend.providerMessageId,
     }, input.db);
+  } catch {
+    await recordPipelineNotification({
+      pipelineRunId: input.pipelineRunId,
+      kind: digest.kind,
+      receipt: { sent: false, kind: digest.kind, reason: 'network' },
+      subject: digest.subject,
+    }, input.db).catch(() => undefined);
   }
-
-  return result;
 }
 
 function toReceiptView(

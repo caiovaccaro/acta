@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { sendResendEmail } from '../../notifications/resend';
+import { resolveNotificationConfig, sendResendEmail } from '../../notifications/resend';
 import { TEST_PIPELINE_EMAIL_FROM, TEST_PIPELINE_EMAIL_TO } from '../../notifications/templates';
 
 describe('Resend adapter', () => {
@@ -51,5 +51,32 @@ describe('Resend adapter', () => {
       }) as unknown as typeof fetch,
     });
     expect(timeout).toMatchObject({ ok: false, reason: 'timeout' });
+
+    const network = await sendResendEmail({
+      kind: 'success',
+      subject: '[Acta] Pipeline completed: 1 articles, 0 verdicts updated',
+      text: 'ok',
+    }, {
+      apiKey: 're_test',
+      from: TEST_PIPELINE_EMAIL_FROM,
+      to: TEST_PIPELINE_EMAIL_TO,
+      fetchImpl: jest.fn(async () => {
+        throw new Error('fetch failed');
+      }) as unknown as typeof fetch,
+    });
+    expect(network).toMatchObject({ ok: false, reason: 'network' });
+    expect(JSON.stringify(network)).not.toContain(TEST_PIPELINE_EMAIL_TO);
+  });
+
+  it('treats missing or disabled mailer config as fail-open, not a budget bypass', () => {
+    expect(resolveNotificationConfig({
+      PIPELINE_EMAIL_DISABLED: '1',
+      RESEND_API_KEY: 're_test',
+    })).toMatchObject({ disabled: true, missing: false });
+    expect(resolveNotificationConfig({
+      RESEND_API_KEY: 're_test',
+      PIPELINE_EMAIL_FROM: TEST_PIPELINE_EMAIL_FROM,
+    })).toMatchObject({ disabled: false, missing: true });
+    expect(resolveNotificationConfig({}).missing).toBe(true);
   });
 });
