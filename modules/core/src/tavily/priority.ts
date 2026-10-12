@@ -1,4 +1,4 @@
-import { parseDecimalToMicros } from '../llm/usageLedger';
+import { LEDGER_ZERO, parseDecimalToMicros } from '../llm/usageLedger';
 import { domainFromUrl, normalizeTavilyUrl } from './normalize';
 
 export const PRIORITY_SCORE_WEIGHTS = {
@@ -311,7 +311,7 @@ export function budgetDerivedCap(
 ): number {
   const remaining = parseDecimalToMicros(remainingUsd);
   const unit = parseDecimalToMicros(unitCostUsd);
-  if (remaining <= 0n || unit <= 0n) {
+  if (remaining <= LEDGER_ZERO || unit <= LEDGER_ZERO) {
     return 0;
   }
   const affordable = remaining / unit;
