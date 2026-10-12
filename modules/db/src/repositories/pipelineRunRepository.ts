@@ -114,3 +114,37 @@ export async function listPipelineRunsByState(
     orderBy: [{ nextEligibleAt: 'asc' }, { createdAt: 'asc' }],
   });
 }
+
+const RESUMABLE_STATUSES: PipelineRunStatus[] = [
+  'queued',
+  'running',
+  'paused_deadline',
+  'paused_budget',
+  'blocked_moderation',
+  'failed_recoverable',
+];
+
+export async function findResumablePipelineRun(
+  db: PrismaClient = prisma,
+  now: Date = new Date(),
+): Promise<(PipelineRun & { stageRuns: PipelineStageRun[] }) | null> {
+  return db.pipelineRun.findFirst({
+    where: {
+      status: { in: RESUMABLE_STATUSES },
+      OR: [{ nextEligibleAt: null }, { nextEligibleAt: { lte: now } }],
+    },
+    orderBy: [{ nextEligibleAt: 'asc' }, { createdAt: 'asc' }],
+    include: { stageRuns: true },
+  });
+}
+
+export async function heartbeatPipelineRun(
+  id: string,
+  db: PrismaClient = prisma,
+): Promise<boolean> {
+  const result = await db.pipelineRun.updateMany({
+    where: { id, status: 'running' },
+    data: { heartbeatAt: new Date() },
+  });
+  return result.count === 1;
+}

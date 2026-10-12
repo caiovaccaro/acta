@@ -58,6 +58,11 @@ export * from './pipeline/cursor';
 export * from './pipeline/deadline';
 export * from './pipeline/limits';
 export * from './pipeline/stageUnit';
+export * from './pipeline/sliceStages';
+export * from './pipeline/sliceConfig';
+export * from './pipeline/sliceDecision';
+export * from './pipeline/sliceAdapters';
+export * from './pipeline/runSlice';
 
 // Database connection utilities
 export async function connectDatabase() {

@@ -90,3 +90,28 @@ npm run test:p1-06:regression
 The database tests reuse disposable PostgreSQL on host port 55435. Production
 unit caps remain mandatory; missing caps fail closed before any claim.
 
+## Slice runner
+
+CAI-249 adds `pipeline:run-slice`. The command validates flags and
+`DATABASE_URL`, acquires the singleton lease, loads or creates the active run,
+heartbeats after every checkpoint, and prints one JSON summary.
+
+```sh
+npm run pipeline:run-slice -- \
+  --max-runtime-minutes=285 \
+  --max-new-articles=40 \
+  --max-analysis-articles=40 \
+  --trigger=scheduled
+```
+
+Default adapters complete stages that have no eligible work. Tavily and email
+are out of scope and are recorded as skipped. Remaining backlog is a successful
+resumable outcome. Invalid configuration exits 1 before a lease is acquired.
+
+```sh
+npm run test:p1-07:unit
+npm run test:p1-07:integration
+npm run test:p1-07:e2e
+npm run test:p1-07:regression
+```
+
