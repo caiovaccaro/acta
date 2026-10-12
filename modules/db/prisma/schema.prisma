@@ -77,6 +77,8 @@ model PipelineRun {
   displacedByEvents PipelineLeaseEvent[] @relation("DisplacedLeaseEventRun")
   llmUsages         LlmUsage[]
   llmBudgetReservations LlmBudgetReservation[]
+  trendSignals      TrendSignal[]
+  tavilySearchLogs  TavilySearchLog[]
 
   @@index([status, nextEligibleAt])
   @@index([heartbeatAt])
@@ -195,6 +197,49 @@ model LlmBudgetReservation {
   @@index([pipelineRunId, status])
   @@index([expiresAt, status])
   @@map("llm_budget_reservations")
+}
+
+model TavilySearchLog {
+  id            String   @id @default(uuid())
+  day           String   @db.VarChar(10)
+  month         String   @db.VarChar(7)
+  queryGroup    String   @db.VarChar(100)
+  query         String   @db.VarChar(500)
+  status        String   @db.VarChar(40)
+  resultCount   Int      @default(0)
+  pipelineRunId String?
+  createdAt     DateTime @default(now())
+
+  pipelineRun PipelineRun? @relation(fields: [pipelineRunId], references: [id], onDelete: SetNull)
+
+  @@index([day])
+  @@index([month])
+  @@index([pipelineRunId, createdAt])
+  @@map("tavily_search_logs")
+}
+
+model TrendSignal {
+  id                   String    @id @default(uuid())
+  query                String    @db.VarChar(500)
+  title                String    @db.VarChar(500)
+  url                  String    @db.VarChar(2000)
+  domain               String    @db.VarChar(255)
+  publishedAt          DateTime?
+  score                Float     @default(0)
+  matchedTopicId       String?
+  matchedArticleId     String?
+  matchedCrawlRequestId String?
+  pipelineRunId        String?
+  rawResult            Json?
+  createdAt            DateTime  @default(now())
+
+  pipelineRun PipelineRun? @relation(fields: [pipelineRunId], references: [id], onDelete: SetNull)
+
+  @@unique([url])
+  @@index([domain, createdAt])
+  @@index([pipelineRunId, createdAt])
+  @@index([createdAt])
+  @@map("trend_signals")
 }
 
 model Outlet {

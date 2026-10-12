@@ -23,6 +23,7 @@ import {
   type StageAdapterMap,
   type StageOutcome,
 } from './sliceAdapters';
+import { createTavilyTrendsAdapter } from './tavilyTrends';
 import {
   parseSliceConfig,
   resolveLeaseMs,
@@ -136,7 +137,10 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
   const db = options.db ?? prisma;
   const now = options.now ?? new Date();
   const deadlineAt = new Date(now.getTime() + config.maxRuntimeMinutes * 60 * 1000);
-  const adapters = options.adapters ?? createDefaultStageAdapters();
+  const adapters = options.adapters ?? {
+    ...createDefaultStageAdapters(),
+    tavily_trends: createTavilyTrendsAdapter({ db, client: { apiKey: env.TAVILY_API_KEY } }),
+  };
   const resource = options.resource ?? resolvePipelineResource(env);
   const leaseMs = options.leaseMs ?? resolveLeaseMs(env);
   const ownerToken = options.ownerToken ?? randomUUID();

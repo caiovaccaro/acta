@@ -5,6 +5,8 @@
  */
 
 export * from './llm/index';
+export * from './tavily/normalize';
+export * from './tavily/client';
 export * from './analysis/index';
 export * from './utils/monthPeriod';
 // Validation exports (excluding ValidationCheck to avoid conflict with LLM types)

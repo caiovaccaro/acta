@@ -150,3 +150,17 @@ npm run test:p1-09:e2e
 npm run test:p1-09:regression
 ```
 
+## Tavily basic search
+
+CAI-254 runs five basic news searches per UTC day (155 per month) and stores
+normalized `trend_signals`. Timeout, malformed, empty, missing-key, and quota
+responses degrade the trends stage without blocking RSS. Tavily content is not
+verdict evidence. Paid overage is disabled.
+
+```sh
+npm run test:p1-10:unit
+npm run test:p1-10:integration
+npm run test:p1-10:e2e
+npm run test:p1-10:regression
+```
+
