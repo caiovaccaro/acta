@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-255",
+  "changeId": "p1-12-moderation-policy-shadow",
+  "openSpecCommand": "npx openspec validate p1-12-moderation-policy-shadow --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-12:unit",
+    "integration": "npm run test:p1-12:integration",
+    "e2e": "npm run test:p1-12:e2e",
+    "regression": "npm run test:p1-12:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-12-moderation-policy-shadow/specs/moderation-policy-shadow/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/moderation/policy.ts",
+    "modules/core/src/__tests__/moderation/policy.test.ts",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012180000_add_moderation_policy_decisions/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/moderationPolicy.ts",
+    "modules/db/src/repositories/moderationPolicyRepository.ts",
+    "modules/db/src/__tests__/moderationPolicy.integration.test.ts",
+    "modules/db/src/__tests__/moderationPolicy.e2e.test.ts",
+    "openspec/changes/p1-12-moderation-policy-shadow/proposal.md",
+    "openspec/changes/p1-12-moderation-policy-shadow/design.md",
+    "openspec/changes/p1-12-moderation-policy-shadow/tasks.md",
+    "openspec/changes/p1-12-moderation-policy-shadow/specs/moderation-policy-shadow/spec.md",
+    "openspec/changes/p1-12-moderation-policy-shadow/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-255.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/moderation",
+    "modules/core/src/__tests__/moderation",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012180000_add_moderation_policy_decisions",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/moderationPolicy.ts",
+    "modules/db/src/repositories/moderationPolicyRepository.ts",
+    "modules/db/src/__tests__/moderationPolicy.integration.test.ts",
+    "modules/db/src/__tests__/moderationPolicy.e2e.test.ts",
+    "openspec/changes/p1-12-moderation-policy-shadow",
+    "scripts/governance/__tests__/fixtures/cai-255.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-255.json"
+}

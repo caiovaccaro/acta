@@ -156,3 +156,12 @@ jobs:
 
       - name: Run Tavily work prioritization end-to-end verification
         run: npm run test:p1-11:e2e
+
+      - name: Run moderation policy unit verification
+        run: npm run test:p1-12:unit
+
+      - name: Run moderation policy integration verification
+        run: npm run test:p1-12:integration
+
+      - name: Run moderation policy end-to-end verification
+        run: npm run test:p1-12:e2e

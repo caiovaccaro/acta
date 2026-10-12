@@ -29,6 +29,7 @@ import {
   createPriorityExtractionAdapter,
   createTavilyPriorityAdapter,
 } from './tavilyPriority';
+import { createShadowModerationAdapter } from './moderationPolicy';
 import { effectiveStageCap, type EffectiveCap } from '../../../core/src/tavily/priority';
 import {
   parseSliceConfig,
@@ -157,6 +158,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
     tavily_priority: createTavilyPriorityAdapter({ db }),
     article_extraction: createPriorityExtractionAdapter({ db }),
     stance_classification: createPriorityAnalysisAdapter({ db }),
+    finalize: createShadowModerationAdapter({ db, env }),
   };
   const resource = options.resource ?? resolvePipelineResource(env);
   const leaseMs = options.leaseMs ?? resolveLeaseMs(env);
