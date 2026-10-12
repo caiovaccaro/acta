@@ -1,5 +1,9 @@
 import type { PrismaClient } from '@prisma/client';
-import { searchTavilyBasic, type TavilyClientConfig } from '../../../core/src/tavily/client';
+import {
+  searchTavilyBasic,
+  tavilyLogStatus,
+  type TavilyClientConfig,
+} from '../../../core/src/tavily/client';
 import { TAVILY_QUERY_GROUPS } from '../../../core/src/tavily/queryGroups';
 import {
   countTavilySearches,
@@ -30,15 +34,11 @@ export function createTavilyTrendsAdapter(options: {
           usedThisMonth: used.usedThisMonth,
         }, options.client ?? { apiKey: process.env.TAVILY_API_KEY });
         searches += 1;
-        let status: string = 'success';
-        if (!result.ok) {
-          status = result.reason;
-        }
         await recordTavilySearchLog({
           now,
           queryGroup: group.id,
           query: group.query,
-          status,
+          status: tavilyLogStatus(result),
           resultCount: result.signals.length,
           pipelineRunId: context.runId,
         }, options.db);
@@ -48,7 +48,7 @@ export function createTavilyTrendsAdapter(options: {
             signals: result.signals,
           }, options.db);
         } else {
-          degraded = result.reason;
+          degraded = tavilyLogStatus(result);
           if (result.reason === 'quota') {
             break;
           }
