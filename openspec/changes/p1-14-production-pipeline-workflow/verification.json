@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-257",
+  "changeId": "p1-14-production-pipeline-workflow",
+  "openSpecCommand": "npx openspec validate p1-14-production-pipeline-workflow --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-14:unit",
+    "integration": "npm run test:p1-14:integration",
+    "e2e": "npm run test:p1-14:e2e",
+    "regression": "npm run test:p1-14:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-14-production-pipeline-workflow/specs/production-pipeline-workflow/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    ".github/workflows/production-pipeline.yml",
+    "documentation/pipeline-coordination.md",
+    "scripts/pipeline/validate-production-workflow.mjs",
+    "scripts/pipeline/__tests__/production-workflow.unit.test.mjs",
+    "scripts/pipeline/__tests__/production-workflow.integration.test.mjs",
+    "modules/db/src/__tests__/productionWorkflow.e2e.test.ts",
+    "openspec/changes/p1-14-production-pipeline-workflow/proposal.md",
+    "openspec/changes/p1-14-production-pipeline-workflow/design.md",
+    "openspec/changes/p1-14-production-pipeline-workflow/tasks.md",
+    "openspec/changes/p1-14-production-pipeline-workflow/specs/production-pipeline-workflow/spec.md",
+    "openspec/changes/p1-14-production-pipeline-workflow/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-257.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    ".github/workflows/production-pipeline.yml",
+    "documentation/pipeline-coordination.md",
+    "scripts/pipeline",
+    "modules/db/src/__tests__/productionWorkflow.e2e.test.ts",
+    "openspec/changes/p1-14-production-pipeline-workflow",
+    "scripts/governance/__tests__/fixtures/cai-257.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-257.json"
+}

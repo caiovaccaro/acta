@@ -213,3 +213,24 @@ npm run test:p1-13:e2e
 npm run test:p1-13:regression
 ```
 
+## Production pipeline workflow
+
+CAI-257 adds `.github/workflows/production-pipeline.yml`. It runs every six
+hours and on `workflow_dispatch`, uses `contents: read`, a 330-minute timeout,
+concurrency group `acta-production-pipeline` with `cancel-in-progress: false`,
+and the standard `ubuntu-latest` runner. Overlap is also blocked by the
+`production-pipeline` database lease.
+
+Required secrets: `DATABASE_URL`, `OPENAI_API_KEY`, `TAVILY_API_KEY`,
+`RESEND_API_KEY`, `PIPELINE_EMAIL_TO`, `PIPELINE_EMAIL_FROM`,
+`ACTA_PUBLIC_URL`, `ACTA_ADMIN_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`,
+`ADMIN_SESSION_SECRET`. Native GitHub failure notification remains if email
+cannot send.
+
+```sh
+npm run test:p1-14:unit
+npm run test:p1-14:integration
+npm run test:p1-14:e2e
+npm run test:p1-14:regression
+```
+

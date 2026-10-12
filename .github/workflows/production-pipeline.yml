@@ -1,0 +1,94 @@
+name: Production pipeline
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      max_new_articles:
+        description: Bounded new articles for this slice
+        required: false
+        default: "20"
+        type: string
+      max_analysis_articles:
+        description: Bounded analysis articles for this slice
+        required: false
+        default: "20"
+        type: string
+      trigger:
+        description: Pipeline trigger recorded on the run
+        required: false
+        default: manual
+        type: choice
+        options:
+          - scheduled
+          - manual
+          - retry
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acta-production-pipeline
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    name: pipeline-slice
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      PIPELINE_EMAIL_TO: ${{ secrets.PIPELINE_EMAIL_TO }}
+      PIPELINE_EMAIL_FROM: ${{ secrets.PIPELINE_EMAIL_FROM }}
+      ACTA_PUBLIC_URL: ${{ secrets.ACTA_PUBLIC_URL }}
+      ACTA_ADMIN_URL: ${{ secrets.ACTA_ADMIN_URL }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ADMIN_SESSION_SECRET: ${{ secrets.ADMIN_SESSION_SECRET }}
+    steps:
+      - name: Check out production commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate production configuration
+        run: npm run config:validate:production
+
+      - name: Deploy Prisma migrations
+        run: npm run db:migrate:deploy
+
+      - name: Run bounded pipeline slice
+        run: |
+          MAX_NEW="${{ github.event.inputs.max_new_articles || '20' }}"
+          MAX_ANALYSIS="${{ github.event.inputs.max_analysis_articles || '20' }}"
+          TRIGGER="${{ github.event.inputs.trigger || 'scheduled' }}"
+          npm run pipeline:run-slice -- \
+            --max-runtime-minutes=285 \
+            --max-new-articles="$MAX_NEW" \
+            --max-analysis-articles="$MAX_ANALYSIS" \
+            --trigger="$TRIGGER"
+
+      - name: Upload sanitized summary on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-slice-summary
+          path: pipeline-slice-summary.json
+          if-no-files-found: ignore
+          retention-days: 7

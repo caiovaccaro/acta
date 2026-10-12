@@ -174,3 +174,12 @@ jobs:
 
       - name: Run operational email end-to-end verification
         run: npm run test:p1-13:e2e
+
+      - name: Run production workflow unit verification
+        run: npm run test:p1-14:unit
+
+      - name: Run production workflow integration verification
+        run: npm run test:p1-14:integration
+
+      - name: Run production workflow end-to-end verification
+        run: npm run test:p1-14:e2e
