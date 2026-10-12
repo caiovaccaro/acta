@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   assertRedactedLedgerRecord,
   formatMicrosAsUsd,
+  LEDGER_ZERO,
   parseDecimalToMicros,
   type LlmUsageLedgerRecord,
 } from '../../../core/src/llm/usageLedger';
@@ -35,7 +36,7 @@ export async function sumLlmUsageForRun(
     where: { pipelineRunId },
     select: { estimatedCostUsd: true },
   });
-  let micros = 0n;
+  let micros = LEDGER_ZERO;
   for (const row of rows) {
     micros += parseDecimalToMicros(row.estimatedCostUsd.toFixed(6));
   }
