@@ -14,20 +14,17 @@ export type TavilyDegradeReason =
   | 'network'
   | 'missing_key';
 
-export type TavilySearchResult =
-  | {
-    ok: true;
-    query: string;
-    signals: NormalizedTrendSignal[];
-    degraded: false;
-  }
-  | {
-    ok: false;
-    query: string;
-    signals: [];
-    degraded: true;
-    reason: TavilyDegradeReason;
-  };
+export interface TavilySearchResult {
+  ok: boolean;
+  query: string;
+  signals: NormalizedTrendSignal[];
+  degraded: boolean;
+  reason?: TavilyDegradeReason;
+}
+
+export function tavilyLogStatus(result: TavilySearchResult): string {
+  return result.reason ? result.reason : 'success';
+}
 
 export interface TavilyClientConfig {
   apiKey?: string | null;
