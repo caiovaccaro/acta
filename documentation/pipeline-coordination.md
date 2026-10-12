@@ -115,3 +115,20 @@ npm run test:p1-07:e2e
 npm run test:p1-07:regression
 ```
 
+## LLM usage ledger
+
+CAI-251 records every successful central OpenAI completion in `llm_usage`.
+Rows store model, operation, tokens, estimated USD cost, run, and stage.
+Prompts, completions, API keys, and article text are never stored. If ledger
+persistence fails, that provider instance blocks further paid requests.
+
+Slice summaries include `ledger.estimatedCostUsd` and `ledger.requestCount`
+summed from the run's rows. Budget rejection remains out of scope.
+
+```sh
+npm run test:p1-08:unit
+npm run test:p1-08:integration
+npm run test:p1-08:e2e
+npm run test:p1-08:regression
+```
+

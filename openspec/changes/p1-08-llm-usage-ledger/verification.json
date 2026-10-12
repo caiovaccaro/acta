@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-251",
+  "changeId": "p1-08-llm-usage-ledger",
+  "openSpecCommand": "npx openspec validate p1-08-llm-usage-ledger --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-08:unit",
+    "integration": "npm run test:p1-08:integration",
+    "e2e": "npm run test:p1-08:e2e",
+    "regression": "npm run test:p1-08:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-08-llm-usage-ledger/specs/llm-usage-ledger/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/llm/errors.ts",
+    "modules/core/src/llm/index.ts",
+    "modules/core/src/llm/usageLedger.ts",
+    "modules/core/src/llm/providers/openaiProvider.ts",
+    "modules/core/src/__tests__/llm/openaiProvider.test.ts",
+    "modules/core/src/__tests__/llm/usageLedger.test.ts",
+    "modules/db/jest.config.js",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012120000_add_llm_usage/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/repositories/llmUsageRepository.ts",
+    "modules/db/src/__tests__/llmUsage.e2e.test.ts",
+    "modules/db/src/__tests__/llmUsage.integration.test.ts",
+    "openspec/changes/p1-08-llm-usage-ledger/proposal.md",
+    "openspec/changes/p1-08-llm-usage-ledger/design.md",
+    "openspec/changes/p1-08-llm-usage-ledger/tasks.md",
+    "openspec/changes/p1-08-llm-usage-ledger/specs/llm-usage-ledger/spec.md",
+    "openspec/changes/p1-08-llm-usage-ledger/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-251.md",
+    "scripts/testing/verify-p1-05-migrations.mjs",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/llm",
+    "modules/core/src/__tests__/llm",
+    "modules/db/jest.config.js",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012120000_add_llm_usage",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/repositories/llmUsageRepository.ts",
+    "modules/db/src/__tests__/llmUsage.e2e.test.ts",
+    "modules/db/src/__tests__/llmUsage.integration.test.ts",
+    "openspec/changes/p1-08-llm-usage-ledger",
+    "scripts/governance/__tests__/fixtures/cai-251.md",
+    "scripts/testing/verify-p1-05-migrations.mjs",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-251.json"
+}

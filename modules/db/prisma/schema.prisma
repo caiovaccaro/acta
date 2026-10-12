@@ -75,6 +75,7 @@ model PipelineRun {
   currentLeases     PipelineLease[]      @relation("CurrentLeaseRun")
   leaseEvents       PipelineLeaseEvent[] @relation("LeaseEventRun")
   displacedByEvents PipelineLeaseEvent[] @relation("DisplacedLeaseEventRun")
+  llmUsages         LlmUsage[]
 
   @@index([status, nextEligibleAt])
   @@index([heartbeatAt])
@@ -146,6 +147,27 @@ model PipelineLeaseEvent {
   @@index([pipelineRunId, createdAt])
   @@index([displacedPipelineRunId, createdAt])
   @@map("pipeline_lease_events")
+}
+
+model LlmUsage {
+  id                String   @id @default(uuid())
+  pipelineRunId     String?
+  stage             String?  @db.VarChar(100)
+  operation         String   @db.VarChar(100)
+  provider          String   @db.VarChar(40)
+  model             String   @db.VarChar(100)
+  promptTokens      Int
+  completionTokens  Int
+  estimatedCostUsd  Decimal  @db.Decimal(12, 6)
+  providerRequestId String?  @db.VarChar(128)
+  createdAt         DateTime @default(now())
+
+  pipelineRun PipelineRun? @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+
+  @@index([pipelineRunId, createdAt])
+  @@index([createdAt])
+  @@index([operation, createdAt])
+  @@map("llm_usage")
 }
 
 model Outlet {

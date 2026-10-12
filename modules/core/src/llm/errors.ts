@@ -46,3 +46,13 @@ export class LLMNetworkError extends LLMProviderError {
   }
 }
 
+export class LLMUsagePersistError extends LLMProviderError {
+  constructor(
+    message: string = 'LLM usage ledger persist failed; further paid requests blocked',
+    cause?: unknown,
+  ) {
+    super(message, cause, false);
+    this.name = 'LLMUsagePersistError';
+  }
+}
+
