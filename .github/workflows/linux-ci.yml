@@ -192,3 +192,12 @@ jobs:
 
       - name: Run operational health end-to-end verification
         run: npm run test:p1-15:e2e
+
+      - name: Run shadow evaluation unit verification
+        run: npm run test:p1-16:unit
+
+      - name: Run shadow evaluation integration verification
+        run: npm run test:p1-16:integration
+
+      - name: Run shadow evaluation end-to-end verification
+        run: npm run test:p1-16:e2e
