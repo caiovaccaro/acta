@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-254",
+  "changeId": "p1-10-tavily-basic-search",
+  "openSpecCommand": "npx openspec validate p1-10-tavily-basic-search --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-10:unit",
+    "integration": "npm run test:p1-10:integration",
+    "e2e": "npm run test:p1-10:e2e",
+    "regression": "npm run test:p1-10:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-10-tavily-basic-search/specs/tavily-basic-search/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/index.ts",
+    "modules/core/src/tavily/client.ts",
+    "modules/core/src/tavily/normalize.ts",
+    "modules/core/src/tavily/queryGroups.ts",
+    "modules/core/src/__tests__/tavily/client.test.ts",
+    "modules/core/src/__tests__/tavily/normalize.test.ts",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012160000_add_tavily_trend_signals/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/tavilyTrends.ts",
+    "modules/db/src/repositories/trendSignalRepository.ts",
+    "modules/db/src/__tests__/tavily.e2e.test.ts",
+    "modules/db/src/__tests__/tavily.integration.test.ts",
+    "openspec/changes/p1-10-tavily-basic-search/proposal.md",
+    "openspec/changes/p1-10-tavily-basic-search/design.md",
+    "openspec/changes/p1-10-tavily-basic-search/tasks.md",
+    "openspec/changes/p1-10-tavily-basic-search/specs/tavily-basic-search/spec.md",
+    "openspec/changes/p1-10-tavily-basic-search/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-254.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/index.ts",
+    "modules/core/src/tavily",
+    "modules/core/src/__tests__/tavily",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012160000_add_tavily_trend_signals",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/tavilyTrends.ts",
+    "modules/db/src/repositories/trendSignalRepository.ts",
+    "modules/db/src/__tests__/tavily.e2e.test.ts",
+    "modules/db/src/__tests__/tavily.integration.test.ts",
+    "openspec/changes/p1-10-tavily-basic-search",
+    "scripts/governance/__tests__/fixtures/cai-254.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-254.json"
+}
