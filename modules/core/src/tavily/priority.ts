@@ -68,7 +68,7 @@ export interface EffectiveCap {
 export function normalizeMatchTitle(value: string): string {
   return value
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
 }
@@ -267,7 +267,8 @@ export function allocateWork(items: WorkItem[], cap: number, now: Date): Allocat
   const used = new Set<string>();
 
   const take = (source: AllocatedItem[], pool: AllocationPool, limit: number) => {
-    for (const item of source) {
+    for (let index = 0; index < source.length; index += 1) {
+      const item = source[index];
       if (selected.filter((row) => row.pool === pool).length >= limit) {
         break;
       }
@@ -291,7 +292,8 @@ export function allocateWork(items: WorkItem[], cap: number, now: Date): Allocat
     take(byScore, 'priority', selected.filter((row) => row.pool === 'priority').length + ageUnused);
   }
   let remaining = cap - selected.length;
-  for (const item of byScore) {
+  for (let index = 0; index < byScore.length; index += 1) {
+    const item = byScore[index];
     if (remaining <= 0) {
       break;
     }

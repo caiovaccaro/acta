@@ -59,7 +59,8 @@ export async function persistSignalMatches(
   db: PrismaClient,
 ): Promise<number> {
   let updated = 0;
-  for (const match of matches) {
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
     if (match.reason === 'ambiguous' || match.reason === 'unmatched') {
       continue;
     }

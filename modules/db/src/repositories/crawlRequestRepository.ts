@@ -236,7 +236,8 @@ export async function claimCrawlRequestsByIds(
   }
   const claimed: string[] = [];
   await db.$transaction(async (transaction) => {
-    for (const id of ids) {
+    for (let index = 0; index < ids.length; index += 1) {
+      const id = ids[index];
       const rows = await transaction.$queryRaw<Array<{ id: string }>>`
         WITH candidate AS (
           SELECT request.id
