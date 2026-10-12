@@ -32,6 +32,10 @@ describe('GET /api/health', () => {
     const body = await response.json();
 
     expect(body).toHaveProperty('version');
+    expect(body).not.toHaveProperty('queues');
+    expect(body).not.toHaveProperty('moderation');
+    expect(body).not.toHaveProperty('budget');
+    expect(body).not.toHaveProperty('remainingUsd');
   });
 });
 

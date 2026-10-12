@@ -183,3 +183,12 @@ jobs:
 
       - name: Run production workflow end-to-end verification
         run: npm run test:p1-14:e2e
+
+      - name: Run operational health unit verification
+        run: npm run test:p1-15:unit
+
+      - name: Run operational health integration verification
+        run: npm run test:p1-15:integration
+
+      - name: Run operational health end-to-end verification
+        run: npm run test:p1-15:e2e
