@@ -79,6 +79,7 @@ model PipelineRun {
   llmBudgetReservations LlmBudgetReservation[]
   trendSignals      TrendSignal[]
   tavilySearchLogs  TavilySearchLog[]
+  moderationPolicyDecisions ModerationPolicyDecision[]
 
   @@index([status, nextEligibleAt])
   @@index([heartbeatAt])
@@ -240,6 +241,24 @@ model TrendSignal {
   @@index([pipelineRunId, createdAt])
   @@index([createdAt])
   @@map("trend_signals")
+}
+
+model ModerationPolicyDecision {
+  id            String   @id @default(uuid())
+  pipelineRunId String?
+  subjectType   String   @db.VarChar(40)
+  subjectId     String
+  policyVersion String   @db.VarChar(80)
+  mode          String   @db.VarChar(20)
+  decision      String   @db.VarChar(40)
+  conditions    Json
+  createdAt     DateTime @default(now())
+
+  pipelineRun PipelineRun? @relation(fields: [pipelineRunId], references: [id], onDelete: SetNull)
+
+  @@index([subjectType, subjectId, createdAt])
+  @@index([pipelineRunId, createdAt])
+  @@map("moderation_policy_decisions")
 }
 
 model Outlet {
