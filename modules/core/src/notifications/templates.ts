@@ -28,6 +28,26 @@ export function renderReceipt(view: ReceiptView): RenderedNotification {
   return rendered;
 }
 
+export function renderAutoApprovalNotice(view: ReceiptView): RenderedNotification {
+  const names: string[] = [];
+  for (let i = 0; i < view.mutatedTopics.length; i += 1) {
+    names.push(`${view.mutatedTopics[i].name} (${view.mutatedTopics[i].id})`);
+  }
+  const subject = redactNotificationText(
+    `[Acta] Auto-approved ${view.mutatedTopics.length} topic(s)`,
+  );
+  const text = redactNotificationText([
+    `Run ${view.runId} automatically approved ${view.mutatedTopics.length} topic(s).`,
+    names.length > 0 ? `Mutations: ${names.join('; ')}` : 'Mutations: none',
+    `Production: ${view.publicUrl}`,
+    `Admin moderation: ${view.adminUrl}`,
+    'Disable AUTO_APPROVE_TOPICS to stop future mutations. Audit history is retained.',
+  ].join('\n'));
+  const rendered: RenderedNotification = { kind: 'auto_approval', subject, text };
+  assertRedactedNotification(rendered);
+  return rendered;
+}
+
 export function renderModerationDigest(view: ReceiptView): RenderedNotification {
   const subject = redactNotificationText(
     `[Acta] Moderation digest: ${view.topicsPending} topics pending`,

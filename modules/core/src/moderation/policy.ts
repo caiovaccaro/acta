@@ -3,6 +3,7 @@ import { PRIORITY_UNIT_COST_USD, normalizeMatchTitle, titleTokens } from '../tav
 
 export const MODERATION_POLICY_VERSION = 'acta-moderation-policy/v1';
 export const MODERATION_POLICY_MODE = 'shadow';
+export const MODERATION_POLICY_LIVE_MODE = 'live';
 
 export const DEFAULT_TOPIC_POLICY_THRESHOLDS = {
   minConfidence: 0.8,
@@ -62,9 +63,9 @@ export interface TopicPolicyDecision {
   subjectType: 'topic';
   subjectId: string;
   policyVersion: string;
-  mode: typeof MODERATION_POLICY_MODE;
-  decision: 'propose_approve' | 'pending';
-  mutateStatus: false;
+  mode: 'shadow' | 'live';
+  decision: 'propose_approve' | 'pending' | 'approved';
+  mutateStatus: boolean;
   conditions: PolicyConditionResult[];
 }
 
@@ -251,5 +252,37 @@ export function evaluateTopicPolicy(
     decision,
     mutateStatus: false,
     conditions,
+  };
+}
+
+export function isAutoApproveTopicsEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.AUTO_APPROVE_TOPICS === 'true';
+}
+
+export function shouldMutateTopic(
+  decision: TopicPolicyDecision,
+  enabled: boolean,
+): boolean {
+  return enabled
+    && decision.decision === 'propose_approve'
+    && decision.conditions.every((row) => row.passed);
+}
+
+export function applyMutationDecision(
+  decision: TopicPolicyDecision,
+  enabled: boolean,
+): TopicPolicyDecision {
+  if (!shouldMutateTopic(decision, enabled)) {
+    return {
+      ...decision,
+      mode: MODERATION_POLICY_MODE,
+      mutateStatus: false,
+    };
+  }
+  return {
+    ...decision,
+    mode: MODERATION_POLICY_LIVE_MODE,
+    decision: 'approved',
+    mutateStatus: true,
   };
 }

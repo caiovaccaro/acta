@@ -5,6 +5,7 @@ import {
   type ResendClientConfig,
 } from '../../../core/src/notifications/resend';
 import {
+  renderAutoApprovalNotice,
   renderModerationDigest,
   renderReceipt,
 } from '../../../core/src/notifications/templates';
@@ -83,6 +84,20 @@ export async function deliverSliceNotifications(input: {
     providerMessageId: delivered.providerMessageId,
   }, input.db);
 
+  if (view.mutatedTopics.length > 0) {
+    const notice = renderAutoApprovalNotice(view);
+    const noticeSend = await sendResendEmail(notice, sendConfig);
+    await recordPipelineNotification({
+      pipelineRunId: input.summary.runId,
+      kind: notice.kind,
+      receipt: noticeSend.ok
+        ? { sent: true, kind: notice.kind }
+        : { sent: false, kind: notice.kind, reason: noticeSend.reason },
+      subject: notice.subject,
+      providerMessageId: noticeSend.providerMessageId,
+    }, input.db);
+  }
+
   if (view.topicsPending > 0) {
     await deliverDigestSafely({
       view,
@@ -151,7 +166,8 @@ function toReceiptView(
     tavilySearches: numberMetric(tavily, ['searches']),
     matchedTopics: numberMetric(priority, ['matchedTopics', 'matched']),
     topicsDiscovered: numberMetric(topics, ['discovered', 'processed']),
-    topicsAutoApproved: numberMetric(moderation, ['proposed']),
+    topicsAutoApproved: mutatedTopicsFrom(moderation).length,
+    mutatedTopics: mutatedTopicsFrom(moderation),
     topicsPending: options.pending.topicsPending,
     questionsDiscovered: numberMetric(questions, ['discovered', 'processed']),
     questionsValidated: numberMetric(validation, ['validated', 'processed']),
@@ -183,6 +199,24 @@ function stageMetrics(summary: SliceNotificationSummary, stage: string): Record<
     return {};
   }
   return row.metrics as Record<string, unknown>;
+}
+
+function mutatedTopicsFrom(metrics: Record<string, unknown>): Array<{ id: string; name: string }> {
+  const nested = metrics.moderation && typeof metrics.moderation === 'object'
+    ? metrics.moderation as Record<string, unknown>
+    : metrics;
+  const value = nested.mutatedTopics;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const rows: Array<{ id: string; name: string }> = [];
+  for (let i = 0; i < value.length; i += 1) {
+    const row = value[i] as { id?: unknown; name?: unknown };
+    if (typeof row?.id === 'string' && typeof row?.name === 'string') {
+      rows.push({ id: row.id, name: row.name });
+    }
+  }
+  return rows;
 }
 
 function numberMetric(metrics: Record<string, unknown>, keys: string[]): number {
