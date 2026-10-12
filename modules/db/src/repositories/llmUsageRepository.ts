@@ -4,7 +4,7 @@ import {
   formatMicrosAsUsd,
   parseDecimalToMicros,
   type LlmUsageLedgerRecord,
-} from '@acta/core';
+} from '../../../core/src/llm/usageLedger';
 import { prisma } from '../index';
 
 export async function recordLlmUsage(
