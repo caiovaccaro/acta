@@ -37,7 +37,10 @@ export interface LlmUsageContext {
 }
 
 const MICROS_SCALE = 6;
-const MICROS_PER_USD = 1_000_000n;
+export const LEDGER_ZERO = BigInt(0);
+export const LEDGER_ONE = BigInt(1);
+export const LEDGER_TWO = BigInt(2);
+export const MICROS_PER_USD = BigInt(1000000);
 const FORBIDDEN_LEDGER_KEYS = [
   'prompt',
   'prompts',
@@ -64,13 +67,13 @@ export function parseDecimalToMicros(value: string | number): bigint {
   const nextDigit = padded.slice(MICROS_SCALE, MICROS_SCALE + 1);
   let micros = BigInt(whole || '0') * MICROS_PER_USD + BigInt(kept || '0');
   if (nextDigit !== '' && Number(nextDigit) >= 5) {
-    micros += 1n;
+    micros += LEDGER_ONE;
   }
   return negative ? -micros : micros;
 }
 
 export function formatMicrosAsUsd(micros: bigint): string {
-  const negative = micros < 0n;
+  const negative = micros < LEDGER_ZERO;
   const absolute = negative ? -micros : micros;
   const whole = absolute / MICROS_PER_USD;
   const fraction = (absolute % MICROS_PER_USD).toString().padStart(MICROS_SCALE, '0');
@@ -149,7 +152,7 @@ export function assertRedactedLedgerRecord(record: LlmUsageLedgerRecord): void {
 }
 
 export function sumEstimatedCostUsd(values: readonly string[]): string {
-  let total = 0n;
+  let total = LEDGER_ZERO;
   for (const value of values) {
     total += parseDecimalToMicros(value);
   }
@@ -160,8 +163,8 @@ function mulDivRoundHalfUp(left: bigint, right: bigint, divisor: bigint): bigint
   const product = left * right;
   const quotient = product / divisor;
   const remainder = product % divisor;
-  if (remainder * 2n >= divisor) {
-    return quotient + 1n;
+  if (remainder * LEDGER_TWO >= divisor) {
+    return quotient + LEDGER_ONE;
   }
   return quotient;
 }
