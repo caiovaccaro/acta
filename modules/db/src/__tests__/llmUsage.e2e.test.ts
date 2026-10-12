@@ -94,7 +94,8 @@ describeDatabase('capped fixture analysis ledger E2E', () => {
     });
     expect(result.summary.receipt).toEqual({
       sent: false,
-      reason: 'email_out_of_scope',
+      kind: 'success',
+      reason: 'missing_config',
     });
 
     const rows = await db.llmUsage.findMany({

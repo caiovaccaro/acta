@@ -125,9 +125,9 @@ describeDatabase('shadow moderation slice E2E', () => {
     expect(result.exitCode).toBe(0);
     const finalize = result.summary.stages.find((stage) => stage.stage === 'finalize');
     expect(finalize?.metrics).toMatchObject({
-      receipt: { sent: false, reason: 'email_out_of_scope' },
       moderation: { mode: 'shadow', proposed: 1, pending: 3, mutated: false },
     });
+    expect(result.summary.receipt).toMatchObject({ sent: false, reason: 'missing_config' });
     const stored = await db.moderationPolicyDecision.findMany();
     expect(stored).toHaveLength(4);
     expect(stored.filter((row) => row.decision === 'propose_approve').map((row) => row.subjectId))

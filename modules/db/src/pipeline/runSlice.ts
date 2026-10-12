@@ -30,6 +30,9 @@ import {
   createTavilyPriorityAdapter,
 } from './tavilyPriority';
 import { createShadowModerationAdapter } from './moderationPolicy';
+import { deliverSliceNotifications } from './notifications';
+import type { ResendClientConfig } from '../../../core/src/notifications/resend';
+import type { NotificationReceipt } from '../../../core/src/notifications/types';
 import { effectiveStageCap, type EffectiveCap } from '../../../core/src/tavily/priority';
 import {
   parseSliceConfig,
@@ -72,7 +75,7 @@ export interface SliceSummary {
     newArticles: EffectiveCap;
     analysisArticles: EffectiveCap;
   };
-  receipt: { sent: false; reason: 'email_out_of_scope' };
+  receipt: NotificationReceipt;
   errorCode?: string | null;
   errorMessage?: string | null;
 }
@@ -93,6 +96,7 @@ export interface RunSliceOptions {
   leaseMs?: number;
   reserveMs?: number;
   interruptAfterStage?: PipelineStageName;
+  notificationClient?: ResendClientConfig;
 }
 
 function emptySummary(status: SliceSummary['status'], error?: {
@@ -116,7 +120,7 @@ function emptySummary(status: SliceSummary['status'], error?: {
       newArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
       analysisArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
     },
-    receipt: { sent: false, reason: 'email_out_of_scope' },
+    receipt: { sent: false, reason: 'missing_config' },
     ...error,
   };
 }
@@ -272,6 +276,8 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
           caps: sliceCaps,
           errorCode: decision.errorCode,
           errorMessage: decision.errorCode,
+          env,
+          notificationClient: options.notificationClient,
         });
       }
 
@@ -379,6 +385,8 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
           caps: sliceCaps,
           errorCode: 'LEASE_LOST',
           errorMessage: 'Lease lost after checkpoint',
+          env,
+          notificationClient: options.notificationClient,
         });
       }
 
@@ -407,6 +415,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
         errorCode: budgetPaused ? 'PAUSED_BUDGET' : after.errorCode,
         errorMessage: outcome.errorMessage ?? (budgetPaused ? 'PAUSED_BUDGET' : after.errorCode),
         env,
+        notificationClient: options.notificationClient,
       });
     }
 
@@ -421,6 +430,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       caps: sliceCaps,
       errorCode: budgetPaused ? 'PAUSED_BUDGET' : undefined,
       env,
+      notificationClient: options.notificationClient,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'SliceInterruptedError') {
@@ -436,12 +446,19 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       // Compare-and-set may fail if the run already left running.
     }
     await releasePipelineLease(identity, db).catch(() => false);
+    const failedSummary: SliceSummary = {
+      ...emptySummary('failed_terminal', sanitized),
+      runId: run.id,
+      trigger: config.trigger,
+    };
+    failedSummary.receipt = await deliverReceiptSafely({
+      summary: failedSummary,
+      db,
+      env,
+      client: options.notificationClient,
+    });
     return {
-      summary: {
-        ...emptySummary('failed_terminal', sanitized),
-        runId: run.id,
-        trigger: config.trigger,
-      },
+      summary: failedSummary,
       exitCode: 1,
     };
   }
@@ -459,6 +476,7 @@ async function finishSlice(input: {
   errorCode?: string | null;
   errorMessage?: string | null;
   env?: NodeJS.ProcessEnv;
+  notificationClient?: ResendClientConfig;
 }): Promise<SliceResult> {
   const stages = await input.db.pipelineStageRun.findMany({
     where: { pipelineRunId: input.runId },
@@ -501,7 +519,7 @@ async function finishSlice(input: {
       newArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
       analysisArticles: { configured: 0, budgetDerived: 0, effective: 0, skippedDueToBudget: 0 },
     },
-    receipt: { sent: false, reason: 'email_out_of_scope' },
+    receipt: { sent: false, reason: 'missing_config' },
     ...sanitized,
   };
 
@@ -520,8 +538,33 @@ async function finishSlice(input: {
   }
 
   await releasePipelineLease(input.identity, input.db);
+  summary.receipt = await deliverReceiptSafely({
+    summary,
+    db: input.db,
+    env: input.env,
+    client: input.notificationClient,
+  });
+  if (input.runId) {
+    await input.db.pipelineRun.update({
+      where: { id: input.runId },
+      data: { summary: summary as unknown as Prisma.InputJsonValue },
+    }).catch(() => undefined);
+  }
   return {
     summary,
     exitCode: isSuccessfulSliceStatus(input.decisionStatus) ? 0 : 1,
   };
+}
+
+async function deliverReceiptSafely(input: {
+  summary: SliceSummary;
+  db: PrismaClient;
+  env?: NodeJS.ProcessEnv;
+  client?: ResendClientConfig;
+}): Promise<NotificationReceipt> {
+  try {
+    return await deliverSliceNotifications(input);
+  } catch {
+    return { sent: false, reason: 'network' };
+  }
 }

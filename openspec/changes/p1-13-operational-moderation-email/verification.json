@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-256",
+  "changeId": "p1-13-operational-moderation-email",
+  "openSpecCommand": "npx openspec validate p1-13-operational-moderation-email --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-13:unit",
+    "integration": "npm run test:p1-13:integration",
+    "e2e": "npm run test:p1-13:e2e",
+    "regression": "npm run test:p1-13:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-13-operational-moderation-email/specs/operational-moderation-email/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/notifications/templates.ts",
+    "modules/core/src/notifications/resend.ts",
+    "modules/core/src/__tests__/notifications/templates.test.ts",
+    "modules/core/src/__tests__/notifications/resend.test.ts",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012190000_add_pipeline_notifications/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/notifications.ts",
+    "modules/db/src/repositories/pipelineNotificationRepository.ts",
+    "modules/db/src/__tests__/notifications.integration.test.ts",
+    "modules/db/src/__tests__/notifications.e2e.test.ts",
+    "openspec/changes/p1-13-operational-moderation-email/proposal.md",
+    "openspec/changes/p1-13-operational-moderation-email/design.md",
+    "openspec/changes/p1-13-operational-moderation-email/tasks.md",
+    "openspec/changes/p1-13-operational-moderation-email/specs/operational-moderation-email/spec.md",
+    "openspec/changes/p1-13-operational-moderation-email/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-256.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/notifications",
+    "modules/core/src/__tests__/notifications",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012190000_add_pipeline_notifications",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/notifications.ts",
+    "modules/db/src/repositories/pipelineNotificationRepository.ts",
+    "modules/db/src/__tests__/notifications.integration.test.ts",
+    "modules/db/src/__tests__/notifications.e2e.test.ts",
+    "openspec/changes/p1-13-operational-moderation-email",
+    "scripts/governance/__tests__/fixtures/cai-256.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-256.json"
+}

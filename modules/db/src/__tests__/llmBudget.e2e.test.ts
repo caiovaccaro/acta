@@ -65,8 +65,10 @@ describeDatabase('budget exhaustion slice E2E', () => {
     expect(paid?.status).toBe('paused_budget');
     expect(verdict?.status).toBe('completed');
     expect(finalize?.status).toBe('completed');
-    expect(finalize?.metrics).toMatchObject({
-      receipt: { sent: false, reason: 'email_out_of_scope' },
+    expect(result.summary.receipt).toMatchObject({
+      sent: false,
+      kind: 'budget',
+      reason: 'missing_config',
     });
   });
 });
