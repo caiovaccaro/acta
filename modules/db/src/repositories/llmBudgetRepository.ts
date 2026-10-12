@@ -7,7 +7,7 @@ import {
   utcMonthKey,
 } from '../../../core/src/llm/budget';
 import { LLMBudgetExceededError } from '../../../core/src/llm/errors';
-import { formatMicrosAsUsd, parseDecimalToMicros } from '../../../core/src/llm/usageLedger';
+import { formatMicrosAsUsd, LEDGER_ZERO, parseDecimalToMicros } from '../../../core/src/llm/usageLedger';
 import { prisma } from '../index';
 
 type BudgetDb = PrismaClient | Prisma.TransactionClient;
@@ -59,8 +59,8 @@ export async function monthSpend(
     },
     select: { status: true, reservedCostUsd: true, actualCostUsd: true },
   });
-  let settled = 0n;
-  let reserved = 0n;
+  let settled = LEDGER_ZERO;
+  let reserved = LEDGER_ZERO;
   for (const row of rows) {
     if (row.status === 'settled') {
       settled += parseDecimalToMicros(asUsd(row.actualCostUsd ?? row.reservedCostUsd));
