@@ -27,7 +27,13 @@ import {
   LLMInvalidKeyError,
   LLMTimeoutError,
   LLMNetworkError,
+  LLMUsagePersistError,
 } from '../errors';
+import {
+  mapProviderUsage,
+  type LlmUsageContext,
+  type LlmUsageSink,
+} from '../usageLedger';
 import { withRetry } from '../utils/retry';
 
 export interface OpenAIProviderConfig {
@@ -35,6 +41,9 @@ export interface OpenAIProviderConfig {
   model?: string;
   maxRetries?: number;
   timeout?: number;
+  onUsage?: LlmUsageSink;
+  usageContext?: LlmUsageContext;
+  client?: OpenAI;
 }
 
 export class OpenAIProvider implements LLMProvider {
@@ -44,13 +53,16 @@ export class OpenAIProvider implements LLMProvider {
   private timeout: number;
   private pricePerMillionInput: number;
   private pricePerMillionOutput: number;
+  private onUsage?: LlmUsageSink;
+  private usageContext: LlmUsageContext;
+  private usageBlocked = false;
 
   constructor(config: OpenAIProviderConfig) {
     if (!config.apiKey) {
       throw new Error('OpenAI API key is required');
     }
 
-    this.client = new OpenAI({
+    this.client = config.client ?? new OpenAI({
       apiKey: config.apiKey,
       timeout: config.timeout || 30000,
     });
@@ -59,19 +71,60 @@ export class OpenAIProvider implements LLMProvider {
     this.timeout = config.timeout || 30000;
     this.pricePerMillionInput = Number(process.env.OPENAI_COST_PER_MILLION_INPUT || 10);
     this.pricePerMillionOutput = Number(process.env.OPENAI_COST_PER_MILLION_OUTPUT || 30);
+    this.onUsage = config.onUsage;
+    this.usageContext = config.usageContext ?? {};
   }
 
-  private logUsage(label: string, usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null) {
-    if (!usage) return;
-    const promptTokens = usage.prompt_tokens ?? 0;
-    const completionTokens = usage.completion_tokens ?? 0;
-    const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
-    const inputCost = (promptTokens / 1_000_000) * this.pricePerMillionInput;
-    const outputCost = (completionTokens / 1_000_000) * this.pricePerMillionOutput;
-    const totalCost = inputCost + outputCost;
+  setUsageContext(context: LlmUsageContext): void {
+    this.usageContext = { ...this.usageContext, ...context };
+  }
+
+  private async createChatCompletion(
+    operation: string,
+    params: OpenAI.Chat.Completions.ChatCompletionCreateParams,
+  ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    if (this.usageBlocked) {
+      throw new LLMUsagePersistError();
+    }
+    const response = await this.client.chat.completions.create({
+      ...params,
+      stream: false,
+    });
+    await this.recordUsage(operation, response);
+    return response;
+  }
+
+  private async recordUsage(
+    operation: string,
+    response: OpenAI.Chat.Completions.ChatCompletion,
+  ): Promise<void> {
+    const record = mapProviderUsage({
+      operation,
+      provider: 'openai',
+      model: response.model || this.model,
+      promptTokens: response.usage?.prompt_tokens ?? 0,
+      completionTokens: response.usage?.completion_tokens ?? 0,
+      providerRequestId: response.id ?? null,
+      pipelineRunId: this.usageContext.pipelineRunId ?? null,
+      stage: this.usageContext.stage ?? null,
+      pricePerMillionInput: this.pricePerMillionInput,
+      pricePerMillionOutput: this.pricePerMillionOutput,
+    });
     console.log(
-      `[llm-usage] ${label} model=${this.model} prompt=${promptTokens} completion=${completionTokens} total=${totalTokens} cost=$${totalCost.toFixed(4)}`
+      `[llm-usage] ${record.operation} model=${record.model} prompt=${record.promptTokens} completion=${record.completionTokens} cost=$${record.estimatedCostUsd}`
     );
+    if (!this.onUsage) {
+      return;
+    }
+    try {
+      await this.onUsage(record);
+    } catch (error) {
+      this.usageBlocked = true;
+      throw new LLMUsagePersistError(
+        'LLM usage ledger persist failed; further paid requests blocked',
+        error,
+      );
+    }
   }
 
   async validateBarQuestion(
@@ -82,7 +135,7 @@ export class OpenAIProvider implements LLMProvider {
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('validateBarQuestion', {
             model: this.model,
             messages: [
               {
@@ -97,8 +150,6 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('validateBarQuestion', response.usage);
 
           return this.parseBarQuestionValidationResponse(response);
         } catch (error) {
@@ -117,7 +168,7 @@ export class OpenAIProvider implements LLMProvider {
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('summarizeVerdict', {
             model: this.model,
             messages: [
               {
@@ -133,8 +184,6 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('summarizeVerdict', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -166,7 +215,7 @@ export class OpenAIProvider implements LLMProvider {
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('generateQuestionContextBlurb', {
             model: this.model,
             messages: [
               {
@@ -182,8 +231,6 @@ export class OpenAIProvider implements LLMProvider {
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('generateQuestionContextBlurb', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -249,7 +296,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('generateTimelineEvents', {
             model: this.model,
             messages: [
               {
@@ -265,8 +312,6 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('generateTimelineEvents', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -509,7 +554,7 @@ Generate 3-5 key events total (at least 3, no more than 5), ordered chronologica
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('generateOverviewBullets', {
             model: this.model,
             messages: [
               {
@@ -525,8 +570,6 @@ Generate 3-5 key events total (at least 3, no more than 5), ordered chronologica
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('generateOverviewBullets', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -638,7 +681,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('extractQuotes', {
             model: this.model,
             messages: [
               {
@@ -654,8 +697,6 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('extractQuotes', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -783,7 +824,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('generateFeaturedPerspective', {
             model: this.model,
             messages: [
               {
@@ -799,8 +840,6 @@ Return JSON:
             response_format: { type: 'json_object' },
             temperature: 0.3,
           });
-
-          this.logUsage('generateFeaturedPerspective', response.usage);
 
           const content = response.choices[0]?.message?.content;
           if (!content) {
@@ -911,7 +950,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('classifyStance', {
             model: this.model,
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
@@ -954,7 +993,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('validateQuestion', {
             model: this.model,
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.2,
@@ -978,7 +1017,7 @@ Return JSON:
     return withRetry(
       async () => {
         try {
-          const response = await this.client.chat.completions.create({
+          const response = await this.createChatCompletion('reformulateQuestion', {
             model: this.model,
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.4,
@@ -1337,7 +1376,7 @@ Return a JSON object with:
 
     const response = await withRetry(
       () =>
-        this.client.chat.completions.create({
+        this.createChatCompletion('discoverTopicsFromArticles', {
           model: this.model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
@@ -1345,8 +1384,6 @@ Return a JSON object with:
         }),
       { maxRetries: this.maxRetries }
     );
-
-    this.logUsage('discoverTopicsFromArticles', response.usage);
 
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseTopicDiscoveryResponse(content);
@@ -1362,7 +1399,7 @@ Return a JSON object with:
 
     const response = await withRetry(
       () =>
-        this.client.chat.completions.create({
+        this.createChatCompletion('discoverQuestionsFromArticles', {
           model: this.model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
@@ -1370,8 +1407,6 @@ Return a JSON object with:
         }),
       { maxRetries: this.maxRetries }
     );
-
-    this.logUsage('discoverQuestionsFromArticles', response.usage);
 
     const content = response.choices[0]?.message?.content ?? '{}';
     return this.parseQuestionDiscoveryResponse(content);

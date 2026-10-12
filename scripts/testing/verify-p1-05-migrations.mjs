@@ -8,7 +8,7 @@ import process from 'node:process';
 
 const repoRoot = process.cwd();
 const migrationsRoot = path.join(repoRoot, 'modules/db/prisma/migrations');
-const latestMigration = '20261010170000_add_pipeline_coordination';
+const pipelineMigration = '20261010170000_add_pipeline_coordination';
 const container = 'acta-cai-252-postgres';
 const user = 'acta';
 const emptyDb = 'acta_cai252_empty';
@@ -65,8 +65,8 @@ const migrations = (await readdir(migrationsRoot, { withFileTypes: true }))
   .map((entry) => entry.name)
   .sort();
 
-if (migrations.at(-1) !== latestMigration) {
-  throw new Error('CAI-252 migration must remain the latest migration');
+if (!migrations.includes(pipelineMigration)) {
+  throw new Error('CAI-252 migration is missing from the additive chain');
 }
 
 function migrationSql(name, sql) {
@@ -92,7 +92,8 @@ recreateDatabase(emptyDb);
 await applyMigrationChain(emptyDb);
 
 recreateDatabase(productionLikeDb);
-for (const migration of migrations.filter((name) => name !== latestMigration)) {
+const pipelineIndex = migrations.indexOf(pipelineMigration);
+for (const migration of migrations.slice(0, pipelineIndex)) {
   const sql = await readFile(path.join(migrationsRoot, migration, 'migration.sql'), 'utf8');
   await dockerPsql(productionLikeDb, migrationSql(migration, sql));
 }
@@ -112,11 +113,16 @@ await dockerPsql(
    );`,
 );
 
-const latestSql = await readFile(
-  path.join(migrationsRoot, latestMigration, 'migration.sql'),
+const pipelineSql = await readFile(
+  path.join(migrationsRoot, pipelineMigration, 'migration.sql'),
   'utf8',
 );
-await dockerPsql(productionLikeDb, latestSql);
+await dockerPsql(productionLikeDb, pipelineSql);
+
+for (const migration of migrations.slice(pipelineIndex + 1)) {
+  const sql = await readFile(path.join(migrationsRoot, migration, 'migration.sql'), 'utf8');
+  await dockerPsql(productionLikeDb, migrationSql(migration, sql));
+}
 
 const preserved = await dockerPsql(
   productionLikeDb,

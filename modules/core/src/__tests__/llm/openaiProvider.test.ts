@@ -4,6 +4,7 @@ import {
   LLMProviderError,
   LLMRateLimitError,
   LLMInvalidKeyError,
+  LLMUsagePersistError,
 } from '../../llm/errors';
 
 // Mock OpenAI
@@ -136,6 +137,91 @@ describe('OpenAIProvider', () => {
 
       expect(result.isValid).toBe(true);
       expect(result.overallConfidence).toBe(0.9);
+    });
+  });
+
+  describe('usage ledger callback', () => {
+    const stanceParams = {
+      article: {
+        id: 'article-1',
+        title: 'Test Article',
+        textContent: 'SECRET_ARTICLE_TEXT',
+      } as any,
+      question: {
+        id: 'question-1',
+        questionText: 'Is this a test?',
+      } as any,
+      month: new Date(),
+    };
+
+    function mockCompletion() {
+      return {
+        id: 'chatcmpl-ledger',
+        model: 'gpt-4-turbo-preview',
+        usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                stance: 'YesItSeemsSo',
+                confidence: 0.85,
+                reasoning: 'Test reasoning',
+              }),
+            },
+          },
+        ],
+      };
+    }
+
+    it('records redacted usage after a successful completion', async () => {
+      const records: unknown[] = [];
+      const ledgerProvider = new OpenAIProvider({
+        apiKey: 'test-api-key',
+        model: 'gpt-4-turbo-preview',
+        usageContext: { pipelineRunId: 'run-1', stage: 'stance_classification' },
+        onUsage: async (record) => {
+          records.push(record);
+        },
+      });
+      const client = (ledgerProvider as any).client;
+      client.chat.completions.create.mockResolvedValue(mockCompletion());
+
+      await ledgerProvider.classifyStance(stanceParams);
+
+      expect(records).toHaveLength(1);
+      expect(records[0]).toEqual({
+        operation: 'classifyStance',
+        provider: 'openai',
+        model: 'gpt-4-turbo-preview',
+        promptTokens: 100,
+        completionTokens: 20,
+        estimatedCostUsd: '0.001600',
+        providerRequestId: 'chatcmpl-ledger',
+        pipelineRunId: 'run-1',
+        stage: 'stance_classification',
+      });
+      expect(JSON.stringify(records[0])).not.toMatch(/SECRET_ARTICLE_TEXT|sk-|apiKey/);
+    });
+
+    it('blocks further paid requests after persist failure', async () => {
+      const ledgerProvider = new OpenAIProvider({
+        apiKey: 'test-api-key',
+        onUsage: async () => {
+          throw new Error('db down');
+        },
+      });
+      const client = (ledgerProvider as any).client;
+      client.chat.completions.create.mockResolvedValue(mockCompletion());
+
+      await expect(ledgerProvider.classifyStance(stanceParams)).rejects.toBeInstanceOf(
+        LLMUsagePersistError,
+      );
+      expect(client.chat.completions.create).toHaveBeenCalledTimes(1);
+
+      await expect(ledgerProvider.classifyStance(stanceParams)).rejects.toBeInstanceOf(
+        LLMUsagePersistError,
+      );
+      expect(client.chat.completions.create).toHaveBeenCalledTimes(1);
     });
   });
 });

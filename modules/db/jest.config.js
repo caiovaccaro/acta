@@ -8,6 +8,8 @@ export default {
   setupFiles: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@acta/core$': '<rootDir>/../core/src/index.ts',
+    '^@acta/core/llm$': '<rootDir>/../core/src/llm/index.ts',
   },
   transform: {
     '^.+\\.ts$': [
@@ -16,6 +18,11 @@ export default {
         useESM: true,
         tsconfig: {
           module: 'ESNext',
+          baseUrl: '.',
+          paths: {
+            '@acta/core': ['../core/src/index.ts'],
+            '@acta/core/llm': ['../core/src/llm/index.ts'],
+          },
         },
       },
     ],

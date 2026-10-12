@@ -7,6 +7,7 @@ import {
   releasePipelineLease,
   type LeaseIdentity,
 } from '../repositories/pipelineLeaseRepository';
+import { sumLlmUsageForRun } from '../repositories/llmUsageRepository';
 import {
   createPipelineRun,
   findResumablePipelineRun,
@@ -49,6 +50,7 @@ export interface SliceSummary {
   }>;
   backlogRemaining: boolean;
   budget: { enforced: false };
+  ledger: { estimatedCostUsd: string; requestCount: number };
   receipt: { sent: false; reason: 'email_out_of_scope' };
   errorCode?: string | null;
   errorMessage?: string | null;
@@ -83,6 +85,7 @@ function emptySummary(status: SliceSummary['status'], error?: {
     stages: [],
     backlogRemaining: false,
     budget: { enforced: false },
+    ledger: { estimatedCostUsd: '0.000000', requestCount: 0 },
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...error,
   };
@@ -384,6 +387,7 @@ async function finishSlice(input: {
     where: { pipelineRunId: input.runId },
     orderBy: { createdAt: 'asc' },
   });
+  const ledger = await sumLlmUsageForRun(input.runId, input.db);
   const sanitized = sanitizePipelineError(input.errorCode, input.errorMessage);
   const summary: SliceSummary = {
     runId: input.runId,
@@ -399,6 +403,7 @@ async function finishSlice(input: {
     })),
     backlogRemaining: input.backlogRemaining,
     budget: { enforced: false },
+    ledger,
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...sanitized,
   };

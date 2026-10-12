@@ -7,6 +7,7 @@ export * from './provider';
 export * from './types';
 export * from './errors';
 export * from './config';
+export * from './usageLedger';
 export * from './providers/openaiProvider';
 export * from './utils/retry';
 

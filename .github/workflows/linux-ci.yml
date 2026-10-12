@@ -120,3 +120,12 @@ jobs:
 
       - name: Run pipeline slice end-to-end verification
         run: npm run test:p1-07:e2e
+
+      - name: Run LLM usage ledger unit verification
+        run: npm run test:p1-08:unit
+
+      - name: Run LLM usage ledger integration verification
+        run: npm run test:p1-08:integration
+
+      - name: Run LLM usage ledger end-to-end verification
+        run: npm run test:p1-08:e2e
