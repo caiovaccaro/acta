@@ -10,6 +10,7 @@ export * from './tavily/client';
 export * from './notifications/types';
 export * from './notifications/templates';
 export * from './notifications/resend';
+export * from './operations/health';
 export * from './analysis/index';
 export * from './utils/monthPeriod';
 // Validation exports (excluding ValidationCheck to avoid conflict with LLM types)

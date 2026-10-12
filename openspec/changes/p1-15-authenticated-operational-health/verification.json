@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-260",
+  "changeId": "p1-15-authenticated-operational-health",
+  "openSpecCommand": "npx openspec validate p1-15-authenticated-operational-health --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-15:unit",
+    "integration": "npm run test:p1-15:integration",
+    "e2e": "npm run test:p1-15:e2e",
+    "regression": "npm run test:p1-15:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-15-authenticated-operational-health/specs/authenticated-operational-health/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/operations/health.ts",
+    "modules/core/src/__tests__/operations/health.test.ts",
+    "modules/db/src/pipeline/operationalHealth.ts",
+    "modules/db/src/__tests__/operationalHealth.integration.test.ts",
+    "modules/db/src/__tests__/operationalHealth.e2e.test.ts",
+    "apps/web/app/admin/api/health/route.ts",
+    "apps/web/app/admin/components/OperationalHealthPanel.tsx",
+    "apps/web/app/__tests__/admin/operationalHealth.route.test.ts",
+    "apps/web/app/__tests__/admin/OperationalHealthPanel.test.tsx",
+    "openspec/changes/p1-15-authenticated-operational-health/proposal.md",
+    "openspec/changes/p1-15-authenticated-operational-health/design.md",
+    "openspec/changes/p1-15-authenticated-operational-health/tasks.md",
+    "openspec/changes/p1-15-authenticated-operational-health/specs/authenticated-operational-health/spec.md",
+    "openspec/changes/p1-15-authenticated-operational-health/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-260.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/operations",
+    "modules/core/src/__tests__/operations",
+    "modules/db/src/pipeline/operationalHealth.ts",
+    "modules/db/src/__tests__/operationalHealth.integration.test.ts",
+    "modules/db/src/__tests__/operationalHealth.e2e.test.ts",
+    "apps/web/app/admin/api/health/route.ts",
+    "apps/web/app/admin/components/OperationalHealthPanel.tsx",
+    "apps/web/app/admin/page.tsx",
+    "apps/web/app/__tests__/admin",
+    "apps/web/app/__tests__/api/health.test.ts",
+    "openspec/changes/p1-15-authenticated-operational-health",
+    "scripts/governance/__tests__/fixtures/cai-260.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-260.json"
+}

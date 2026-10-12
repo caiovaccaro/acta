@@ -2,8 +2,9 @@
 
 
 import Link from 'next/link';
-import { Database, FileText, TrendingUp, Activity, Newspaper, Globe, Download } from 'lucide-react';
+import { Database, FileText, TrendingUp, Newspaper, Globe, Download } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import OperationalHealthPanel from './components/OperationalHealthPanel';
 
 async function fetchStats() {
   const res = await fetch('/admin/api/stats');
@@ -112,6 +113,8 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      <OperationalHealthPanel />
 
       {/* System Status */}
       <div className="bg-white rounded-xl border border-border-light p-6 shadow-sm">

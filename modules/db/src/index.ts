@@ -68,6 +68,7 @@ export * from './pipeline/sliceConfig';
 export * from './pipeline/sliceDecision';
 export * from './pipeline/sliceAdapters';
 export * from './pipeline/runSlice';
+export * from './pipeline/operationalHealth';
 
 // Database connection utilities
 export async function connectDatabase() {
