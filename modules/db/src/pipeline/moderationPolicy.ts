@@ -26,11 +26,12 @@ export function createShadowModerationAdapter(options: {
         kind: 'completed',
         metrics: {
           moderation: {
-            mode: 'shadow',
+            mode: result.mutated ? 'live' : 'shadow',
             policyVersion: result.decisions[0]?.policyVersion ?? 'acta-moderation-policy/v1',
-            proposed: result.decisions.filter((row) => row.decision === 'propose_approve').length,
+            proposed: result.decisions.filter((row) => row.decision === 'propose_approve' || row.decision === 'approved').length,
             pending: result.decisions.filter((row) => row.decision === 'pending').length,
-            mutated: false,
+            mutated: result.mutated,
+            mutatedTopics: result.mutatedTopics,
           },
         },
       };

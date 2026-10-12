@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import {
   kindForStatus,
+  renderAutoApprovalNotice,
   renderModerationDigest,
   renderReceipt,
   TEST_ADMIN_URL,
@@ -21,6 +22,7 @@ function view(partial: Partial<ReceiptView> = {}): ReceiptView {
     matchedTopics: 2,
     topicsDiscovered: 1,
     topicsAutoApproved: 0,
+    mutatedTopics: [],
     topicsPending: 3,
     questionsDiscovered: 2,
     questionsValidated: 1,
@@ -73,6 +75,14 @@ describe('notification templates', () => {
     expect(digest.kind).toBe('moderation_digest');
     expect(digest.subject).toBe('[Acta] Moderation digest: 3 topics pending');
     expect(digest.text).toContain(TEST_ADMIN_URL);
+
+    const auto = renderAutoApprovalNotice(view({
+      mutatedTopics: [{ id: 'topic-ready', name: 'AI regulation' }],
+    }));
+    expect(auto.kind).toBe('auto_approval');
+    expect(auto.subject).toBe('[Acta] Auto-approved 1 topic(s)');
+    expect(auto.text).toContain('AI regulation (topic-ready)');
+    expect(auto.text).toContain('Disable AUTO_APPROVE_TOPICS');
   });
 
   it('redacts secrets and sensitive payload fragments from rendered notifications', () => {

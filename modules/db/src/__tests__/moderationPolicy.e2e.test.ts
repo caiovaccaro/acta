@@ -114,7 +114,7 @@ describeDatabase('shadow moderation slice E2E', () => {
       ],
       env: {
         DATABASE_URL: process.env.DATABASE_URL,
-        AUTO_APPROVE_TOPICS: 'true',
+        AUTO_APPROVE_TOPICS: 'false',
         ACTA_LLM_MONTHLY_CEILING_USD: '30.000000',
       },
       db,

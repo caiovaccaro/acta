@@ -201,3 +201,12 @@ jobs:
 
       - name: Run shadow evaluation end-to-end verification
         run: npm run test:p1-16:e2e
+
+      - name: Run auto-approval unit verification
+        run: npm run test:p1-17:unit
+
+      - name: Run auto-approval integration verification
+        run: npm run test:p1-17:integration
+
+      - name: Run auto-approval end-to-end verification
+        run: npm run test:p1-17:e2e

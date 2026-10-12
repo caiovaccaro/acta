@@ -1,10 +1,14 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import {
+  applyMutationDecision,
   evaluateTopicPolicy,
+  isAutoApproveTopicsEnabled,
   resolveTopicPolicyThresholds,
   type TopicPolicyDecision,
 } from '../../../core/src/moderation/policy';
 import { prisma } from '../index';
+
+type DecisionDb = Pick<PrismaClient, 'moderationPolicyDecision' | 'topic'>;
 
 export function parseTopicConfidence(value: unknown): number | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -19,7 +23,7 @@ export async function persistModerationDecision(
     pipelineRunId?: string | null;
     decision: TopicPolicyDecision;
   },
-  db: PrismaClient = prisma,
+  db: DecisionDb = prisma,
 ): Promise<string> {
   const row = await db.moderationPolicyDecision.create({
     data: {
@@ -42,8 +46,10 @@ export async function evaluatePendingTopicsShadow(options: {
   env?: NodeJS.ProcessEnv;
 }): Promise<{
   decisions: TopicPolicyDecision[];
-  mutated: false;
+  mutated: boolean;
+  mutatedTopics: Array<{ id: string; name: string }>;
 }> {
+  const enabled = isAutoApproveTopicsEnabled(options.env);
   const thresholds = resolveTopicPolicyThresholds(options.env);
   const pending = await options.db.topic.findMany({
     where: { moderationStatus: 'pending' },
@@ -63,6 +69,7 @@ export async function evaluatePendingTopicsShadow(options: {
     select: { id: true, domain: true, title: true, matchedTopicId: true },
   });
   const decisions: TopicPolicyDecision[] = [];
+  const mutatedTopics: Array<{ id: string; name: string }> = [];
   for (let index = 0; index < pending.length; index += 1) {
     const topic = pending[index];
     const tavily = signals
@@ -81,11 +88,39 @@ export async function evaluatePendingTopicsShadow(options: {
       approvedTopicNames: approved.map((row) => row.name),
       remainingUsd: options.remainingUsd,
     }, thresholds);
-    await persistModerationDecision({
-      pipelineRunId: options.pipelineRunId,
-      decision,
-    }, options.db);
-    decisions.push(decision);
+    const planned = applyMutationDecision(decision, enabled);
+    try {
+      await options.db.$transaction(async (tx) => {
+        await persistModerationDecision({
+          pipelineRunId: options.pipelineRunId,
+          decision: planned,
+        }, tx);
+        if (planned.mutateStatus) {
+          const updated = await tx.topic.updateMany({
+            where: { id: topic.id, moderationStatus: 'pending' },
+            data: { moderationStatus: 'approved' },
+          });
+          if (updated.count !== 1) {
+            throw new Error('AUTO_APPROVE_CONFLICT');
+          }
+        }
+      });
+      decisions.push(planned);
+      if (planned.mutateStatus) {
+        mutatedTopics.push({ id: topic.id, name: topic.name });
+        approved.push({ name: topic.name });
+      }
+    } catch {
+      await persistModerationDecision({
+        pipelineRunId: options.pipelineRunId,
+        decision,
+      }, options.db);
+      decisions.push(decision);
+    }
   }
-  return { decisions, mutated: false };
+  return {
+    decisions,
+    mutated: mutatedTopics.length > 0,
+    mutatedTopics,
+  };
 }

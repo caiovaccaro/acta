@@ -3,7 +3,8 @@ export type NotificationKind =
   | 'pause'
   | 'failure'
   | 'budget'
-  | 'moderation_digest';
+  | 'moderation_digest'
+  | 'auto_approval';
 
 export type NotificationDeliveryReason =
   | 'missing_config'
@@ -30,6 +31,7 @@ export interface ReceiptView {
   matchedTopics: number;
   topicsDiscovered: number;
   topicsAutoApproved: number;
+  mutatedTopics: Array<{ id: string; name: string }>;
   topicsPending: number;
   questionsDiscovered: number;
   questionsValidated: number;

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-261",
+  "changeId": "p1-17-level1-topic-auto-approval",
+  "openSpecCommand": "npx openspec validate p1-17-level1-topic-auto-approval --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-17:unit",
+    "integration": "npm run test:p1-17:integration",
+    "e2e": "npm run test:p1-17:e2e",
+    "regression": "npm run test:p1-17:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-17-level1-topic-auto-approval/specs/level1-topic-auto-approval/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/moderation/policy.ts",
+    "modules/core/src/__tests__/moderation/mutation.test.ts",
+    "modules/db/src/repositories/moderationPolicyRepository.ts",
+    "modules/db/src/__tests__/autoApproval.integration.test.ts",
+    "modules/db/src/__tests__/autoApproval.e2e.test.ts",
+    "openspec/changes/p1-16-moderation-shadow-evaluation/evaluation-report.md",
+    "openspec/changes/p1-17-level1-topic-auto-approval/proposal.md",
+    "openspec/changes/p1-17-level1-topic-auto-approval/design.md",
+    "openspec/changes/p1-17-level1-topic-auto-approval/tasks.md",
+    "openspec/changes/p1-17-level1-topic-auto-approval/specs/level1-topic-auto-approval/spec.md",
+    "openspec/changes/p1-17-level1-topic-auto-approval/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-261.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/moderation/policy.ts",
+    "modules/core/src/notifications",
+    "modules/core/src/__tests__/moderation/mutation.test.ts",
+    "modules/db/prisma",
+    "modules/db/src/repositories/moderationPolicyRepository.ts",
+    "modules/db/src/pipeline/moderationPolicy.ts",
+    "modules/db/src/pipeline/notifications.ts",
+    "modules/db/src/__tests__/autoApproval.integration.test.ts",
+    "modules/db/src/__tests__/autoApproval.e2e.test.ts",
+    "openspec/changes/p1-17-level1-topic-auto-approval",
+    "scripts/governance/__tests__/fixtures/cai-261.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-261.json"
+}
