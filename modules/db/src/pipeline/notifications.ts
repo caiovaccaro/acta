@@ -85,17 +85,12 @@ export async function deliverSliceNotifications(input: {
   }, input.db);
 
   if (view.mutatedTopics.length > 0) {
-    const notice = renderAutoApprovalNotice(view);
-    const noticeSend = await sendResendEmail(notice, sendConfig);
-    await recordPipelineNotification({
+    await deliverAutoApprovalSafely({
+      view,
+      sendConfig,
       pipelineRunId: input.summary.runId,
-      kind: notice.kind,
-      receipt: noticeSend.ok
-        ? { sent: true, kind: notice.kind }
-        : { sent: false, kind: notice.kind, reason: noticeSend.reason },
-      subject: notice.subject,
-      providerMessageId: noticeSend.providerMessageId,
-    }, input.db);
+      db: input.db,
+    });
   }
 
   if (view.topicsPending > 0) {
@@ -108,6 +103,34 @@ export async function deliverSliceNotifications(input: {
   }
 
   return result;
+}
+
+async function deliverAutoApprovalSafely(input: {
+  view: ReceiptView;
+  sendConfig: ResendClientConfig;
+  pipelineRunId: string | null;
+  db: PrismaClient;
+}): Promise<void> {
+  const notice = renderAutoApprovalNotice(input.view);
+  try {
+    const noticeSend = await sendResendEmail(notice, input.sendConfig);
+    await recordPipelineNotification({
+      pipelineRunId: input.pipelineRunId,
+      kind: notice.kind,
+      receipt: noticeSend.ok
+        ? { sent: true, kind: notice.kind }
+        : { sent: false, kind: notice.kind, reason: noticeSend.reason },
+      subject: notice.subject,
+      providerMessageId: noticeSend.providerMessageId,
+    }, input.db);
+  } catch {
+    await recordPipelineNotification({
+      pipelineRunId: input.pipelineRunId,
+      kind: notice.kind,
+      receipt: { sent: false, kind: notice.kind, reason: 'network' },
+      subject: notice.subject,
+    }, input.db).catch(() => undefined);
+  }
 }
 
 async function deliverDigestSafely(input: {
