@@ -132,3 +132,21 @@ npm run test:p1-08:e2e
 npm run test:p1-08:regression
 ```
 
+## Transactional monthly budget
+
+CAI-253 reserves conservative cost before each paid OpenAI call. Settled actual
+cost plus active reservations cannot exceed USD 30. Tests may lower
+`ACTA_LLM_MONTHLY_CEILING_USD`; values above 30 are clamped. CLI flags cannot
+raise the ceiling. Abandoned reservations stay conservative until the owner
+lease is stale.
+
+Paid stages pause when a reservation is rejected. Deterministic stages
+continue. The run reports `paused_budget`.
+
+```sh
+npm run test:p1-09:unit
+npm run test:p1-09:integration
+npm run test:p1-09:e2e
+npm run test:p1-09:regression
+```
+

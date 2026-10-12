@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-253",
+  "changeId": "p1-09-transactional-llm-budget",
+  "openSpecCommand": "npx openspec validate p1-09-transactional-llm-budget --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-09:unit",
+    "integration": "npm run test:p1-09:integration",
+    "e2e": "npm run test:p1-09:e2e",
+    "regression": "npm run test:p1-09:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-09-transactional-llm-budget/specs/transactional-llm-budget/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/llm/budget.ts",
+    "modules/core/src/llm/errors.ts",
+    "modules/core/src/llm/index.ts",
+    "modules/core/src/llm/providers/openaiProvider.ts",
+    "modules/core/src/__tests__/llm/budget.test.ts",
+    "modules/core/src/__tests__/llm/openaiProvider.test.ts",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012140000_add_llm_budget_reservations/migration.sql",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/sliceStages.ts",
+    "modules/db/src/repositories/llmBudgetRepository.ts",
+    "modules/db/src/__tests__/llmBudget.e2e.test.ts",
+    "modules/db/src/__tests__/llmBudget.integration.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.e2e.test.ts",
+    "openspec/changes/p1-09-transactional-llm-budget/proposal.md",
+    "openspec/changes/p1-09-transactional-llm-budget/design.md",
+    "openspec/changes/p1-09-transactional-llm-budget/tasks.md",
+    "openspec/changes/p1-09-transactional-llm-budget/specs/transactional-llm-budget/spec.md",
+    "openspec/changes/p1-09-transactional-llm-budget/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-253.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "documentation/pipeline-coordination.md",
+    "modules/core/src/llm",
+    "modules/core/src/__tests__/llm",
+    "modules/db/prisma/schema.prisma",
+    "modules/db/prisma/migrations/20261012140000_add_llm_budget_reservations",
+    "modules/db/src/index.ts",
+    "modules/db/src/pipeline/runSlice.ts",
+    "modules/db/src/pipeline/sliceStages.ts",
+    "modules/db/src/repositories/llmBudgetRepository.ts",
+    "modules/db/src/__tests__/llmBudget.e2e.test.ts",
+    "modules/db/src/__tests__/llmBudget.integration.test.ts",
+    "modules/db/src/__tests__/pipelineSlice.e2e.test.ts",
+    "openspec/changes/p1-09-transactional-llm-budget",
+    "scripts/governance/__tests__/fixtures/cai-253.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-253.json"
+}

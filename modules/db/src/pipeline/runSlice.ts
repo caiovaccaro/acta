@@ -7,6 +7,7 @@ import {
   releasePipelineLease,
   type LeaseIdentity,
 } from '../repositories/pipelineLeaseRepository';
+import { remainingMonthlyBudget } from '../repositories/llmBudgetRepository';
 import { sumLlmUsageForRun } from '../repositories/llmUsageRepository';
 import {
   createPipelineRun,
@@ -31,10 +32,13 @@ import {
 } from './sliceConfig';
 import { evaluateSliceAction, isSuccessfulSliceStatus } from './sliceDecision';
 import {
+  isPaidLlmStage,
   isPipelineStageName,
   PIPELINE_STAGES,
   type PipelineStageName,
 } from './sliceStages';
+import { APPLICATION_LLM_MONTHLY_CEILING_USD, resolveMonthlyCeilingUsd } from '../../../core/src/llm/budget';
+import { LLMBudgetExceededError } from '../../../core/src/llm/errors';
 
 export interface SliceSummary {
   runId: string | null;
@@ -49,7 +53,12 @@ export interface SliceSummary {
     errorMessage?: string | null;
   }>;
   backlogRemaining: boolean;
-  budget: { enforced: false };
+  budget: {
+    enforced: true;
+    ceilingUsd: string;
+    remainingUsd: string;
+    paused: boolean;
+  };
   ledger: { estimatedCostUsd: string; requestCount: number };
   receipt: { sent: false; reason: 'email_out_of_scope' };
   errorCode?: string | null;
@@ -84,7 +93,12 @@ function emptySummary(status: SliceSummary['status'], error?: {
     trigger: null,
     stages: [],
     backlogRemaining: false,
-    budget: { enforced: false },
+    budget: {
+      enforced: true,
+      ceilingUsd: APPLICATION_LLM_MONTHLY_CEILING_USD,
+      remainingUsd: APPLICATION_LLM_MONTHLY_CEILING_USD,
+      paused: false,
+    },
     ledger: { estimatedCostUsd: '0.000000', requestCount: 0 },
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...error,
@@ -136,7 +150,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
   const run = existing ?? await createPipelineRun({
     trigger: config.trigger,
     deadlineAt,
-    summary: { budget: { enforced: false } },
+    summary: { budget: { enforced: true } },
   }, db);
 
   const acquired = await acquirePipelineLease({
@@ -201,6 +215,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
     }
 
     let backlogRemaining = false;
+    let budgetPaused = false;
     const stageRows = existing?.stageRuns ?? [];
     let currentStage = firstIncompleteStage(stageRows);
 
@@ -239,42 +254,58 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       const adapter = adapters[currentStage];
       let outcome: StageOutcome;
       try {
-        outcome = await adapter.run({
-          runId: run.id,
-          stage: currentStage,
-          cursor: started.cursor,
-          deadlineAt,
-          limits: {
-            maxNewArticles: config.maxNewArticles,
-            maxAnalysisArticles: config.maxAnalysisArticles,
-          },
-          heartbeat: async () => {
-            if (!(await pulse())) {
-              throw new Error('LEASE_LOST');
-            }
-          },
-          checkpoint: async (cursor, metrics) => {
-            await upsertPipelineStageRun(run.id, currentStage, {
-              status: 'running',
-              cursor: cursor as Prisma.InputJsonValue,
-              metrics,
-              heartbeatAt: new Date(),
-            }, db);
-            if (!(await pulse())) {
-              throw new Error('LEASE_LOST');
-            }
-          },
-        });
+        if (budgetPaused && isPaidLlmStage(currentStage)) {
+          outcome = {
+            kind: 'completed',
+            metrics: { skipped: true, reason: 'paused_budget' },
+          };
+        } else {
+          outcome = await adapter.run({
+            runId: run.id,
+            stage: currentStage,
+            cursor: started.cursor,
+            deadlineAt,
+            limits: {
+              maxNewArticles: config.maxNewArticles,
+              maxAnalysisArticles: config.maxAnalysisArticles,
+            },
+            heartbeat: async () => {
+              if (!(await pulse())) {
+                throw new Error('LEASE_LOST');
+              }
+            },
+            checkpoint: async (cursor, metrics) => {
+              await upsertPipelineStageRun(run.id, currentStage, {
+                status: 'running',
+                cursor: cursor as Prisma.InputJsonValue,
+                metrics,
+                heartbeatAt: new Date(),
+              }, db);
+              if (!(await pulse())) {
+                throw new Error('LEASE_LOST');
+              }
+            },
+          });
+        }
       } catch (error) {
         if (error instanceof Error && error.name === 'SliceInterruptedError') {
           throw error;
         }
-        const lost = error instanceof Error && error.message === 'LEASE_LOST';
-        outcome = {
-          kind: 'failed_recoverable',
-          errorCode: lost ? 'LEASE_LOST' : 'STAGE_EXCEPTION',
-          errorMessage: error instanceof Error ? error.message : 'Stage failed',
-        };
+        if (error instanceof LLMBudgetExceededError) {
+          budgetPaused = true;
+          outcome = {
+            kind: 'paused_budget',
+            errorCode: 'PAUSED_BUDGET',
+            errorMessage: error.message,
+          };
+        } else {
+          const lost = error instanceof Error && error.message === 'LEASE_LOST';
+          outcome = {
+            kind: 'failed_recoverable',
+            errorCode: lost ? 'LEASE_LOST' : 'STAGE_EXCEPTION',
+            errorMessage: error instanceof Error ? error.message : 'Stage failed',
+          };
+        }
       }
 
       if (interruptAfter === currentStage && outcome.kind === 'completed') {
@@ -284,10 +315,13 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       }
 
       backlogRemaining = backlogRemaining || Boolean(outcome.backlogRemaining);
+      if (outcome.kind === 'paused_budget') {
+        budgetPaused = true;
+      }
       const stageStatus = outcome.kind === 'blocked_moderation'
         ? 'completed'
-        : outcome.kind === 'completed'
-          ? 'completed'
+        : outcome.kind === 'completed' || (outcome.kind === 'paused_budget' && budgetPaused)
+          ? (outcome.kind === 'paused_budget' ? 'paused_budget' : 'completed')
           : outcome.kind;
       await upsertPipelineStageRun(run.id, currentStage, {
         status: stageStatus,
@@ -317,7 +351,7 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
         heartbeatOk: true,
         deadlineStop: shouldStopClaiming(deadlineAt, new Date(), options.reserveMs),
         currentStage,
-        stageOutcome: outcome.kind,
+        stageOutcome: outcome.kind === 'paused_budget' ? 'completed' : outcome.kind,
       });
 
       if (after.action === 'continue' && after.nextStage) {
@@ -330,11 +364,12 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
         identity,
         runId: run.id,
         from: 'running',
-        decisionStatus: after.runStatus,
+        decisionStatus: budgetPaused ? 'paused_budget' : after.runStatus,
         trigger: config.trigger,
         backlogRemaining,
-        errorCode: after.errorCode,
-        errorMessage: outcome.errorMessage ?? after.errorCode,
+        errorCode: budgetPaused ? 'PAUSED_BUDGET' : after.errorCode,
+        errorMessage: outcome.errorMessage ?? (budgetPaused ? 'PAUSED_BUDGET' : after.errorCode),
+        env,
       });
     }
 
@@ -343,9 +378,11 @@ export async function runPipelineSlice(options: RunSliceOptions): Promise<SliceR
       identity,
       runId: run.id,
       from: 'running',
-      decisionStatus: 'completed',
+      decisionStatus: budgetPaused ? 'paused_budget' : 'completed',
       trigger: config.trigger,
       backlogRemaining,
+      errorCode: budgetPaused ? 'PAUSED_BUDGET' : undefined,
+      env,
     });
   } catch (error) {
     if (error instanceof Error && error.name === 'SliceInterruptedError') {
@@ -382,12 +419,24 @@ async function finishSlice(input: {
   backlogRemaining: boolean;
   errorCode?: string | null;
   errorMessage?: string | null;
+  env?: NodeJS.ProcessEnv;
 }): Promise<SliceResult> {
   const stages = await input.db.pipelineStageRun.findMany({
     where: { pipelineRunId: input.runId },
     orderBy: { createdAt: 'asc' },
   });
   const ledger = await sumLlmUsageForRun(input.runId, input.db);
+  const ceilingUsd = resolveMonthlyCeilingUsd(
+    (input.env ?? process.env).ACTA_LLM_MONTHLY_CEILING_USD,
+  );
+  const remaining = await remainingMonthlyBudget({
+    ceilingUsd,
+  }, input.db).catch(() => ({
+    ceilingUsd,
+    remainingUsd: ceilingUsd,
+    settledUsd: '0.000000',
+    reservedUsd: '0.000000',
+  }));
   const sanitized = sanitizePipelineError(input.errorCode, input.errorMessage);
   const summary: SliceSummary = {
     runId: input.runId,
@@ -402,7 +451,12 @@ async function finishSlice(input: {
       errorMessage: stage.errorMessage,
     })),
     backlogRemaining: input.backlogRemaining,
-    budget: { enforced: false },
+    budget: {
+      enforced: true,
+      ceilingUsd: remaining.ceilingUsd,
+      remainingUsd: remaining.remainingUsd,
+      paused: input.decisionStatus === 'paused_budget',
+    },
     ledger,
     receipt: { sent: false, reason: 'email_out_of_scope' },
     ...sanitized,

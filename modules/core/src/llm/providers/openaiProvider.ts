@@ -28,6 +28,7 @@ import {
   LLMTimeoutError,
   LLMNetworkError,
   LLMUsagePersistError,
+  LLMBudgetExceededError,
 } from '../errors';
 import {
   mapProviderUsage,
@@ -44,6 +45,12 @@ export interface OpenAIProviderConfig {
   onUsage?: LlmUsageSink;
   usageContext?: LlmUsageContext;
   client?: OpenAI;
+  onReserve?: (operation: string) => Promise<{ reservationId: string }>;
+  onSettle?: (input: {
+    reservationId: string;
+    actualCostUsd: string;
+    outcome: 'settled' | 'expired';
+  }) => Promise<void>;
 }
 
 export class OpenAIProvider implements LLMProvider {
@@ -56,6 +63,8 @@ export class OpenAIProvider implements LLMProvider {
   private onUsage?: LlmUsageSink;
   private usageContext: LlmUsageContext;
   private usageBlocked = false;
+  private onReserve?: OpenAIProviderConfig['onReserve'];
+  private onSettle?: OpenAIProviderConfig['onSettle'];
 
   constructor(config: OpenAIProviderConfig) {
     if (!config.apiKey) {
@@ -73,6 +82,8 @@ export class OpenAIProvider implements LLMProvider {
     this.pricePerMillionOutput = Number(process.env.OPENAI_COST_PER_MILLION_OUTPUT || 30);
     this.onUsage = config.onUsage;
     this.usageContext = config.usageContext ?? {};
+    this.onReserve = config.onReserve;
+    this.onSettle = config.onSettle;
   }
 
   setUsageContext(context: LlmUsageContext): void {
@@ -86,18 +97,43 @@ export class OpenAIProvider implements LLMProvider {
     if (this.usageBlocked) {
       throw new LLMUsagePersistError();
     }
-    const response = await this.client.chat.completions.create({
-      ...params,
-      stream: false,
-    });
-    await this.recordUsage(operation, response);
-    return response;
+    let reservationId: string | undefined;
+    if (this.onReserve) {
+      const reserved = await this.onReserve(operation);
+      reservationId = reserved.reservationId;
+    }
+    try {
+      const response = await this.client.chat.completions.create({
+        ...params,
+        stream: false,
+      });
+      const record = this.mapUsage(operation, response);
+      if (reservationId && this.onSettle) {
+        await this.onSettle({
+          reservationId,
+          actualCostUsd: record.estimatedCostUsd,
+          outcome: 'settled',
+        });
+        reservationId = undefined;
+      }
+      await this.persistUsage(record);
+      return response;
+    } catch (error) {
+      if (reservationId && this.onSettle) {
+        await this.onSettle({
+          reservationId,
+          actualCostUsd: '0.000000',
+          outcome: 'expired',
+        }).catch(() => undefined);
+      }
+      throw error;
+    }
   }
 
-  private async recordUsage(
+  private mapUsage(
     operation: string,
     response: OpenAI.Chat.Completions.ChatCompletion,
-  ): Promise<void> {
+  ) {
     const record = mapProviderUsage({
       operation,
       provider: 'openai',
@@ -113,6 +149,12 @@ export class OpenAIProvider implements LLMProvider {
     console.log(
       `[llm-usage] ${record.operation} model=${record.model} prompt=${record.promptTokens} completion=${record.completionTokens} cost=$${record.estimatedCostUsd}`
     );
+    return record;
+  }
+
+  private async persistUsage(
+    record: ReturnType<typeof mapProviderUsage>,
+  ): Promise<void> {
     if (!this.onUsage) {
       return;
     }
