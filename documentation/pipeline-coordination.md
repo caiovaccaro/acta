@@ -234,3 +234,23 @@ npm run test:p1-14:e2e
 npm run test:p1-14:regression
 ```
 
+## Production soak and steady-state
+
+CAI-262 evaluates seven consecutive scheduled days. Unrecovered failures
+restart the soak. Freshness must be within 48 hours. Projected monthly run
+rate must stay below USD 50. `AUTO_APPROVE_TOPICS` stays false until that
+report is signed off in production.
+
+Steady-state slice caps: `--max-runtime-minutes=285`, `--max-new-articles=20`,
+`--max-analysis-articles=20`, application LLM ceiling USD 30.
+
+See `documentation/pipeline-soak.md`.
+
+```sh
+npm run test:p1-18:unit
+npm run test:p1-18:integration
+npm run test:p1-18:e2e
+npm run test:p1-18:regression
+```
+
+

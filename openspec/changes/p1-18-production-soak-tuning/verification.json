@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "issue": "CAI-262",
+  "changeId": "p1-18-production-soak-tuning",
+  "openSpecCommand": "npx openspec validate p1-18-production-soak-tuning --strict --no-interactive",
+  "tests": {
+    "unit": "npm run test:p1-18:unit",
+    "integration": "npm run test:p1-18:integration",
+    "e2e": "npm run test:p1-18:e2e",
+    "regression": "npm run test:p1-18:regression"
+  },
+  "deltaSpecFiles": [
+    "openspec/changes/p1-18-production-soak-tuning/specs/production-soak-tuning/spec.md"
+  ],
+  "evidenceFiles": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/operations/soak.ts",
+    "modules/core/src/__tests__/operations/soak.test.ts",
+    "modules/db/src/pipeline/soak.ts",
+    "modules/db/src/__tests__/soak.integration.test.ts",
+    "modules/db/src/__tests__/soak.e2e.test.ts",
+    "documentation/pipeline-soak.md",
+    "documentation/pipeline-coordination.md",
+    "openspec/changes/p1-18-production-soak-tuning/proposal.md",
+    "openspec/changes/p1-18-production-soak-tuning/design.md",
+    "openspec/changes/p1-18-production-soak-tuning/tasks.md",
+    "openspec/changes/p1-18-production-soak-tuning/specs/production-soak-tuning/spec.md",
+    "openspec/changes/p1-18-production-soak-tuning/verification.json",
+    "scripts/governance/__tests__/fixtures/cai-262.md",
+    "package.json"
+  ],
+  "trackedPaths": [
+    ".github/workflows/linux-ci.yml",
+    "modules/core/src/operations/soak.ts",
+    "modules/core/src/__tests__/operations/soak.test.ts",
+    "modules/db/src/pipeline/soak.ts",
+    "modules/db/src/__tests__/soak.integration.test.ts",
+    "modules/db/src/__tests__/soak.e2e.test.ts",
+    "documentation/pipeline-soak.md",
+    "documentation/pipeline-coordination.md",
+    "openspec/changes/p1-18-production-soak-tuning",
+    "scripts/governance/__tests__/fixtures/cai-262.md",
+    "package.json"
+  ],
+  "reportPath": "governance-reports/CAI-262.json"
+}

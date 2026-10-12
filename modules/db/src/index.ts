@@ -70,6 +70,7 @@ export * from './pipeline/sliceAdapters';
 export * from './pipeline/runSlice';
 export * from './pipeline/operationalHealth';
 export * from './pipeline/shadowEvaluation';
+export * from './pipeline/soak';
 
 // Database connection utilities
 export async function connectDatabase() {
