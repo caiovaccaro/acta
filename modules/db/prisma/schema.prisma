@@ -23,6 +23,131 @@ enum CrawlStatus {
   failed
 }
 
+enum PipelineTrigger {
+  scheduled
+  manual
+  retry
+}
+
+enum PipelineRunStatus {
+  queued
+  running
+  completed
+  paused_budget
+  paused_deadline
+  blocked_moderation
+  failed_recoverable
+  failed_terminal
+}
+
+enum PipelineStageStatus {
+  pending
+  running
+  completed
+  paused_deadline
+  paused_budget
+  failed_recoverable
+  failed_terminal
+}
+
+enum PipelineLeaseEventType {
+  acquired
+  released
+  stale_takeover
+}
+
+model PipelineRun {
+  id             String            @id @default(uuid())
+  trigger        PipelineTrigger
+  status         PipelineRunStatus @default(queued)
+  startedAt      DateTime?
+  heartbeatAt    DateTime?
+  finishedAt     DateTime?
+  deadlineAt     DateTime?
+  nextEligibleAt DateTime?
+  summary        Json?
+  errorCode      String?           @db.VarChar(64)
+  errorMessage   String?           @db.VarChar(1000)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  stageRuns         PipelineStageRun[]
+  currentLeases     PipelineLease[]      @relation("CurrentLeaseRun")
+  leaseEvents       PipelineLeaseEvent[] @relation("LeaseEventRun")
+  displacedByEvents PipelineLeaseEvent[] @relation("DisplacedLeaseEventRun")
+
+  @@index([status, nextEligibleAt])
+  @@index([heartbeatAt])
+  @@index([createdAt])
+  @@map("pipeline_runs")
+}
+
+model PipelineStageRun {
+  id            String              @id @default(uuid())
+  pipelineRunId String
+  stage         String              @db.VarChar(100)
+  status        PipelineStageStatus @default(pending)
+  cursor        Json?
+  attempts      Int                 @default(0)
+  startedAt     DateTime?
+  heartbeatAt   DateTime?
+  finishedAt    DateTime?
+  metrics       Json?
+  errorCode     String?             @db.VarChar(64)
+  errorMessage  String?             @db.VarChar(1000)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  pipelineRun PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+
+  @@unique([pipelineRunId, stage])
+  @@index([pipelineRunId, status])
+  @@index([stage, status])
+  @@index([heartbeatAt])
+  @@map("pipeline_stage_runs")
+}
+
+model PipelineLease {
+  resource      String    @id @db.VarChar(100)
+  ownerToken    String?   @db.VarChar(100)
+  pipelineRunId String?
+  generation    Int       @default(0)
+  acquiredAt    DateTime?
+  heartbeatAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  pipelineRun PipelineRun?         @relation("CurrentLeaseRun", fields: [pipelineRunId], references: [id], onDelete: SetNull)
+  events      PipelineLeaseEvent[]
+
+  @@index([expiresAt])
+  @@index([pipelineRunId])
+  @@map("pipeline_leases")
+}
+
+model PipelineLeaseEvent {
+  id                     String                 @id @default(uuid())
+  resource               String                 @db.VarChar(100)
+  type                   PipelineLeaseEventType
+  generation             Int
+  ownerToken             String?                @db.VarChar(100)
+  pipelineRunId          String?
+  displacedOwnerToken    String?                @db.VarChar(100)
+  displacedPipelineRunId String?
+  previousExpiresAt      DateTime?
+  createdAt              DateTime               @default(now())
+
+  lease                PipelineLease @relation(fields: [resource], references: [resource], onDelete: Restrict)
+  pipelineRun          PipelineRun?  @relation("LeaseEventRun", fields: [pipelineRunId], references: [id], onDelete: SetNull)
+  displacedPipelineRun PipelineRun?  @relation("DisplacedLeaseEventRun", fields: [displacedPipelineRunId], references: [id], onDelete: SetNull)
+
+  @@index([resource, createdAt])
+  @@index([pipelineRunId, createdAt])
+  @@index([displacedPipelineRunId, createdAt])
+  @@map("pipeline_lease_events")
+}
+
 model Outlet {
   id              String   @id @default(uuid())
   name            String   @unique

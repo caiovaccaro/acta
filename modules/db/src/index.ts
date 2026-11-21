@@ -50,6 +50,10 @@ export * from './repositories/topicArticleRepository';
 export * from './repositories/evidenceBulletRepository';
 export * from './repositories/articleStanceRepository';
 export * from './repositories/timelineRepository';
+export * from './repositories/pipelineRunRepository';
+export * from './repositories/pipelineLeaseRepository';
+export * from './pipeline/stateMachine';
+export * from './pipeline/sanitizeError';
 
 // Database connection utilities
 export async function connectDatabase() {
@@ -100,6 +104,10 @@ export * from './repositories/topicArticleRepository';
 export * from './repositories/evidenceBulletRepository';
 export * from './repositories/articleStanceRepository';
 export * from './repositories/timelineRepository';
+export * from './repositories/pipelineRunRepository';
+export * from './repositories/pipelineLeaseRepository';
+export * from './pipeline/stateMachine';
+export * from './pipeline/sanitizeError';
 
 // Re-export countArticles for convenience
 export { countArticles } from './repositories/articleRepository';
