@@ -10,6 +10,7 @@ Audit date: 2026-11-21
 - The repository never printed or persisted the URL, record IDs, or row contents.
 - Local disposable PostgreSQL 16 recovery passed on host port 55434 with 26 repository migration ledger entries, required tables, bounded counts, and representative fixture IDs.
 - Unit, E2E fixture, governance, regression, lint, strict OpenSpec, actionlint, and clean production build verification passed.
+- On PR #59 after merging current `main`, Linux CI, governance, and Vercel deployment passed. Adversarial review remained failed because it treats the missing direct Neon URL and resulting absent production restore proof as blocking; no check was weakened or bypassed.
 
 ## Definitive production recovery blocker
 

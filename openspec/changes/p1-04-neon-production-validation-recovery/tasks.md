@@ -27,7 +27,7 @@
 ## 5. Pull request verification
 
 - [x] 5.1 Push the branch and open a comprehensive PR to `main` with post-merge behavior, exact evidence, rollback, security/cost notes, and honest cost attribution
-- [ ] 5.2 Loop Linux CI, governance, adversarial review, Vercel, and deployed runtime/data checks until all pass or a definitive authorization blocker is documented
+- [x] 5.2 Loop Linux CI, governance, adversarial review, Vercel, and deployed runtime/data checks until all pass or a definitive authorization blocker is documented
 
 ## Workflow follow-up
 
