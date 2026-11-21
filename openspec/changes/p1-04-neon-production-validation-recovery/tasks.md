@@ -22,12 +22,12 @@
 - [x] 4.1 Run unit, integration with disposable PostgreSQL on port 55434, E2E, regression, lint, strict OpenSpec, actionlint, and clean production build in a fix loop
 - [x] 4.2 Run read-only Neon inspection, logical backup/restore verification, and Vercel runtime/data checks with available encrypted credentials; record non-secret evidence or a precise authorization blocker
 - [x] 4.3 Synchronize Linear to In Progress and verify the issue remains aligned with the exact three OpenSpec scenarios
-- [ ] 4.4 Commit all implementation and evidence, then run commit-bound `verify:pr-ready` successfully
+- [x] 4.4 Commit all implementation and evidence, then run commit-bound `verify:pr-ready` successfully
 
 ## 5. Pull request verification
 
-- [ ] 5.1 Push the branch and open a comprehensive PR to `main` with post-merge behavior, exact evidence, rollback, security/cost notes, and honest cost attribution
-- [ ] 5.2 Loop Linux CI, governance, adversarial review, Vercel, and deployed runtime/data checks until all pass or a definitive authorization blocker is documented
+- [x] 5.1 Push the branch and open a comprehensive PR to `main` with post-merge behavior, exact evidence, rollback, security/cost notes, and honest cost attribution
+- [x] 5.2 Loop Linux CI, governance, adversarial review, Vercel, and deployed runtime/data checks until all pass or a definitive authorization blocker is documented
 
 ## Workflow follow-up
 

@@ -15,6 +15,7 @@
   "evidenceFiles": [
     ".github/workflows/linux-ci.yml",
     "apps/web/app/api/health/route.ts",
+    "documentation/operations/cai-245-production-audit.md",
     "documentation/operations/neon-recovery.md",
     "openspec/changes/p1-04-neon-production-validation-recovery/proposal.md",
     "openspec/changes/p1-04-neon-production-validation-recovery/design.md",
